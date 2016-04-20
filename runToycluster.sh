@@ -38,14 +38,14 @@ echo "Using machine ${SYSTYPE}."
 
 # Set the OMP number of threads
 # On OSX $(sysctl -n hw.ncpu)
-OMP_NUM_THREADS=$(grep -c ^processor /proc/cpuinfo)
+THREADS=$(grep -c ^processor /proc/cpuinfo)
 NICE=0  # default is 0
 BASEDIR="$HOME/Code"
 
 if [ "${SYSTYPE}" == "taurus" ]; then
     echo "Taurus is also used by others. Maybe not use all resources :-)..."
-    echo "  Maximum threads = ${OMP_NUM_THREADS}, but we will use 8!"
-    OMP_NUM_THREADS=8
+    echo "  Maximum threads = ${THREADS}, but we will use 16!"
+    THREADS=16
     NICE=19
     echo "  Running with nice -n ${NICE}"
     BASEDIR="/scratch/timo/Code"
@@ -75,12 +75,12 @@ nice -n $NICE make clean
 nice -n $NICE make -j8
 
 # Run the code
-nice -n $NICE ./Toycluster "${PARAMETERFILE}" >> "${LOGFILE}"
+OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE ./Toycluster "${PARAMETERFILE}" >> "${LOGFILE}"
 
 # Copy output to the output directory
-cp Makefile "${OUTDIR}"
-cp cluster.par "${OUTDIR}"
-cp "${OUT}" "${OUTDIR}"
-cp "${LOGFILE}" "${OUTDIR}"
+mv Makefile "${OUTDIR}"
+mv cluster.par "${OUTDIR}"
+mv "${OUT}" "${OUTDIR}"
+mv "${LOGFILE}" "${OUTDIR}"
 
 echo "End of program at `date`"
