@@ -40,30 +40,34 @@ echo "Using machine ${SYSTYPE}."
 # On OSX $(sysctl -n hw.ncpu)
 OMP_NUM_THREADS=$(grep -c ^processor /proc/cpuinfo)
 NICE=0  # default is 0
-WORKDIR="$HOME/Code/Toycluster"
+BASEDIR="$HOME/Code"
 
 if [ "${SYSTYPE}" == "taurus" ]; then
     echo "Taurus is also used by others. Maybe not use all resources :-)..."
-    echo "  Maximum threads = ${OMP_NUM_THREADS}, but we will use 16!"
+    echo "  Maximum threads = ${OMP_NUM_THREADS}, but we will use 8!"
     OMP_NUM_THREADS=8
     NICE=19
     echo "  Running with nice -n ${NICE}"
-    WORKDIR="/scratch/timo/Code/Toycluster"
+    BASEDIR="/scratch/timo/Code"
 fi
 echo -e "OMP_NUM_THREADS = $OMP_NUM_THREADS \n"
 
 
 # Set correct working directory
-cd "${WORKDIR}"
+cd "${BASEDIR}/Toycluster"
+
 # Make sure we use the latest makefile from the Git repository
-cp $HOME/Code/CygnusAMerger/Makefile_Toycluster Makefile
+cp "$BASEDIR/CygnusAMerger/Makefile_Toycluster" Makefile
+
+PARAMETERFILE="cluster.par"
+# Also use the parameterfile from the Git repository.
+cp "$BASEDIR/CygnusAMerger/${PARAMETERFILE}" "${PARAMETERFILE}"
 
 OUTDIR="../workdir/ToyclusterICs/${TIMESTAMP}"
 if [ ! -d "${OUTDIR}" ]; then
     mkdir "${OUTDIR}"
 fi
 
-PARAMETERFILE="cluster.par"
 OUT=$(grep "Output_file" "${PARAMETERFILE}" |  tr ' ' '\n' | head -2 | tail -1)
 
 # Compile the code

@@ -24,18 +24,23 @@ OPT     += -DZERO_ENERGY_ORBIT_FRACTION=0.0 # fraction of zero energy orbit in v
 #endif
 
 # Edit by TLRH, 2015/12/03
-SYSTYPE="Lisa"
+#SYSTYPE="Lisa"
 #SYSTYPE="Taurus"
 
-ifeq ($(SYSTYPE),"Lisa")
+ifndef SYSTYPE
+    SYSTYPE := $(shell hostname)
+endif
+
+ifeq ($(SYSTYPE),"*.lisa.surfsara.nl")
+# NB use module load c/intel
 CC       = icc
-OPTIMIZE = -Wall -g -O2
+OPTIMIZE = -Wall -g -O2 --hank
 GSL_INCL = $(CPPFLAGS)
 GSL_LIBS = $(LDFLAGS)
 endif
 
-ifeq ($(SYSTYPE),"Taurus")
-CC       = icc
+ifeq ($(SYSTYPE),"taurus")
+CC       = gcc
 OPTIMIZE = -Wall -g -O2
 GSL_INCL = $(CPPFLAGS)
 GSL_LIBS = $(LDFLAGS)
@@ -93,11 +98,11 @@ LINK    = -lm -lgsl -lgslcblas $(GSL_LIBS) $(FFTW_LIBS)
 ## RULES ## 
 
 $(EXEC)    : $(OBJS)
-    @echo SYSTYPE=$(SYSTYPE)
-    $(CC) $(CFLAGS) $(OBJS) $(LINK) -o $(EXEC)
-    @cd src && ctags *.[ch]
+	@echo SYSTYPE=$(SYSTYPE)
+	$(CC) $(CFLAGS) $(OBJS) $(LINK) -o $(EXEC)
+	@cd src && ctags *.[ch]
 
 $(OBJS)    : $(INCL)
 
 clean    : 
-    rm -f  $(OBJS) $(EXEC)
+	rm -f  $(OBJS) $(EXEC)
