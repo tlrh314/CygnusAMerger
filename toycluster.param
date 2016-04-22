@@ -1,0 +1,122 @@
+%  Relevant files
+
+InitCondFile       IC_single_0_hacked_littleendian.dat
+OutputDir          ./
+
+EnergyFile         energy.txt
+InfoFile           info.txt
+TimingsFile        timings.txt
+CpuFile            cpu.txt
+
+RestartFile        restart
+SnapshotFileBase   snapshot
+
+OutputListFilename output_list.txt
+
+% CPU time -limit
+
+TimeLimitCPU      3600  % = 1 hour
+ResubmitOn        0
+ResubmitCommand   my-scriptfile
+
+
+% Code options
+
+
+ICFormat                 2
+SnapFormat               2
+ComovingIntegrationOn    0
+
+TypeOfTimestepCriterion  0
+OutputListOn             0
+PeriodicBoundariesOn     1
+
+%  Caracteristics of run
+
+TimeBegin                0.0
+TimeMax                  1.0
+
+Omega0                   0.3
+OmegaLambda              0.7
+OmegaBaryon              0.0
+HubbleParam              0.7
+BoxSize                  13923 # kpc?
+
+% Output frequency
+
+TimeBetSnapshot          0.5          % in code units of time (Gyr)
+TimeOfFirstSnapshot      0.0
+
+CpuTimeBetRestartFile    36000.0    ; here in seconds
+TimeBetStatistics        0.05
+
+NumFilesPerSnapshot       1
+NumFilesWrittenInParallel 1
+
+
+
+% Accuracy of time integration
+
+ErrTolIntAccuracy        0.025
+
+MaxRMSDisplacementFac    0.2
+
+CourantFac               0.15
+
+MaxSizeTimestep          0.03
+MinSizeTimestep          0.0
+
+
+
+
+% Tree algorithm, force accuracy, domain update frequency
+
+ErrTolTheta              0.5
+TypeOfOpeningCriterion   1
+ErrTolForceAcc           0.005
+
+
+TreeDomainUpdateFrequency    0.1
+
+
+%  Further parameters of SPH
+
+DesNumNgb               50
+MaxNumNgbDeviation      2
+ArtBulkViscConst        0.8
+InitGasTemp             0
+MinGasTemp              0
+
+
+% Memory allocation
+
+PartAllocFactor        1.6
+TreeAllocFactor        0.8
+BufferSize             100          % in MByte
+
+
+% System of units
+
+UnitLength_in_cm         3.085678e21        ;  1.0 kpc
+UnitMass_in_g            1.989e43           ;  1.0e10 solar masses
+UnitVelocity_in_cm_per_s 1e5                ;  1 km/sec
+GravityConstantInternal  0
+
+
+% Softening lengths
+
+MinGasHsmlFractional 0.25
+
+SofteningGas       10
+SofteningHalo      10
+SofteningDisk      180.0
+SofteningBulge     500.0
+SofteningStars     0
+SofteningBndry     0
+
+SofteningGasMaxPhys       10
+SofteningHaloMaxPhys      10
+SofteningDiskMaxPhys      30.0
+SofteningBulgeMaxPhys     150.0
+SofteningStarsMaxPhys     0
+SofteningBndryMaxPhys     0
