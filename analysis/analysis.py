@@ -2,7 +2,7 @@
 File: analysis.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:28 pm
-Last modified: Tue Apr 19, 2016 10:52 pm
+Last modified: Fri Apr 22, 2016 09:20 AM
 
 Check if initial conditions file was parsed correctly, and check
 the stability of the pas in the dark matter halo.
@@ -130,8 +130,8 @@ def plot_individual_cluster_mass(cluster):
     pyplot.figure(figsize=(12,9))
 
     # TODO: use different method :-)...
-    get_mass_via_number_density(cluster)
-    # get_mass_via_density(cluster)
+    # get_mass_via_number_density(cluster)
+    get_mass_via_density(cluster)
 
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
@@ -168,8 +168,12 @@ def cutoff_beta_model(r, rho0, rc, rcut):
 
 
 if __name__ == "__main__":
-    cluster = Cluster("../input/IC_single_0_2e5")
-    cluster.perform_sanity_checks()
-    plot_individual_cluster_density(cluster)
+    datadir="../../workdir/ToyclusterICs/20160420T1852/"
+    logfile="runToycluster.log"
+    icfile="IC_single_0"
+
+    cluster = Cluster(datadir)
+    # cluster.perform_sanity_checks()
+    # plot_individual_cluster_density(cluster)
     plot_individual_cluster_mass(cluster)
     pyplot.show()

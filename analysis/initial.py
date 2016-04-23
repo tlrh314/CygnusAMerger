@@ -2,7 +2,7 @@
 File: initial.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:25 pm
-Last modified: Mon Apr 18, 2016 10:42 pm
+Last modified: Fri Apr 22, 2016 09:14 AM
 
 Set up Galaxy Cluster initial conditions from the parsed Toycluster 2.0 output
 
@@ -31,12 +31,17 @@ def amuse_nth_root(quant, n):
 
 
 class Cluster(object):
-    def __init__(self, filename_ic="IC_single_0"):
+    def __init__(self, datadir):
+        # Output of runToycluster writes files with these filename
+        logfile="runToycluster.log"
+        icfile="IC_single_0"
+
         # Read runtime output of Toycluster 2.0. Parse runtime output
-        self.toyclusterlog = Toycluster2RuntimeOutputParser(filename="../input/runToycluster.sh.o9776543")
+        self.toyclusterlog = Toycluster2RuntimeOutputParser(filename=datadir+logfile)
         self.set_toycluster2_values()
 
-        self.raw_data = Gadget2BinaryF77UnformattedType2Parser(filename_ic)
+
+        self.raw_data = Gadget2BinaryF77UnformattedType2Parser(datadir+icfile)
         # 1e10 because all masses are given in code units in cluster.par, which is set to 1e10 Msun
         self.M_gas = self.raw_data.Ngas * self.raw_data.massarr[0] * 1e10 | units.MSun
         self.M_dm = self.raw_data.Ndm * self.raw_data.massarr[1] * 1e10 | units.MSun
@@ -336,5 +341,4 @@ class Cluster(object):
 
         pyplot.figure(figsize=(9, 9))
         amuse_plot.hist(self.dm.vz, bins=int(numpy.sqrt(self.raw_data.Ndm)))
-        pyplot.show()
-
+        # pyplot.show()
