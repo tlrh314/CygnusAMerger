@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# @BMP /bin/bash is v3; /usr/local/bin/bash is v4.3.
-# Using /usr/bin/env bash uses the correct bash at all machines :-)
+#PBS -lnodes=1
+#PBS -lwalltime=00:30:00
+
+# load the necessary module(s), for example:
+# module load openmpi/gnu
+# we need fftw, gsl, icc, openmpi, etc
+# TODO: load modules and link in Makefile
+
 # File: runGadget2.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Fri Dec 04, 2015 03:44 PM
-# Last modified: Fri Apr 22, 2016 03:35 pm
+# Last modified: Sat Apr 23, 2016 10:19 PM
 #
 # Description: Compile Gadget-2, run simulation, copy Gadget-2 makefile/param
 
@@ -111,60 +117,108 @@ parse_options() {
     # shift $((OPTIND-1)) 
 }
 
-
 # 'Main'
+
+# Set up logging of the output
+# TIMESTAMP=$(date +"%Y%m%dT%H%M")
+# If use time timestamp dir set by runToycluster.sh we can have all simulations with those ICs in the same dir
+# So TIMESTAMP is a 'unique' simulation number?
+TIMESTAMP="20160423T2136"
+LOGFILE="runGadget.log"
+
+echo "Start of program at `date`"
+echo "Logging to: ${LOGFILE}"
 
 # Uncomment if options are required
 # if [ $# = 0 ]; then _usage; fi
 parse_options $@
 
+SYSTYPE=`hostname`
+echo "Using machine ${SYSTYPE}."
+
+# Set the OMP number of threads
+# On OSX $(sysctl -n hw.ncpu)
+THREADS=$(grep -c ^processor /proc/cpuinfo)
+NICE=0  # default is 0
+BASEDIR="$HOME/Code"
+
+if [ "${SYSTYPE}" == "taurus" ]; then
+    echo "Taurus is also used by others. Maybe not use all resources :-)..."
+    echo "  Maximum threads = ${THREADS}, but we will use 4!"
+    THREADS=4
+    NICE=19
+    echo "  Running with nice -n ${NICE}"
+    BASEDIR="/scratch/timo/Code"
+fi
+echo -e "OMP_NUM_THREADS = $THREADS \n"
+
 # Unpack tar archive with source code
 # ( cd source ; tar xzv --strip-components=1 -f - ) < gadget-2.0.7.tar.gz 
 
-# Copy source code and makefile to output of file
-# Then compile, do some more moving around of files
-example="toycluster"
-cd "example_$example"
-if [ ! -d Gadget2_source ]; then
-    mkdir Gadget2_source
-fi
-cp -r ../source/Gadget2/* ./Gadget2_source/
-cp "$example.Makefile" Gadget2_source/Makefile 
-cd Gadget2_source
-make -j8
-cd ..
-mv Gadget2_source/Gadget2 .
+# Set correct working directory
+cd "${BASEDIR}/Gadget-2.0.7/Gadget2"
 
-if [ ! -d out ]; then
-    mkdir out
+if [ -f "${LOGFILE}" ]; then
+    rm "${LOGFILE}"
 fi
 
-# Run code
-# Working with binary files: fun! Check indianness.
-if [[ -z "$ind" ]]; then
-    cd ..
-    echo "Checking if machine is little endian or big endian:"
-    test_indianness
-    cd "example_$example"
+# Make sure we use the latest makefile from the Git repository
+cp "$BASEDIR/CygnusAMerger/Makefile_Gadget2" Makefile
+
+PARAMETERFILE="gadget2.par"
+# Also use the parameterfile from the Git repository.
+cp "$BASEDIR/CygnusAMerger/${PARAMETERFILE}" "${PARAMETERFILE}"
+
+OUTDIR="../../Simulations/${TIMESTAMP}"
+if [ ! -d "${OUTDIR}" ]; then
+    echo "Initial conditions directory ${TIMESTAMP} does not exist :-("
+    exit 0
 fi
 
-# Adjust parameterfile based on indianness.
-if [ $ind -eq 1 ]; then
-    perl -pi -e 's/bigendian.dat/littleendian.dat/g' "$example.param" 
-elif [ $ind -eq 0 ]; then
-    perl -pi -e 's/littleendian.dat/bigendian.dat/g' "$example.param" 
-else 
-    echo "ERROR: Unknown if big endian or little endian."
-    exit 1
+# Compile the code
+nice -n $NICE make clean
+nice -n $NICE make -j8
+
+cp "${OUTDIR}/IC_single_0" .
+
+
+# Kill and restart mpi daemon, or start it.
+if [ -f "${BASEDIR}/.mpd.pid" ]; then
+    PID=$(cat "${BASEDIR}/.mpd.pid") 
+    if ! kill $PID > /dev/null 2>&1; then
+        echo "Could not send SIGTERM to process $PID" >&2
+        echo "MPD was not running? But now it is :-)"
+    else
+        echo "Successfully send SIGTERM to process $PID" >&2
+        echo "MPD was killed, then started."
+    fi
+else
+    echo "No mpi daemon pid file found. Starting it."
 fi
+nice -n $NICE mpd --daemon --ncpus=$THREADS --pid="${BASEDIR}/.mpd.pid" < /dev/null 
 
-# Find number of cpu's. Note this will be off by a factor 2 for hypertreading 
-# cpu's, e.g. intel i7?
-# ncpu=$(grep -c ^processor /proc/cpuinfo)
-ncpu=$(sysctl -n hw.ncpu)  # OSX
-# Actually run the code
-mpiexec -np $ncpu ./Gadget2 "$example.param"
+# Run the code
+nice --adjustment=$NICE mpiexec.hydra -np $THREADS ./Gadget2 "${PARAMETERFILE}" # >> "${LOGFILE}"
 
-#for example in cluster galaxy gassphere lcdm_gas; do
-#    echo "example_$example"/"$example.Makefile"
-#done
+# These files should exist
+mv Makefile "${OUTDIR}/Makefile_Gadget2"
+mv "${PARAMETERFILE}" "${OUTDIR}"
+mv "${PARAMETERFILE}-usedvalues" "${OUTDIR}"
+mv "parameters-usedvalues" "${OUTDIR}"
+mv snapshot_* "${OUTDIR}"
+mv cpu.txt "${OUTDIR}"
+mv energy.txt "${OUTDIR}"
+mv info.txt "${OUTDIR}"
+mv timings.txt "${OUTDIR}"
+rm IC_single_0
+
+# Every processor writes its own restart file. Move 'm all.
+# If a restart file exists, a backup is created first. Move it too
+# NB, I have hacked restart.c because Gadget-2 attempts to create 
+# .bak files even if there are no restart files present, so checked if file.
+for (( i=0; i<${THREADS}; i++ )); do
+    mv "restart.${i}" "${OUTDIR}"
+    if [ -f "restart.${i}.bak" ]; then
+        mv "restart.${i}.bak" "${OUTDIR}"
+    fi
+done

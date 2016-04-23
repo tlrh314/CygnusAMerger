@@ -2,7 +2,7 @@
 
 Output_file ./IC_single_0   % Base name 
 
-Ntotal      20000  % Total Number of Particles in R200
+Ntotal      2000000  % Total Number of Particles in R200
 Mtotal      1e5   % Total Mass in Code Units
 
 Mass_Ratio  0       % set =0 for single cluster
@@ -11,7 +11,7 @@ ImpactParam 0
 
 Cuspy       0      % Use cuspy model (rc /= 10)
 
-Redshift    0.870
+Redshift    0.056
 
 Bfld_Norm   0    % B(r) = B0 * normalised_density^eta
 Bfld_Eta    0     % like Bonafede 2010. B0 /=2 if Mtotal<5d4
