@@ -6,7 +6,7 @@ OPT     += -DNFWC_DUFFY08    # alternate fit to concentr. param
 #OPT     += -DPARABOLA       # merge in a parabula
 OPT    += -DCOMET            # merge like a comet, ball+tail (recommended)
 
-OPT     += -DZERO_ENERGY_ORBIT_FRACTION=0.0 # fraction of zero energy orbit in vel 
+OPT     += -DZERO_ENERGY_ORBIT_FRACTION=0.0 # fraction of zero energy orbit in vel
 
 #OPT     += -DGIVEPARAMS        # more merger parameters in .par file
 
@@ -16,7 +16,7 @@ OPT     += -DZERO_ENERGY_ORBIT_FRACTION=0.0 # fraction of zero energy orbit in v
 #OPT += -DREPORTSUBHALOS        # print info about all subhaloes
 
 #OPT += -DADD_THIRD_SUBHALO  # manually set the first subhalo mass, pos, vel
-#OPT  += -DTHIRD_HALO_ONLY 
+#OPT  += -DTHIRD_HALO_ONLY
 
 ## Target Computer ##
 #ifndef SYSTYPE
@@ -34,7 +34,7 @@ endif
 ifeq ($(SYSTYPE),"*.lisa.surfsara.nl")
 # NB use module load c/intel
 CC       = icc
-OPTIMIZE = -Wall -g -O2 --hank
+OPTIMIZE = -Wall -g -O2
 GSL_INCL = $(CPPFLAGS)
 GSL_LIBS = $(LDFLAGS)
 endif
@@ -57,9 +57,9 @@ endif
 ifeq ($(SYSTYPE),MSI)
 CC          = icc
 OPTIMIZE    = -Wall -g  -O3 -xhost
-GSL_INCL     = 
-GSL_LIBS    = 
-FFTW_LIBS     = 
+GSL_INCL     =
+GSL_LIBS    =
+FFTW_LIBS     =
 FFTW_INCL     =
 endif
 
@@ -68,7 +68,7 @@ CC          = gcc
 OPTIMIZE    = -O2 -Wall -g  -m64 -march=native -mtune=native -mprefer-avx128 -fopenmp  -minline-all-stringops -fprefetch-loop-arrays --param prefetch-latency=300 -funroll-all-loops
 GSL_INCL     = -I/homes/donnert/Libs/include
 GSL_LIBS    = -L/homes/donnert/Libs/lib
-FFTW_LIBS     = 
+FFTW_LIBS     =
 FFTW_INCL     =
 endif
 
@@ -95,7 +95,7 @@ CFLAGS     = -std=c99 -fopenmp $(OPTIMIZE) $(OPT) $(GSL_INCL) $(FFTW_INCL)
 
 LINK    = -lm -lgsl -lgslcblas $(GSL_LIBS) $(FFTW_LIBS)
 
-## RULES ## 
+## RULES ##
 
 $(EXEC)    : $(OBJS)
 	@echo SYSTYPE=$(SYSTYPE)
@@ -104,5 +104,5 @@ $(EXEC)    : $(OBJS)
 
 $(OBJS)    : $(INCL)
 
-clean    : 
+clean    :
 	rm -f  $(OBJS) $(EXEC)

@@ -78,14 +78,15 @@ OPT   +=  -DSYNCHRONIZATION
 
 #--------------------------------------- Select some defaults
 
-CC       =  mpicc               # sets the C-compiler
-OPTIMIZE =  -O2 -Wall #-g        # sets optimization and warning flags
+CC       =  mpicc                # sets the C-compiler
+OPTIMIZE =  -O2 -Wall -g         # sets optimization and warning flags
 MPICHLIB =  -lmpich
 
 
 #--------------------------------------- Select target computer
 
-# Have Makefile detect system. Works on Taurus/Lisa, not on MBP; on MBP set env variable SYSTYPE
+# Have Makefile detect system. Works on Taurus/Lisa
+# On MBP set env variable SYSTYPE because hostname depends on wifi connection?
 ifndef SYSTYPE
     SYSTYPE := $(shell hostname)
 endif
@@ -97,7 +98,7 @@ endif
 #--------------------------------------- Adjust settings for target computer
 
 # Edit by TLRH, 2015/12/03
-ifeq ($(SYSTYPE),"API")
+ifeq ($(SYSTYPE),API)
 CC       =  mpicc
 OPTIMIZE =  -O3 -Wall
 GSL_INCL =  -I/home/thalbes1/local/include
@@ -110,7 +111,7 @@ HDF5LIB  =  -L/home/thalbes1/local/lib -lhdf5 -lz -lsz
 endif
 
 # Edit by TLRH, 2016/04/19
-ifeq ($(SYSTYPE),"MBP")
+ifeq ($(SYSTYPE),MBP)
 CC       =  mpicc
 OPTIMIZE =  -O3 -Wall
 GSL_INCL =  -I/usr/local/Cellar/gsl/1.16/include
@@ -123,7 +124,7 @@ HDF5LIB  =  -L/usr/local/Cellar/hdf5/1.8.16_1/bin -lhdf5 -lz -lsz
 endif
 
 # Edit by TLRH, 2016/04/22
-ifeq ($(SYSTYPE),"taurus")
+ifeq ($(SYSTYPE),taurus)
 CC       =  mpicc
 OPTIMIZE =  -O3 -Wall
 GSL_INCL =  -I/scratch/timo/prerequisites-10.0/include
@@ -136,9 +137,9 @@ HDF5LIB  =  -L/scratch/timo/prerequisites-10.0/bin -lhdf5 -lz -lsz
 endif
 # TODO: set correct include and lib paths?
 # TODO: check if this breaks making if env var is not set
-ifeq ($(SYSTYPE),"*.lisa.surfsara.nl")
+ifeq ($(SYSTYPE),*.lisa.surfsara.nl)
 
-# Make sure env variables are set. They should contain the lib and include paths
+# Make sure env variables are set. Should contain the lib and include paths
 ifndef SARA_INCLUDE_PATH
 $(error SARA_INCLUDE_PATH not set.)
 endif
@@ -204,6 +205,13 @@ $(OBJS): $(INCL)
 
 clean:
 		rm -f $(OBJS) $(EXEC)
+
+help:
+	@echo ${SYSTYPE}
+	@echo $(SYSTYPE)
+ifeq ($(SYSTYPE),taurus)
+	@echo "we at taurus br0"
+endif
 
 
 #-----------------------------------------------------------------------

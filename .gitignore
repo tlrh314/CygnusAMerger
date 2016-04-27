@@ -199,3 +199,6 @@ ENV/
 *.exe
 *.out
 *.app
+
+# Something??
+._*

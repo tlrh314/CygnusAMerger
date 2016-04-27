@@ -8,7 +8,7 @@
 # File: runToycluster.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Fri Dec 04, 2015 03:44 PM
-# Last modified: Sat Apr 23, 2016 06:55 PM
+# Last modified: Wed Apr 27, 2016 06:01 pm
 #
 # Description: Run Toycluster, copy makefile/param + IC/runtime log
 
@@ -47,7 +47,7 @@ echo "Using machine ${SYSTYPE}."
 # On OSX $(sysctl -n hw.ncpu)
 THREADS=$(grep -c ^processor /proc/cpuinfo)
 NICE=0  # default is 0
-BASEDIR="$HOME/Code"
+BASEDIR="$HOME"
 
 if [ "${SYSTYPE}" == "taurus" ]; then
     echo "Taurus is also used by others. Maybe not use all resources :-)..."
@@ -55,7 +55,7 @@ if [ "${SYSTYPE}" == "taurus" ]; then
     THREADS=4
     NICE=19
     echo "  Running with nice -n ${NICE}"
-    BASEDIR="/scratch/timo/Code"
+    BASEDIR="/scratch/timo"
 fi
 echo -e "OMP_NUM_THREADS = $THREADS \n"
 

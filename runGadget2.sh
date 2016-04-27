@@ -10,7 +10,7 @@
 # File: runGadget2.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Fri Dec 04, 2015 03:44 PM
-# Last modified: Sat Apr 23, 2016 10:19 PM
+# Last modified: Wed Apr 27, 2016 06:01 pm
 #
 # Description: Compile Gadget-2, run simulation, copy Gadget-2 makefile/param
 
@@ -27,14 +27,14 @@ loglevel='INFO'
 
 # Checking for indianness should not be necessary?
 test_indianness() {
-    gcc checkIndianness.c -o checkIndianness 
+    gcc checkIndianness.c -o checkIndianness
     ind="$(./checkIndianness)"
 
     if [ $ind -eq 1 ]; then
         echo "This machine is little endian."
     elif [ $ind -eq 0 ]; then
         echo "This machine is big endian."
-    else 
+    else
         echo "ERROR: Unknown if big endian or little endian."
         exit 1
     fi
@@ -62,10 +62,10 @@ EOF
 
 
 parse_options() {
-    # It is possible to use multiple arguments for a long option. 
+    # It is possible to use multiple arguments for a long option.
     # Specifiy here how many are expected.
     declare -A longoptspec
-    longoptspec=( [loglevel]=1 ) 
+    longoptspec=( [loglevel]=1 )
 
     optspec=":rlhtv-:"
     while getopts "$optspec" opt; do
@@ -73,19 +73,19 @@ parse_options() {
         case "${opt}" in
             -) # OPTARG is long-option or long-option=value.
                 # Single argument:   --key=value.
-                if [[ "${OPTARG}" =~ .*=.* ]] 
+                if [[ "${OPTARG}" =~ .*=.* ]]
                 then
                     opt=${OPTARG/=*/}
                     OPTARG=${OPTARG#*=}
-                    ((OPTIND--))    
+                    ((OPTIND--))
                 # Multiple arguments: --key value1 value2.
-                else 
+                else
                     opt="$OPTARG"
                     OPTARG=(${@:OPTIND:$((longoptspec[$opt]))})
                 fi
                 ((OPTIND+=longoptspec[$opt]))
                 # opt/OPTARG set, thus, we can process them as if getopts would've given us long options
-                continue 
+                continue
                 ;;
             l|loglevel)
                 loglevel=$OPTARG
@@ -114,16 +114,18 @@ parse_options() {
     done
 
     # Not sure if this is needed...
-    # shift $((OPTIND-1)) 
+    # shift $((OPTIND-1))
 }
 
 # 'Main'
 
+# SYSTEM setup
+# -----------------------------------------------------------------------------
 # Set up logging of the output
 # TIMESTAMP=$(date +"%Y%m%dT%H%M")
 # If use time timestamp dir set by runToycluster.sh we can have all simulations with those ICs in the same dir
 # So TIMESTAMP is a 'unique' simulation number?
-TIMESTAMP="20160423T2136"
+TIMESTAMP="20160424T0016"
 LOGFILE="runGadget.log"
 
 echo "Start of program at `date`"
@@ -140,7 +142,7 @@ echo "Using machine ${SYSTYPE}."
 # On OSX $(sysctl -n hw.ncpu)
 THREADS=$(grep -c ^processor /proc/cpuinfo)
 NICE=0  # default is 0
-BASEDIR="$HOME/Code"
+BASEDIR="$HOME"
 
 if [ "${SYSTYPE}" == "taurus" ]; then
     echo "Taurus is also used by others. Maybe not use all resources :-)..."
@@ -148,43 +150,70 @@ if [ "${SYSTYPE}" == "taurus" ]; then
     THREADS=4
     NICE=19
     echo "  Running with nice -n ${NICE}"
-    BASEDIR="/scratch/timo/Code"
+    BASEDIR="/scratch/timo"
 fi
 echo -e "OMP_NUM_THREADS = $THREADS \n"
+# -----------------------------------------------------------------------------
 
-# Unpack tar archive with source code
-# ( cd source ; tar xzv --strip-components=1 -f - ) < gadget-2.0.7.tar.gz 
 
-# Set correct working directory
-cd "${BASEDIR}/Gadget-2.0.7/Gadget2"
-
-if [ -f "${LOGFILE}" ]; then
-    rm "${LOGFILE}"
-fi
-
-# Make sure we use the latest makefile from the Git repository
-cp "$BASEDIR/CygnusAMerger/Makefile_Gadget2" Makefile
+# Directory setup
+# -----------------------------------------------------------------------------
+# Set correct directory paths
+WORKDIR="${BASEDIR}/Simulations/${TIMESTAMP}"
+GADGETDIR="${BASEDIR}/Gadget-2.0.7/Gadget2"
 
 PARAMETERFILE="gadget2.par"
-# Also use the parameterfile from the Git repository.
-cp "$BASEDIR/CygnusAMerger/${PARAMETERFILE}" "${PARAMETERFILE}"
+MAKEFILE="${BASEDIR}/CygnusAMerger/Makefile_Gadget2"
 
-OUTDIR="../../Simulations/${TIMESTAMP}"
-if [ ! -d "${OUTDIR}" ]; then
+if [ ! -d "${WORKDIR}" ]; then
     echo "Initial conditions directory ${TIMESTAMP} does not exist :-("
-    exit 0
+    exit 1
 fi
 
-# Compile the code
+if [ -f "${LOGFILE}" ]; then
+    echo "Warning: logfile already exists!"
+    exit 1
+    LOGFILE="runGadget.log_$(date +"%Y%m%dT%H%M")"
+    echo "Actually logging to: ${LOGFILE}"
+    # TODO: if we will run simulation also rename makefile and parameterfile?
+    # rm "${LOGFILE}"
+fi
+# -----------------------------------------------------------------------------
+
+
+# Compilation
+# -----------------------------------------------------------------------------
+# Compile the code in the GADGETDIR, but run simulation in WORKDIR
+cd "${GADGETDIR}"
+# Make sure we use the latest makefile from the Git repository
+cp "${MAKEFILE}" "${GADGETDIR}/Makefile"
+
+# If needed: unpack tar archive with source code
+# ( cd source ; tar xzv --strip-components=1 -f - ) < gadget-2.0.7.tar.gz
+
+# Compile :-)
+make help
+exit 0
 nice -n $NICE make clean
 nice -n $NICE make -j8
 
-cp "${OUTDIR}/IC_single_0" .
+mv -i Makefile "${WORKDIR}/Makefile_Gadget2"  # move makefile to output dir
+mv -i Gadget2 "${WORKDIR}"                    # move executable to output dir
+# -----------------------------------------------------------------------------
 
 
+# MPI daemon TODO: implement check whether or not to kill 
+# -----------------------------------------------------------------------------
 # Kill and restart mpi daemon, or start it.
 if [ -f "${BASEDIR}/.mpd.pid" ]; then
-    PID=$(cat "${BASEDIR}/.mpd.pid") 
+    echo -e "\nWarning, MPI daemon is already running!"
+    echo "Continuing requires to kill mpd, thus, could kill running code."
+    echo -n "Kill mpd and continue? [y/n]: "
+    read ans
+    case ${ans:=y} in [yY]*) ;;
+        *) echo -e "\nCan't ever be too cautious, smart move...exiting\n" && exit 1 ;;
+    esac
+    PID=$(cat "${BASEDIR}/.mpd.pid")
     if ! kill $PID > /dev/null 2>&1; then
         echo "Could not send SIGTERM to process $PID" >&2
         echo "MPD was not running? But now it is :-)"
@@ -195,30 +224,59 @@ if [ -f "${BASEDIR}/.mpd.pid" ]; then
 else
     echo "No mpi daemon pid file found. Starting it."
 fi
-nice -n $NICE mpd --daemon --ncpus=$THREADS --pid="${BASEDIR}/.mpd.pid" < /dev/null 
+nice -n $NICE mpd --daemon --ncpus=$THREADS --pid="${BASEDIR}/.mpd.pid" < /dev/null
+# -----------------------------------------------------------------------------
+
+
+# Code execution
+# -----------------------------------------------------------------------------
+cd "${WORKDIR}"
+# Use the parameterfile from the Git repository.
+cp "$BASEDIR/CygnusAMerger/${PARAMETERFILE}" "${WORKDIR}/${PARAMETERFILE}"
 
 # Run the code
 nice --adjustment=$NICE mpiexec.hydra -np $THREADS ./Gadget2 "${PARAMETERFILE}" # >> "${LOGFILE}"
 
-# These files should exist
-mv Makefile "${OUTDIR}/Makefile_Gadget2"
-mv "${PARAMETERFILE}" "${OUTDIR}"
-mv "${PARAMETERFILE}-usedvalues" "${OUTDIR}"
-mv "parameters-usedvalues" "${OUTDIR}"
-mv snapshot_* "${OUTDIR}"
-mv cpu.txt "${OUTDIR}"
-mv energy.txt "${OUTDIR}"
-mv info.txt "${OUTDIR}"
-mv timings.txt "${OUTDIR}"
-rm IC_single_0
+# These files should exist. Moving should no longer be necessary: running in final dir
+# mv "${PARAMETERFILE}" "${OUTDIR}"
+# mv "${PARAMETERFILE}-usedvalues" "${OUTDIR}"
+# mv "parameters-usedvalues" "${OUTDIR}"
+# mv snapshot_* "${OUTDIR}"
+# mv cpu.txt "${OUTDIR}"
+# mv energy.txt "${OUTDIR}"
+# mv info.txt "${OUTDIR}"
+# mv timings.txt "${OUTDIR}"
+# rm IC_single_0
 
 # Every processor writes its own restart file. Move 'm all.
 # If a restart file exists, a backup is created first. Move it too
-# NB, I have hacked restart.c because Gadget-2 attempts to create 
+# NB, I have hacked restart.c because Gadget-2 attempts to create
 # .bak files even if there are no restart files present, so checked if file.
-for (( i=0; i<${THREADS}; i++ )); do
-    mv "restart.${i}" "${OUTDIR}"
-    if [ -f "restart.${i}.bak" ]; then
-        mv "restart.${i}.bak" "${OUTDIR}"
-    fi
-done
+# for (( i=0; i<${THREADS}; i++ )); do
+#     mv "restart.${i}" "${OUTDIR}"
+#     if [ -f "restart.${i}.bak" ]; then
+#         mv "restart.${i}.bak" "${OUTDIR}"
+#     fi
+# done
+# TODO: check what happens when multiple nodes are used
+# shopt -s extglob
+# mv "restart.!([ch])"
+#shopt -u extglob
+# -----------------------------------------------------------------------------
+
+
+sleep 2
+echo -n "Done executing code;"
+# Send email to my own gmail =). TODO: change this for Lisa. TODO: make optional
+# -----------------------------------------------------------------------------
+msg="To: timohalbesma@gmail.com\nFrom: tlrh@${SYSTYPE}\n\
+Subject: ${0} @ ${SYSTYPE} is done executing :-)!\n\n\
+Dear Timo,\n\n\
+\"${0} $@\" is now done executing.\n\n\
+Cheers,\n${SYSTYPE}"
+(echo -e $msg | sendmail -t timohalbesma@gmail.com) && echo -n " sent mail;"
+# -----------------------------------------------------------------------------
+
+rm -f "${BASEDIR}/.mpd.pid" && echo -n " lock removed;"
+mpdexit localmpd && echo " cleanly exited mpd."
+exit 0

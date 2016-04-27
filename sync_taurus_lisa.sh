@@ -10,8 +10,8 @@ set -e
 SYSTYPE=`hostname`
 echo "Using machine ${SYSTYPE}."
 
-TAURUSDIR="/scratch/timo/Code/Simulations/"
-LISADIR="/home/timoh/Code/Simulations/"
+TAURUSDIR="/scratch/timo/Simulations/"
+LISADIR="/home/timoh/Simulations/"
 
 
 # Rsynch both ways :-)
