@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Thu Apr 28, 2016 09:47 PM
+# Last modified: Thu Apr 28, 2016 11:24 PM
 #
 # Description: run simulation pipeline
 
@@ -414,15 +414,13 @@ setup_psmac2() {
         PSMAC2EXECNAME=$(grep "EXEC =" "${PSMAC2MAKEFILE}" | cut -d' ' -f3)
         mv -i "${PSMAC2DIR}/${PSMAC2EXECNAME}" "${ANALYSISDIR}"
         PSMAC2EXEC="${ANALYSISDIR}/${PSMAC2EXECNAME}"
-        set_psmac2_generic_runtime_files
     else
         PSMAC2MAKEFILE="${ANALYSISDIR}/Makefile_PSmac2"
         PSMAC2CONFIG="${ANALYSISDIR}/Config_PSmac2"
         PSMAC2EXECNAME=$(grep "EXEC =" "${PSMAC2MAKEFILE}" | cut -d' ' -f3)
         PSMAC2EXEC="${ANALYSISDIR}/${PSMAC2EXECNAME}"
-        PSMAC2PARAMETERS="${ANALYSISDIR}/smac2.par"
-        PSMAC2LOGFILE="${ANALYSISDIR}/${PSMAC2LOGFILENAME}"
     fi
+    set_psmac2_generic_runtime_files
 
     check_psmac2_generic_runtime_files
 
@@ -440,7 +438,23 @@ setup_psmac2() {
     fi
 
     set_psmac_parameterfile_snapshot_path
-    run_psmac2_dm
+
+    # 2 - X-Ray Surface Brightness; no Flag
+    run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
+
+    # 4 - Temperature
+    #     3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)
+    run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
+
+    # 7 - SZ Effect
+    #     0 - Compton-y (=Smac1 thermal DT/T)
+    run_psmac2_for_given_module "SZ-Compton-y" "7" "0"
+
+    # 10 - DM Density; no Flag
+    run_psmac2_for_given_module "dm-density" "10" "0"
+
+    # 11 - DM Annihilation Signal (rho^2); no Flag
+    run_psmac2_for_given_module "dm-annihilation" "11" "0"
 }
 
 compile_psmac2() {
@@ -454,29 +468,15 @@ compile_psmac2() {
     echo "... done compiling P-Smac2"
 }
 
-run_psmac2() {
-    echo "Running P-Smac2..."
-    cd "${ANALYSISDIR}"
-
-    SECONDS=0
-    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
-    RUNTIME=$SECONDS
-    HOUR=$(($RUNTIME/3600))
-    MINS=$(( ($RUNTIME%3600) / 60))
-    SECS=$(( ($RUNTIME%60) ))
-    printf "Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
-
-    echo "... done running P-Smac2"
-}
-
 set_psmac2_generic_runtime_files() {
-    PSMAC2PARAMETERS_GIT="${GITHUBDIR}/smac2.par"
+    PSMAC2PARAMETERSNAME="smac2.par"
+    PSMAC2PARAMETERS_GIT="${GITHUBDIR}/${PSMAC2PARAMETERSNAME}"
     if [ ! -f "${PSMAC2PARAMETERS_GIT}" ]; then
         echo "Error: ${PSMAC2PARAMETERS_GIT} does not exist!"
         exit 1
     fi
     cp -i "${PSMAC2PARAMETERS_GIT}" "${ANALYSISDIR}"
-    PSMAC2PARAMETERS="${ANALYSISDIR}/smac2.par"
+    PSMAC2PARAMETERS="${ANALYSISDIR}/${PSMAC2PARAMETERSNAME}"
     PSMAC2LOGFILE="${ANALYSISDIR}/${PSMAC2LOGFILENAME}"
 }
 
@@ -522,47 +522,47 @@ set_psmac_parameterfile_snapshot_path() {
     grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
 }
 
-run_psmac2_dm() {
-    DM_PSMAC2PARAMETERS="${ANALYSISDIR}/dm_$(echo ${PSMAC2PARAMETERS} | cut -d'/' -f7)"
-    DM_PSMAC2LOGFILE="${ANALYSISDIR}/dm_${PSMAC2LOGFILENAME}"
-    cp -i "${PSMAC2PARAMETERS}" "${DM_PSMAC2PARAMETERS}"
+run_psmac2_for_given_module() {
+    SMAC_PREFIX="${1}"
+    EFFECT_MODULE="${2}"
+    EFFECT_FLAG="${3}"
+
+    PSMAC2PARAMETERS="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2PARAMETERSNAME})"
+    PSMAC2LOGFILE="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2LOGFILENAME}"
+    cp -i "${ANALYSISDIR}/${PSMAC2PARAMETERSNAME}" "${PSMAC2PARAMETERS}"
 
     # Set smac2.par to run DM, change outputfile and logfile
     # Match line containing Output_File; set fits output name
-    DM_OUTPUTFILE="dm.fits"
-    echo -e "\nSetting Output_File to: ${DM_OUTPUTFILE}"
-    perl -pi -e 's/Output_File.*/Output_File '${DM_OUTPUTFILE}'/g' "${DM_PSMAC2PARAMETERS}"
-    grep -n --color=auto "Output_File" "${DM_PSMAC2PARAMETERS}"
+    OUTPUTFILE="${SMAC_PREFIX}.fits"
+    echo -e "\nSetting Output_File to: ${OUTPUTFILE}"
+    perl -pi -e 's/Output_File.*/Output_File '${OUTPUTFILE}'/g' "${PSMAC2PARAMETERS}"
+    grep -n --color=auto "Output_File" "${PSMAC2PARAMETERS}"
 
-    DM_EFFECT_MODULE=10
-    echo -e "\nSetting Effect_Module to: ${DM_EFFECT_MODULE}"
-    perl -pi -e 's/Effect_Module.*/Effect_Module '${DM_EFFECT_MODULE}'/g' "${DM_PSMAC2PARAMETERS}"
-    grep -n --color=auto "Effect_Module" "${DM_PSMAC2PARAMETERS}"
+    echo -e "\nSetting Effect_Module to: ${EFFECT_MODULE}"
+    perl -pi -e 's/Effect_Module.*/Effect_Module '${EFFECT_MODULE}'/g' "${PSMAC2PARAMETERS}"
+    grep -n --color=auto "Effect_Module" "${PSMAC2PARAMETERS}"
 
-    DM_EFFECT_FLAG=0
-    echo -e "\nSetting Effect_Flag to: ${DM_EFFECT_FLAG}"
-    perl -pi -e 's/Effect_Module.*/Effect_Module '${DM_EFFECT_FLAG}'/g' "${DM_PSMAC2PARAMETERS}"
-    grep -n --color=auto "Effect_Flag" "${DM_PSMAC2PARAMETERS}"
+    echo -e "\nSetting Effect_Flag to: ${EFFECT_FLAG}"
+    perl -pi -e 's/Effect_Module.*/Effect_Module '${EFFECT_FLAG}'/g' "${PSMAC2PARAMETERS}"
+    grep -n --color=auto "Effect_Flag" "${PSMAC2PARAMETERS}"
 
     echo "Generating DM fits file"
     echo "Analysis dir    : ${ANALYSISDIR}"
-    echo "Effect_Module   : ${DM_EFFECT_MODULE}"
-    echo "Effect_Flag     : ${DM_EFFECT_FLAG}"
-    echo "Logging to      : ${DM_PSMAC2LOGFILE}"
-    echo "Parameterfile   : ${DM_PSMAC2PARAMETERS}"
-    echo "Output fits file: ${DM_OUTPUTFILE}"
+    echo "Effect_Module   : ${EFFECT_MODULE}"
+    echo "Effect_Flag     : ${EFFECT_FLAG}"
+    echo "Logging to      : ${PSMAC2LOGFILE}"
+    echo "Parameterfile   : ${PSMAC2PARAMETERS}"
+    echo "Output fits file: ${OUTPUTFILE}"
 
-    echo "Press enter to continue" && read enterKey
-
-    if [ ! -f "${DM_PSMAC2PARAMETERS}" ]; then
-        echo "Error: ${DM_PSMAC2PARAMETERS} does not exist!"
+    if [ ! -f "${PSMAC2PARAMETERS}" ]; then
+        echo "Error: ${PSMAC2PARAMETERS} does not exist!"
         exit 1
     fi
 
     echo "Running P-Smac2..."
     cd "${ANALYSISDIR}"
     SECONDS=0
-    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra "${PSMAC2EXEC}" "${DM_PSMAC2PARAMETERS}" # 2>&1 >> "${DM_PSMAC2PARAMETERS}"
+    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
     RUNTIME=$SECONDS
     HOUR=$(($RUNTIME/3600))
     MINS=$(( ($RUNTIME%3600) / 60))
@@ -577,12 +577,11 @@ run_psmac2_dm() {
 echo -e "\nStart of program at $(date)\n"
 
 # TODO: now only works if all functions are called
-#TIMESTAMP="20160428T1149"
-TIMESTAMP="20160428T1459"
+TIMESTAMP="20160423T2219"
 setup_system
 setup_toycluster
 setup_gadget
-#echo "Press enter to continue" && read enterKey
+# echo "Press enter to continue" && read enterKey
 setup_psmac2
 
 echo -e "\nEnd of program at $(date)\n"
