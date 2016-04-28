@@ -9,10 +9,10 @@
 # we need CFITSIO library?
 # TODO: load modules and link in Makefile
 
-# File: CygnusAMerger/runPSmac2.sh
+# File: runPSmac2.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Tue Apr 26, 2016 05:31 pm
-# Last modified: Wed Apr 27, 2016 06:18 pm
+# Last modified: Wed Apr 27, 2016 09:11 PM
 #
 # Description: Compile P-Smac2, obtain observables
 
@@ -20,11 +20,7 @@ set -e
 
 # SYSTEM setup
 # -----------------------------------------------------------------------------
-# Set up logging of the output
-TIMESTAMP=$(date +"%Y%m%dT%H%M")
-# If we use timestamp dir set by runToycluster.sh we can have all simulations with those ICs in the same dir
-# So TIMESTAMP is a 'unique' simulation number?
-SIMULATION="20160424T0016"
+SIMULATION="20160423T2219"
 LOGFILE="runPSmac2.log"
 
 echo "Start of program at `date`"
@@ -94,34 +90,34 @@ mv -i P-Smac2 "${OUTDIR}"                    # move executable to output dir
 # -----------------------------------------------------------------------------
 
 
-# MPI daemon
-# -----------------------------------------------------------------------------
-# Kill and restart mpi daemon, or start it.
-if [ -f "${BASEDIR}/.mpd.pid" ]; then
-    echo -e "\nWarning, MPI daemon is already running!"
-    echo "Continuing requires to kill mpd, thus, could kill running code."
-    echo -n "Kill mpd and continue? [y/n]: "
-    read ans
-    case ${ans:=y} in [yY]*) ;;
-        *) echo -e "\nCan't ever be too cautious, smart move...exiting\n" && exit 1 ;;
-    esac
-    mpdexit localmpd && echo "Cleanly exited mpd."
-    OUT=$?
-    if [ ! $OUT -eq 0 ]; then  # mpdexit failed: nuke it; kill it with fire!
-        PID=$(cat "${BASEDIR}/.mpd.pid")
-        if ! kill $PID > /dev/null 2>&1; then
-            echo "Could not send SIGTERM to process $PID" >&2
-            echo "MPD was not running? But now it is :-)"
-        else
-            echo "Successfully send SIGTERM to process $PID" >&2
-            echo "MPD was killed, then started."
-        fi
-    fi
-else
-    echo "No mpi daemon pid file found. Starting it."
-fi
-# TODO: do we always have to restart the mpi daemon?
-nice -n $NICE mpd --daemon --ncpus=$THREADS --pid="${BASEDIR}/.mpd.pid" < /dev/null
+# # MPI daemon
+# # -----------------------------------------------------------------------------
+# # Kill and restart mpi daemon, or start it.
+# if [ -f "${BASEDIR}/.mpd.pid" ]; then
+#     echo -e "\nWarning, MPI daemon is already running!"
+#     echo "Continuing requires to kill mpd, thus, could kill running code."
+#     echo -n "Kill mpd and continue? [y/n]: "
+#     read ans
+#     case ${ans:=y} in [yY]*) ;;
+#         *) echo -e "\nCan't ever be too cautious, smart move...exiting\n" && exit 1 ;;
+#     esac
+#     mpdexit localmpd && echo "Cleanly exited mpd."
+#     OUT=$?
+#     if [ ! $OUT -eq 0 ]; then  # mpdexit failed: nuke it; kill it with fire!
+#         PID=$(cat "${BASEDIR}/.mpd.pid")
+#         if ! kill $PID > /dev/null 2>&1; then
+#             echo "Could not send SIGTERM to process $PID" >&2
+#             echo "MPD was not running? But now it is :-)"
+#         else
+#             echo "Successfully send SIGTERM to process $PID" >&2
+#             echo "MPD was killed, then started."
+#         fi
+#     fi
+# else
+#     echo "No mpi daemon pid file found. Starting it."
+# fi
+# # TODO: do we always have to restart the mpi daemon?
+# nice -n $NICE mpd --daemon --ncpus=$THREADS --pid="${BASEDIR}/.mpd.pid" < /dev/null
 # -----------------------------------------------------------------------------
 
 # Code execution

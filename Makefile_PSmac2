@@ -100,7 +100,7 @@ HDF5LIB  =
 endif
 
 
-EXEC	= P-Smac2
+EXEC = P-Smac2
 
 SRCDIR	= src/
 

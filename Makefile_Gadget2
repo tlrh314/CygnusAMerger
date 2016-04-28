@@ -167,7 +167,7 @@ endif
 
 OPTIONS =  $(OPTIMIZE) $(OPT)
 
-EXEC   = Gadget2
+EXEC = Gadget2
 
 OBJS   = main.o  run.o  predict.o begrun.o endrun.o global.o  \
      timestep.o  init.o restart.o  io.o    \

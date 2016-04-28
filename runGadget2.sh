@@ -10,7 +10,7 @@
 # File: runGadget2.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Fri Dec 04, 2015 03:44 PM
-# Last modified: Wed Apr 27, 2016 06:01 pm
+# Last modified: Wed Apr 27, 2016 11:08 PM
 #
 # Description: Compile Gadget-2, run simulation, copy Gadget-2 makefile/param
 
@@ -202,32 +202,6 @@ mv -i Gadget2 "${WORKDIR}"                    # move executable to output dir
 # -----------------------------------------------------------------------------
 
 
-# MPI daemon TODO: implement check whether or not to kill 
-# -----------------------------------------------------------------------------
-# Kill and restart mpi daemon, or start it.
-if [ -f "${BASEDIR}/.mpd.pid" ]; then
-    echo -e "\nWarning, MPI daemon is already running!"
-    echo "Continuing requires to kill mpd, thus, could kill running code."
-    echo -n "Kill mpd and continue? [y/n]: "
-    read ans
-    case ${ans:=y} in [yY]*) ;;
-        *) echo -e "\nCan't ever be too cautious, smart move...exiting\n" && exit 1 ;;
-    esac
-    PID=$(cat "${BASEDIR}/.mpd.pid")
-    if ! kill $PID > /dev/null 2>&1; then
-        echo "Could not send SIGTERM to process $PID" >&2
-        echo "MPD was not running? But now it is :-)"
-    else
-        echo "Successfully send SIGTERM to process $PID" >&2
-        echo "MPD was killed, then started."
-    fi
-else
-    echo "No mpi daemon pid file found. Starting it."
-fi
-nice -n $NICE mpd --daemon --ncpus=$THREADS --pid="${BASEDIR}/.mpd.pid" < /dev/null
-# -----------------------------------------------------------------------------
-
-
 # Code execution
 # -----------------------------------------------------------------------------
 cd "${WORKDIR}"
@@ -236,33 +210,6 @@ cp "$BASEDIR/CygnusAMerger/${PARAMETERFILE}" "${WORKDIR}/${PARAMETERFILE}"
 
 # Run the code
 nice --adjustment=$NICE mpiexec.hydra -np $THREADS ./Gadget2 "${PARAMETERFILE}" # >> "${LOGFILE}"
-
-# These files should exist. Moving should no longer be necessary: running in final dir
-# mv "${PARAMETERFILE}" "${OUTDIR}"
-# mv "${PARAMETERFILE}-usedvalues" "${OUTDIR}"
-# mv "parameters-usedvalues" "${OUTDIR}"
-# mv snapshot_* "${OUTDIR}"
-# mv cpu.txt "${OUTDIR}"
-# mv energy.txt "${OUTDIR}"
-# mv info.txt "${OUTDIR}"
-# mv timings.txt "${OUTDIR}"
-# rm IC_single_0
-
-# Every processor writes its own restart file. Move 'm all.
-# If a restart file exists, a backup is created first. Move it too
-# NB, I have hacked restart.c because Gadget-2 attempts to create
-# .bak files even if there are no restart files present, so checked if file.
-# for (( i=0; i<${THREADS}; i++ )); do
-#     mv "restart.${i}" "${OUTDIR}"
-#     if [ -f "restart.${i}.bak" ]; then
-#         mv "restart.${i}.bak" "${OUTDIR}"
-#     fi
-# done
-# TODO: check what happens when multiple nodes are used
-# shopt -s extglob
-# mv "restart.!([ch])"
-#shopt -u extglob
-# -----------------------------------------------------------------------------
 
 
 sleep 2
@@ -276,7 +223,3 @@ Dear Timo,\n\n\
 Cheers,\n${SYSTYPE}"
 (echo -e $msg | sendmail -t timohalbesma@gmail.com) && echo -n " sent mail;"
 # -----------------------------------------------------------------------------
-
-rm -f "${BASEDIR}/.mpd.pid" && echo -n " lock removed;"
-mpdexit localmpd && echo " cleanly exited mpd."
-exit 0
