@@ -38,8 +38,16 @@ elif [ "${SYSTYPE}" == "*.lisa.surfsara.nl" ]; then
     NICE=0  # default is 0
     nice -n $NICE rsync -auHxz --progress taurus:"${TAURUSDIR}" "${LISADIR}"
     nice -n $NICE rsync -auHxz --progress "${LISADIR}" taurus:"${TAURUSDIR}"
+elif [ "$(uname -s)" == "Darwin" ]; then
+    echo "MBP"
+    RUNDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code/runs/"
+    echo "${RUNDIR}"
+    ls -la "${RUNDIR}"
+
+    rsync -auHxz --progress taurus:"${TAURUSDIR}" "${RUNDIR}"
 else
     echo "Unknown system: ${SYSTYPE}. Exiting"
     exit 1
 fi
+
 
