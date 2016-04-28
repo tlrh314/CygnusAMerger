@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Thu Apr 28, 2016 03:05 PM
+# Last modified: Thu Apr 28, 2016 09:47 PM
 #
 # Description: run simulation pipeline
 
@@ -174,7 +174,6 @@ run_toycluster() {
     printf "Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
 
     echo "... done running Toycluster"
-
 }
 
 check_toycluster_run() {
@@ -415,65 +414,17 @@ setup_psmac2() {
         PSMAC2EXECNAME=$(grep "EXEC =" "${PSMAC2MAKEFILE}" | cut -d' ' -f3)
         mv -i "${PSMAC2DIR}/${PSMAC2EXECNAME}" "${ANALYSISDIR}"
         PSMAC2EXEC="${ANALYSISDIR}/${PSMAC2EXECNAME}"
+        set_psmac2_generic_runtime_files
     else
         PSMAC2MAKEFILE="${ANALYSISDIR}/Makefile_PSmac2"
         PSMAC2CONFIG="${ANALYSISDIR}/Config_PSmac2"
         PSMAC2EXECNAME=$(grep "EXEC =" "${PSMAC2MAKEFILE}" | cut -d' ' -f3)
         PSMAC2EXEC="${ANALYSISDIR}/${PSMAC2EXECNAME}"
+        PSMAC2PARAMETERS="${ANALYSISDIR}/smac2.par"
+        PSMAC2LOGFILE="${ANALYSISDIR}/${PSMAC2LOGFILENAME}"
     fi
 
-    if [ ! -d "${SIMULATIONDIR}" ]; then
-        echo "Error: ${SIMULATIONDIR} does not exist!"
-        exit 1
-    fi
-    if [ ! -d "${ANALYSISDIR}" ]; then
-        echo "Error: ${ANALYSISDIR} does not exist!"
-        exit 1
-    fi
-    if [ ! -f "${PSMAC2MAKEFILE}" ]; then
-        echo "Error: ${PSMAC2MAKEFILE} does not exist!"
-        exit 1
-    fi
-    if [ ! -f "${PSMAC2CONFIG}" ]; then
-        echo "Error: ${PSMAC2CONFIG} does not exist!"
-        exit 1
-    fi
-
-    # Run
-    PSMAC2PARAMETERS_GIT="${GITHUBDIR}/smac2.par"
-    if [ ! -f "${PSMAC2PARAMETERS_GIT}" ]; then
-        echo "Error: ${PSMAC2PARAMETERS_GIT} does not exist!"
-        exit 1
-    fi
-    cp -i "${PSMAC2PARAMETERS_GIT}" "${ANALYSISDIR}"
-    PSMAC2PARAMETERS="${ANALYSISDIR}/smac2.par"
-    PSMAC2LOGFILE="${ANALYSISDIR}/${PSMAC2LOGFILENAME}"
-
-    # TODO: set inputfiles to the number of generated snapshots
-    # Use ${#GADGETSNAPSHOTS}, which is the nr of snapshots?
-    SNAPMAX=${#GADGETSNAPSHOTS[@]}  # length of array
-    SNAPMAX=$(printf "%03d" $(( 10#$SNAPMAX-1 )))  # 10# -> force decimal
-    echo "Setting Input_File to: snapshot_000 snapshot_${SNAPMAX} 1"
-    # Match line containing Input_File; set fits output name
-    perl -pi -e 's/Input_File.*/Input_File snapshot_000 snapshot_'${SNAPMAX}' 1/g' "${PSMAC2PARAMETERS}" 
-    grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
-
-    # Match line containing Output_File; set fits output name
-    OUTPUTFILE="dm.fits"
-    echo "Setting Output_File to: ${OUTPUTFILE}"
-    perl -pi -e 's/Output_File.*/Output_File '${OUTPUTFILE}'/g' "${PSMAC2PARAMETERS}" 
-    grep -n --color=auto "Output_File" "${PSMAC2PARAMETERS}"
-
-    # Effect_Module
-    # Effect_Flag
-
-
-
-
-    #if [ ! -f "${PSMAC2LOGFILE}" ]; then
-    #    echo "Error: ${PSMAC2LOGFILE} does not exist!"
-    #    exit 1
-    #fi
+    check_psmac2_generic_runtime_files
 
     if [ "${LOGLEVEL}" == "DEBUG" ]; then
         echo -e "\nAnalysis paths"
@@ -487,6 +438,9 @@ setup_psmac2() {
         echo "Parameterfile   : ${PSMAC2PARAMETERS}"
         echo -e "Logfile         : ${PSMAC2LOGFILE}\n"
     fi
+
+    set_psmac_parameterfile_snapshot_path
+    run_psmac2_dm
 }
 
 compile_psmac2() {
@@ -514,6 +468,110 @@ run_psmac2() {
 
     echo "... done running P-Smac2"
 }
+
+set_psmac2_generic_runtime_files() {
+    PSMAC2PARAMETERS_GIT="${GITHUBDIR}/smac2.par"
+    if [ ! -f "${PSMAC2PARAMETERS_GIT}" ]; then
+        echo "Error: ${PSMAC2PARAMETERS_GIT} does not exist!"
+        exit 1
+    fi
+    cp -i "${PSMAC2PARAMETERS_GIT}" "${ANALYSISDIR}"
+    PSMAC2PARAMETERS="${ANALYSISDIR}/smac2.par"
+    PSMAC2LOGFILE="${ANALYSISDIR}/${PSMAC2LOGFILENAME}"
+}
+
+check_psmac2_generic_runtime_files() {
+    if [ ! -d "${SIMULATIONDIR}" ]; then
+        echo "Error: ${SIMULATIONDIR} does not exist!"
+        exit 1
+    fi
+    if [ ! -d "${ANALYSISDIR}" ]; then
+        echo "Error: ${ANALYSISDIR} does not exist!"
+        exit 1
+    fi
+    if [ ! -f "${PSMAC2MAKEFILE}" ]; then
+        echo "Error: ${PSMAC2MAKEFILE} does not exist!"
+        exit 1
+    fi
+    if [ ! -f "${PSMAC2CONFIG}" ]; then
+        echo "Error: ${PSMAC2CONFIG} does not exist!"
+        exit 1
+    fi
+    if [ ! -f "${PSMAC2PARAMETERS}" ]; then
+        echo "Error: ${PSMAC2PARAMETERS} does not exist!"
+        exit 1
+    fi
+}
+
+set_psmac_parameterfile_snapshot_path() {
+    # Use ${#GADGETSNAPSHOTS}, which is the nr of snapshots?
+    # SNAPMAX=${#GADGETSNAPSHOTS[@]}  # length of array
+    # SNAPMAX=$(printf "%03d" $(( 10#$SNAPMAX-1 )))  # 10# -> force decimal
+    # echo "Setting Input_File to: snapshot_000 snapshot_${SNAPMAX} 1"
+    # Match line containing Input_File; set fits output name
+
+    FIRST="${GADGETSNAPSHOTS[0]}"  # Globbed, then sorted array
+    LAST="${GADGETSNAPSHOTS[-1]}"
+
+    # Escape forward slashes. If / not escaped we break perl :)
+    FIRST=$(echo "${FIRST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+    LAST=$(echo "${LAST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+
+    echo -e "\nSetting Input_File to: /path/to/snapshot_000 /path/to/snapshot_max 1"
+    perl -pi -e "s/Input_File.*/Input_File ${FIRST} ${LAST} 1/g" "${PSMAC2PARAMETERS}"
+    grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
+}
+
+run_psmac2_dm() {
+    DM_PSMAC2PARAMETERS="${ANALYSISDIR}/dm_$(echo ${PSMAC2PARAMETERS} | cut -d'/' -f7)"
+    DM_PSMAC2LOGFILE="${ANALYSISDIR}/dm_${PSMAC2LOGFILENAME}"
+    cp -i "${PSMAC2PARAMETERS}" "${DM_PSMAC2PARAMETERS}"
+
+    # Set smac2.par to run DM, change outputfile and logfile
+    # Match line containing Output_File; set fits output name
+    DM_OUTPUTFILE="dm.fits"
+    echo -e "\nSetting Output_File to: ${DM_OUTPUTFILE}"
+    perl -pi -e 's/Output_File.*/Output_File '${DM_OUTPUTFILE}'/g' "${DM_PSMAC2PARAMETERS}"
+    grep -n --color=auto "Output_File" "${DM_PSMAC2PARAMETERS}"
+
+    DM_EFFECT_MODULE=10
+    echo -e "\nSetting Effect_Module to: ${DM_EFFECT_MODULE}"
+    perl -pi -e 's/Effect_Module.*/Effect_Module '${DM_EFFECT_MODULE}'/g' "${DM_PSMAC2PARAMETERS}"
+    grep -n --color=auto "Effect_Module" "${DM_PSMAC2PARAMETERS}"
+
+    DM_EFFECT_FLAG=0
+    echo -e "\nSetting Effect_Flag to: ${DM_EFFECT_FLAG}"
+    perl -pi -e 's/Effect_Module.*/Effect_Module '${DM_EFFECT_FLAG}'/g' "${DM_PSMAC2PARAMETERS}"
+    grep -n --color=auto "Effect_Flag" "${DM_PSMAC2PARAMETERS}"
+
+    echo "Generating DM fits file"
+    echo "Analysis dir    : ${ANALYSISDIR}"
+    echo "Effect_Module   : ${DM_EFFECT_MODULE}"
+    echo "Effect_Flag     : ${DM_EFFECT_FLAG}"
+    echo "Logging to      : ${DM_PSMAC2LOGFILE}"
+    echo "Parameterfile   : ${DM_PSMAC2PARAMETERS}"
+    echo "Output fits file: ${DM_OUTPUTFILE}"
+
+    echo "Press enter to continue" && read enterKey
+
+    if [ ! -f "${DM_PSMAC2PARAMETERS}" ]; then
+        echo "Error: ${DM_PSMAC2PARAMETERS} does not exist!"
+        exit 1
+    fi
+
+    echo "Running P-Smac2..."
+    cd "${ANALYSISDIR}"
+    SECONDS=0
+    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra "${PSMAC2EXEC}" "${DM_PSMAC2PARAMETERS}" # 2>&1 >> "${DM_PSMAC2PARAMETERS}"
+    RUNTIME=$SECONDS
+    HOUR=$(($RUNTIME/3600))
+    MINS=$(( ($RUNTIME%3600) / 60))
+    SECS=$(( ($RUNTIME%60) ))
+    printf "Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
+
+    echo "... done running P-Smac2"
+}
+
 
 # Main
 echo -e "\nStart of program at $(date)\n"

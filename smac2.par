@@ -33,7 +33,7 @@ Input_File snapshot_000 snapshot_010 1
 N_IOTasks 1
 
 NoClobber 0
-Output_File dm.fits
+Output_File test.fits
 
 
 %% Effect Selection & Options %%
