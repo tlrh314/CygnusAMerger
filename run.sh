@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-#PBS -lnodes=1
-#PBS -lwalltime=00:30:00
+#PBS -lnodes=1:ppn=16:cores16
+#PBS -lwalltime=23:00:00
 
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Thu Apr 28, 2016 11:24 PM
+# Last modified: Fri Apr 29, 2016 01:18 PM
 #
 # Description: run simulation pipeline
 
@@ -15,21 +15,35 @@ LOGLEVEL="DEBUG"
 
 # TODO: set up for Lisa
 send_mail() {
-    msg="To: timohalbesma@gmail.com\nFrom: tlrh@${SYSTYPE}\n\
+    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+        msg="Dear Timo,\n\n\
+I'm done with PBS JobID: ${PBS_JOBID}\n\n\
+Succesfully ran: \"${0} $@\"\n\n\
+Cheers,\n${SYSTYPE}"
+        SUBJECT="${0} @ ${SYSTYPE} is done executing :-)!"
+        (echo -e $msg | mail $USER -s "${SUBJECT}") && echo "Mail Sent."
+    elif [ "${SYSTYPE}" == "taurus" ]; then
+        msg="To: timohalbesma@gmail.com\nFrom: tlrh@${SYSTYPE}\n\
 Subject: ${0} @ ${SYSTYPE} is done executing :-)!\n\n\
 Dear Timo,\n\n\
 \"${0} $@\" is now done executing.\n\n\
 Cheers,\n${SYSTYPE}"
-    (echo -e $msg | sendmail -t timohalbesma@gmail.com) && echo "Mail Sent."
+        (echo -e $msg | sendmail -t timohalbesma@gmail.com) && echo "Mail Sent."
+    fi
 }
 
 setup_system() {
     SYSTYPE=`hostname`
 
-    if [ "${SYSTYPE}" == "*.lisa.surfsara.nl" ]; then
+    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+        # TODO: check how multiple threas/nodes works on Lisa?
         THREADS=$(grep -c ^processor /proc/cpuinfo)
         NICE=0  # default is 0
-        BASEDIR="$HOME"
+        BASEDIR="$HOME"  # TODO: look into the faster disk situation?
+        module load c/intel
+        module load fftw2/sp/intel
+        module load fftw2/dp/intel
+        module load openmpi/intel
     elif [ "${SYSTYPE}" == "taurus" ]; then
         THREADS=4
         NICE=19
@@ -329,7 +343,7 @@ run_gadget() {
     echo "Running Gadget2..."
     cd "${SIMOUTDIR}"
 
-    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
+    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec -np $NODES "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
 
     echo "... done running Gadget2"
 }
@@ -562,7 +576,7 @@ run_psmac2_for_given_module() {
     echo "Running P-Smac2..."
     cd "${ANALYSISDIR}"
     SECONDS=0
-    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
+    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
     RUNTIME=$SECONDS
     HOUR=$(($RUNTIME/3600))
     MINS=$(( ($RUNTIME%3600) / 60))
@@ -577,11 +591,12 @@ run_psmac2_for_given_module() {
 echo -e "\nStart of program at $(date)\n"
 
 # TODO: now only works if all functions are called
-TIMESTAMP="20160423T2219"
+# TIMESTAMP="20160429T0013"
 setup_system
-setup_toycluster
-setup_gadget
+#setup_toycluster
+#setup_gadget
 # echo "Press enter to continue" && read enterKey
-setup_psmac2
+#setup_psmac2
+send_mail
 
 echo -e "\nEnd of program at $(date)\n"
