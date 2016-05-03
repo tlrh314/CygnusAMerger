@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Fri Apr 29, 2016 01:18 PM
+# Last modified: Tue May 03, 2016 10:00 AM
 #
 # Description: run simulation pipeline
 
@@ -13,14 +13,119 @@ set -e
 
 LOGLEVEL="DEBUG"
 
-# TODO: set up for Lisa
+_usage() {
+cat <<EOF
+Usage: `basename $0` <options>
+Compile&Run Toycluster, Compile&Run Gadget-2, Compile&Run P-Smac2
+
+Make sure GITHUBDIR contains:
+    - Makefile_Toycluster, toycluster.par
+    - Makefile_Gadget2, gadget2.par
+    - Makefile_PSmac2, Config_PSmac2, smac2.par
+New simulations will use these files for the setup.
+
+Simulations have a 'simulation ID' yyyymmddThhmm. This is used as output dir.
+Each simulation run will create three directories.
+    - 'ICs' contains the Toycluster Makefile/parameters, executable and ICs
+       as F77 unformatted binary file together with a txt file with Toycluster
+       runtime output.
+    - 'snaps' contains the Gadget2 Makefile/parameters, executable and snapshots
+       as F77 unformatted binary files together with all other Gadget2 runtime
+       output (cpu/energy/timings/info text files and restart files).
+    - 'analysis' contains the P-Smac2 Makefile/Config/parameters, executable
+       and any observable generated from the snapshots in the 'snaps' dir.
+
+Running additional P-Smac2 routines requires providing 'simulation ID' as
+parameter to the runscript. Leaving it blank results in a new simulation.
+
+Options:
+  -e   --effect         select which observable to calculate using P-Smac2
+                        valid options: "DMrho", "DMan", "xray", "SZ", "T", "all"
+  -h   --help           display this help and exit
+  -l   --loglevel       set loglevel to 'ERROR', 'WARNING', 'INFO', 'DEBUG'
+                        TODO: to implement loglevel (do I want this?)
+  -m   --mail           send email when code execution is completed
+  -r   --restart        resume Gadget-2 simulation (TODO: to implement!)
+  -t   --timestamp      provide a timestamp/'simulation ID'. Do not run
+                        new simulation but set paths for this specific simulation.
+
+Examples:
+  `basename $0` --timestamp="20160502T1553" --mail
+  `basename $0` -mt "20160502T1553"
+  `basename $0` -m -t "20160502T1553"
+EOF
+}
+
+
+parse_options() {
+    # https://stackoverflow.com/questions/192249
+    # It is possible to use multiple arguments for a long option.
+    # Specifiy here how many are expected.
+    declare -A longoptspec
+    longoptspec=( [loglevel]=1 [timestamp]=1 [effect]=1 )
+
+    optspec=":e:hlmrt:-:"
+    while getopts "$optspec" opt; do
+    while true; do
+        case "${opt}" in
+            -) # OPTARG is long-option or long-option=value.
+                # Single argument:   --key=value.
+                if [[ "${OPTARG}" =~ .*=.* ]]
+                then
+                    opt=${OPTARG/=*/}
+                    OPTARG=${OPTARG#*=}
+                    ((OPTIND--))
+                # Multiple arguments: --key value1 value2.
+                else
+                    opt="$OPTARG"
+                    OPTARG=(${@:OPTIND:$((longoptspec[$opt]))})
+                fi
+                ((OPTIND+=longoptspec[$opt]))
+                # opt/OPTARG set, thus, we can process them as if getopts would've given us long options
+                continue
+                ;;
+            e|effect)
+                EFFECT="${OPTARG}"
+                echo "EFFECT          = ${EFFECT}"
+                ;;
+            h|help)
+                _usage
+                exit 2  # 2 means incorrect usage
+                ;;
+            l|loglevel)
+                echo "This function is not implemented"
+                loglevel="${OPTARG}"
+                echo "The loglevel is $loglevel"
+                exit 1
+                ;;
+            m|mail)
+                MAIL=true
+                echo "MAIL            = true"
+                ;;
+            r|restart)
+                echo "This function is not implemented"
+                echo "OPTARG=${OPTARG}$"
+                exit 1
+                ;;
+            t|timestamp)
+                TIMESTAMP="${OPTARG}"
+                echo "Timestamp       = ${TIMESTAMP}"
+                ;;
+        esac
+    break; done
+    done
+
+    # Not sure if this is needed...
+    # shift $((OPTIND-1))
+}
+
 send_mail() {
     if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
         msg="Dear Timo,\n\n\
 I'm done with PBS JobID: ${PBS_JOBID}\n\n\
-Succesfully ran: \"${0} $@\"\n\n\
+Succesfully ran job @ ${SYSTYPE}.\n\n\
 Cheers,\n${SYSTYPE}"
-        SUBJECT="${0} @ ${SYSTYPE} is done executing :-)!"
+        SUBJECT="Job @ ${SYSTYPE} is done executing :-)!"
         (echo -e $msg | mail $USER -s "${SUBJECT}") && echo "Mail Sent."
     elif [ "${SYSTYPE}" == "taurus" ]; then
         msg="To: timohalbesma@gmail.com\nFrom: tlrh@${SYSTYPE}\n\
@@ -33,13 +138,19 @@ Cheers,\n${SYSTYPE}"
 }
 
 setup_system() {
+    # Better safe than sorry *_*... TODO: turn this off for production run?
+    alias rm='rm -vi'
+    alias cp='cp -vi'
+    alias mv='mv -vi'
     SYSTYPE=`hostname`
 
     if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
         # TODO: check how multiple threas/nodes works on Lisa?
+        # TODO: is the PBS situation the scheduler that also sets nodes/threads?
         THREADS=$(grep -c ^processor /proc/cpuinfo)
         NICE=0  # default is 0
-        BASEDIR="$HOME"  # TODO: look into the faster disk situation?
+        BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
+        # TODO: I think home should not be used, instead use scratch??
         module load c/intel
         module load fftw2/sp/intel
         module load fftw2/dp/intel
@@ -59,7 +170,9 @@ setup_system() {
         exit 1
     fi
 
-    NODES=$(head $0 | grep "#PBS -lnodes" | cut -d'=' -f2)
+    # TODO match regex '/(?!-lnodes=)(?:\d*\.)?\d+/'
+    # NODES=$(head $0 | grep "(?!-lnodes=)(?:\d*\.)?\d+")
+    NODES=1
     GITHUBDIR="${BASEDIR}/CygnusAMerger"
     DATADIR="${BASEDIR}/runs"
 
@@ -143,7 +256,7 @@ set_toycluster_compile_files() {
         echo "Error: ${TOYCLUSTERMAKEFILE_GIT} does not exist!"
         exit 1
     fi
-    cp -i "${TOYCLUSTERMAKEFILE_GIT}" "${TOYCLUSTERDIR}/Makefile"
+    cp "${TOYCLUSTERMAKEFILE_GIT}" "${TOYCLUSTERDIR}/Makefile"
 }
 
 compile_toycluster() {
@@ -159,10 +272,10 @@ compile_toycluster() {
 
 set_toycluster_runtime_files() {
     TOYCLUSTERMAKEFILE="${ICOUTDIR}/Makefile_Toycluster"
-    mv -i "${TOYCLUSTERDIR}/Makefile" "${TOYCLUSTERMAKEFILE}"
+    mv "${TOYCLUSTERDIR}/Makefile" "${TOYCLUSTERMAKEFILE}"
 
     TOYCLUSTEREXECNAME=$(grep "EXEC =" "${TOYCLUSTERMAKEFILE}" | cut -d' ' -f3)
-    mv -i "${TOYCLUSTERDIR}/${TOYCLUSTEREXECNAME}" "${ICOUTDIR}"
+    mv "${TOYCLUSTERDIR}/${TOYCLUSTEREXECNAME}" "${ICOUTDIR}"
     TOYCLUSTEREXEC="${ICOUTDIR}/${TOYCLUSTEREXECNAME}"
 
     TOYCLUSTERPARAMETERS_GIT="${GITHUBDIR}/toycluster.par"
@@ -170,7 +283,7 @@ set_toycluster_runtime_files() {
         echo "Error: ${TOYCLUSTERPARAMETERS_GIT} does not exist!"
         exit 1
     fi
-    cp -i "${TOYCLUSTERPARAMETERS_GIT}" "${ICOUTDIR}"
+    cp "${TOYCLUSTERPARAMETERS_GIT}" "${ICOUTDIR}"
     TOYCLUSTERPARAMETERS="${ICOUTDIR}/toycluster.par"
     TOYCLUSTERLOGFILE="${ICOUTDIR}/${TOYCLUSTERLOGFILENAME}"
 }
@@ -191,6 +304,7 @@ run_toycluster() {
 }
 
 check_toycluster_run() {
+    # TODO: not all of these parameters exists. If they dont exist they cant be printed :-)...
     if [ ! -d "${SIMULATIONDIR}" ]; then
         echo "Error: ${SIMULATIONDIR} does not exist!"
         exit 1
@@ -291,7 +405,7 @@ set_gadget_compile_files() {
         echo "Error: ${GADGETMAKEFILE_GIT} does not exist!"
         exit 1
     fi
-    cp -i "${GADGETMAKEFILE_GIT}" "${GADGETDIR}/Makefile"
+    cp "${GADGETMAKEFILE_GIT}" "${GADGETDIR}/Makefile"
 }
 
 compile_gadget() {
@@ -309,9 +423,9 @@ compile_gadget() {
 
 set_gadget_runtime_files() {
     GADGETMAKEFILE="${SIMOUTDIR}/Makefile_Gadget2"
-    mv -i "${GADGETDIR}/Makefile" "${GADGETMAKEFILE}"
+    mv "${GADGETDIR}/Makefile" "${GADGETMAKEFILE}"
     GADGETEXECNAME=$(grep "EXEC = " "${GADGETMAKEFILE}" | cut -d' ' -f3)
-    mv -i "${GADGETDIR}/${GADGETEXECNAME}" "${SIMOUTDIR}"
+    mv "${GADGETDIR}/${GADGETEXECNAME}" "${SIMOUTDIR}"
     GADGETEXEC="${SIMOUTDIR}/${GADGETEXECNAME}"
 
     GADGETPARAMETERS_GIT="${GITHUBDIR}/gadget2.par"
@@ -319,23 +433,23 @@ set_gadget_runtime_files() {
         echo "Error: ${GADGETPARAMETERS_GIT} does not exist!"
         exit 1
     fi
-    cp -i "${GADGETPARAMETERS_GIT}" "${SIMOUTDIR}"
+    cp "${GADGETPARAMETERS_GIT}" "${SIMOUTDIR}"
     GADGETPARAMETERS="${SIMOUTDIR}/gadget2.par"
 
     # Set correct BoxSize
-    echo "Press enter to continue..." && read enterKey
+    # echo "Press enter to continue..." && read enterKey
     BOXSIZE=$(grep "Boxsize" "${TOYCLUSTERLOGFILE}" | cut -d'=' -f2 | cut -d' ' -f2)
     echo "Setting BoxSize in Gadget parameter file to: ${BOXSIZE}"
     perl -pi -e 's/BoxSize.*/BoxSize '${BOXSIZE}' % kpc/g' "${GADGETPARAMETERS}"
     grep -n --color=auto "BoxSize" "${GADGETPARAMETERS}"
-    echo "Press enter to continue..." && read enterKey
+    # echo "Press enter to continue..." && read enterKey
 
     if [ ! -f "${ICFILE}" ]; then
         echo "Error: ${ICFILE} does not exist!"
         exit 1
     fi
     GADGETICFILE="${SIMOUTDIR}/${ICFILENAME}"
-    cp -i "${ICFILE}" "${GADGETICFILE}"
+    cp "${ICFILE}" "${GADGETICFILE}"
     #GADGETLOGFILE="${SIMOUTDIR}/${GADGETLOGFILENAME}"
 }
 
@@ -343,7 +457,12 @@ run_gadget() {
     echo "Running Gadget2..."
     cd "${SIMOUTDIR}"
 
-    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec -np $NODES "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
+    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+        # the pee-bee-es situation fixes nodes/threads?
+        mpiexec "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
+    elif [ "${SYSTYPE}" == "taurus" ]; then
+        nice --adjustment=$NICE mpiexec.hydra -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
+    fi
 
     echo "... done running Gadget2"
 }
@@ -390,7 +509,7 @@ check_gadget_run() {
         exit 1
     fi
     if [ ! -f "${GADGETCPU}" ]; then
-        echo "Error: ${GADCPU} does not exist!"
+        echo "Error: ${GADGETCPU} does not exist!"
         exit 1
     fi
 }
@@ -411,22 +530,22 @@ setup_psmac2() {
             echo "Error: ${PSMAC2MAKEFILE_GIT} does not exist!"
             exit 1
         fi
-        cp -i "${PSMAC2MAKEFILE_GIT}" "${PSMAC2DIR}/Makefile"
+        cp "${PSMAC2MAKEFILE_GIT}" "${PSMAC2DIR}/Makefile"
         PSMAC2CONFIG_GIT="${GITHUBDIR}/Config_PSmac2"
         if [ ! -f "${PSMAC2CONFIG_GIT}" ]; then
             echo "Error: ${PSMAC2CONFIG_GIT} does not exist!"
             exit 1
         fi
-        cp -i "${PSMAC2CONFIG_GIT}" "${PSMAC2DIR}/Config"
+        cp "${PSMAC2CONFIG_GIT}" "${PSMAC2DIR}/Config"
 
         compile_psmac2
         PSMAC2MAKEFILE="${ANALYSISDIR}/Makefile_PSmac2"
-        mv -i "${PSMAC2DIR}/Makefile" "${PSMAC2MAKEFILE}"
+        mv "${PSMAC2DIR}/Makefile" "${PSMAC2MAKEFILE}"
         PSMAC2CONFIG="${ANALYSISDIR}/Config_PSmac2"
-        mv -i "${PSMAC2DIR}/Config" "${PSMAC2CONFIG}"
+        mv "${PSMAC2DIR}/Config" "${PSMAC2CONFIG}"
 
         PSMAC2EXECNAME=$(grep "EXEC =" "${PSMAC2MAKEFILE}" | cut -d' ' -f3)
-        mv -i "${PSMAC2DIR}/${PSMAC2EXECNAME}" "${ANALYSISDIR}"
+        mv "${PSMAC2DIR}/${PSMAC2EXECNAME}" "${ANALYSISDIR}"
         PSMAC2EXEC="${ANALYSISDIR}/${PSMAC2EXECNAME}"
     else
         PSMAC2MAKEFILE="${ANALYSISDIR}/Makefile_PSmac2"
@@ -453,22 +572,6 @@ setup_psmac2() {
 
     set_psmac_parameterfile_snapshot_path
 
-    # 2 - X-Ray Surface Brightness; no Flag
-    run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
-
-    # 4 - Temperature
-    #     3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)
-    run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
-
-    # 7 - SZ Effect
-    #     0 - Compton-y (=Smac1 thermal DT/T)
-    run_psmac2_for_given_module "SZ-Compton-y" "7" "0"
-
-    # 10 - DM Density; no Flag
-    run_psmac2_for_given_module "dm-density" "10" "0"
-
-    # 11 - DM Annihilation Signal (rho^2); no Flag
-    run_psmac2_for_given_module "dm-annihilation" "11" "0"
 }
 
 compile_psmac2() {
@@ -477,7 +580,7 @@ compile_psmac2() {
 
     # Compile the code
     nice -n $NICE make clean
-    nice -n $NICE make -j8
+    nice -n $NICE make
 
     echo "... done compiling P-Smac2"
 }
@@ -489,7 +592,7 @@ set_psmac2_generic_runtime_files() {
         echo "Error: ${PSMAC2PARAMETERS_GIT} does not exist!"
         exit 1
     fi
-    cp -i "${PSMAC2PARAMETERS_GIT}" "${ANALYSISDIR}"
+    cp "${PSMAC2PARAMETERS_GIT}" "${ANALYSISDIR}"
     PSMAC2PARAMETERS="${ANALYSISDIR}/${PSMAC2PARAMETERSNAME}"
     PSMAC2LOGFILE="${ANALYSISDIR}/${PSMAC2LOGFILENAME}"
 }
@@ -524,16 +627,26 @@ set_psmac_parameterfile_snapshot_path() {
     # echo "Setting Input_File to: snapshot_000 snapshot_${SNAPMAX} 1"
     # Match line containing Input_File; set fits output name
 
-    FIRST="${GADGETSNAPSHOTS[0]}"  # Globbed, then sorted array
-    LAST="${GADGETSNAPSHOTS[-1]}"
+    if [ -z "${GADGETSNAPSHOTS}" ]; then
+        echo "Warning: no Gadget snapshots. Did you run the simulation?"
+        echo "Assuming we want to run P-Smac2 with ICs!"
+        echo -e "\nSetting Input_File to: /path/to/IC_file"
+        ICFILE_ESCAPED=$(echo "${ICFILE}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        perl -pi -e "s/Input_File.*/Input_File ${ICFILE_ESCAPED}/g" "${PSMAC2PARAMETERS}"
+        grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
+        return
+    else
+        FIRST="${GADGETSNAPSHOTS[0]}"  # Globbed, then sorted array
+        LAST="${GADGETSNAPSHOTS[-1]}"
 
-    # Escape forward slashes. If / not escaped we break perl :)
-    FIRST=$(echo "${FIRST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
-    LAST=$(echo "${LAST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        # Escape forward slashes. If / not escaped we break perl :)
+        FIRST=$(echo "${FIRST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        LAST=$(echo "${LAST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
 
-    echo -e "\nSetting Input_File to: /path/to/snapshot_000 /path/to/snapshot_max 1"
-    perl -pi -e "s/Input_File.*/Input_File ${FIRST} ${LAST} 1/g" "${PSMAC2PARAMETERS}"
-    grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
+        echo -e "\nSetting Input_File to: /path/to/snapshot_000 /path/to/snapshot_max 1"
+        perl -pi -e "s/Input_File.*/Input_File ${FIRST} ${LAST} 1/g" "${PSMAC2PARAMETERS}"
+        grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
+    fi
 }
 
 run_psmac2_for_given_module() {
@@ -541,9 +654,9 @@ run_psmac2_for_given_module() {
     EFFECT_MODULE="${2}"
     EFFECT_FLAG="${3}"
 
-    PSMAC2PARAMETERS="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2PARAMETERSNAME})"
+    PSMAC2PARAMETERS="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2PARAMETERSNAME}"
     PSMAC2LOGFILE="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2LOGFILENAME}"
-    cp -i "${ANALYSISDIR}/${PSMAC2PARAMETERSNAME}" "${PSMAC2PARAMETERS}"
+    cp "${ANALYSISDIR}/${PSMAC2PARAMETERSNAME}" "${PSMAC2PARAMETERS}"
 
     # Set smac2.par to run DM, change outputfile and logfile
     # Match line containing Output_File; set fits output name
@@ -576,7 +689,12 @@ run_psmac2_for_given_module() {
     echo "Running P-Smac2..."
     cd "${ANALYSISDIR}"
     SECONDS=0
-    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
+    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+        # the pee-bee-es situation fixes nodes/threads?
+        mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
+    elif [ "${SYSTYPE}" == "taurus" ]; then
+        OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
+    fi
     RUNTIME=$SECONDS
     HOUR=$(($RUNTIME/3600))
     MINS=$(( ($RUNTIME%3600) / 60))
@@ -588,15 +706,64 @@ run_psmac2_for_given_module() {
 
 
 # Main
+# Uncomment if options are required
+# if [ $# = 0 ]; then _usage && exit 2; fi
+parse_options $@
+
 echo -e "\nStart of program at $(date)\n"
 
-# TODO: now only works if all functions are called
-# TIMESTAMP="20160429T0013"
 setup_system
-#setup_toycluster
-#setup_gadget
+setup_toycluster
+setup_gadget
 # echo "Press enter to continue" && read enterKey
-#setup_psmac2
-send_mail
+setup_psmac2
+
+case "${EFFECT}" in
+    "DMrho")
+        echo "Running P-Smac2 for Dark Matter density."
+        # 10 - DM Density; no Flag
+        run_psmac2_for_given_module "dm-density" "10" "0"
+        exit 0
+        ;;
+    "DMan")
+        # 11 - DM Annihilation Signal (rho^2); no Flag
+        echo "Running P-Smac2 for Dark Matter Annihilation."
+        run_psmac2_for_given_module "dm-annihilation" "11" "0"
+        exit 0
+        ;;
+    "xray")
+        # 2 - X-Ray Surface Brightness; no Flag
+        echo "Running P-Smac2 for X-Ray Surface Brightness."
+        run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
+        exit 0
+        ;;
+    "SZ")
+        # 7 - SZ Effect
+        #     0 - Compton-y (=Smac1 thermal DT/T)
+        echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Compton-y parameter."
+        run_psmac2_for_given_module "SZ-Compton-y" "7" "0"
+        exit 0
+        ;;
+    "T")
+        # 4 - Temperature
+        #     3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)
+        echo "Running P-Smac2 for Spectroscopic Temperature (Chandra)."
+        # run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
+        echo "TODO: there is a bug due to not having BFLD in snapshots!"
+        exit 0
+        ;;
+    "all")
+        run_psmac2_for_given_module "dm-density" "10" "0"
+        run_psmac2_for_given_module "dm-annihilation" "11" "0"
+        run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
+        run_psmac2_for_given_module "SZ-Compton-y" "7" "0"
+        # run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
+esac
+
+
+
+if [ "$MAIL" = true ]; then
+    send_mail
+fi
 
 echo -e "\nEnd of program at $(date)\n"

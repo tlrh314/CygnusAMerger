@@ -41,9 +41,10 @@ Output_File test.fits
 Effect_Module 10
 Effect_Flag 0
 
+% TODO: 0.5 - 8 KeV ?
 % Chandra values
 E_min 1e2           % Energy Range [eV]: Xray, Gamma, Synchro
-E_max 1e3
+E_max 1e4
 
 Freq 1.4e9          % Frequency [Hz]: Sz,Synchro
 
