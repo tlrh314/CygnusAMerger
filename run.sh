@@ -2,10 +2,14 @@
 #PBS -lnodes=1:ppn=16:cores16
 #PBS -lwalltime=23:00:00
 
-# File: run.sh
+# File: CygnusAMerger/run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
+<<<<<<< HEAD
+# Last modified: Mon May 02, 2016 01:44 pm
+=======
 # Last modified: Tue May 03, 2016 10:00 AM
+>>>>>>> eb5185fda846dbf67cddc679a1fd6d091330f46c
 #
 # Description: run simulation pipeline
 

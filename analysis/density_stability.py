@@ -12,13 +12,13 @@ from analysis import plot_individual_cluster_mass
 from analysis import plot_individual_cluster_density
 
 run = "/Volumes/Taurus/Toycluster/"
-
 IClog = Toycluster2RuntimeOutputParser(run+"runToycluster.log")
 print IClog
 
 cluster_at_time = Cluster(run, run, "IC_double_0")
+# cluster_at_time = Cluster("./", "./", "IC_single_0")
 plot_individual_cluster_density(cluster_at_time)
-pyplot.savefig("density.png", dpi=100)
+pyplot.show()
 
 import sys; sys.exit(0)
 
@@ -37,6 +37,5 @@ for i, snap in enumerate(snaps):
     plot_individual_cluster_density(cluster_at_time)
     # pyplot.show()
     pyplot.savefig(run+"/analysis/"+fname, dpi=500)
-
 
     print "Done checking snapshot:", snap

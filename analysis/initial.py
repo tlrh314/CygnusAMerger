@@ -1,8 +1,12 @@
 """
-File: initial.py
+File: analysis/initial.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:25 pm
-Last modified: Tue May 03, 2016 02:50 pm
+<<<<<<< HEAD
+Last modified: Fri May 13, 2016 01:14 PM
+=======
+Last modified: Fri May 13, 2016 01:14 PM
+>>>>>>> 5b94d42f074a848c22b5d569835a138c1abd9b8b
 
 Set up Galaxy Cluster initial conditions from the parsed Toycluster 2.0 output
 
@@ -33,6 +37,8 @@ def amuse_nth_root(quant, n):
 class Cluster(object):
     def __init__(self, icdir, snapdir, icfile=None):
         # Output of runToycluster writes files with these filename
+        print icdir
+        print snapdir
         logfile="runToycluster.log"
         if icfile is None:
             icfile="IC_single_0"

@@ -1,8 +1,8 @@
 """
-File: analysis.py
+File: analysis/analysis.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:28 pm
-Last modified: Tue May 03, 2016 12:11 pm
+Last modified: Fri May 13, 2016 01:14 PM
 
 Check if initial conditions file was parsed correctly, and check
 the stability of the pas in the dark matter halo.
