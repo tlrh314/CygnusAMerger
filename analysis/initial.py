@@ -1,8 +1,8 @@
 """
-File: initial.py
+File: analysis/initial.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:25 pm
-Last modified: Fri Apr 22, 2016 09:14 AM
+Last modified: Tue May 03, 2016 09:02 am
 
 Set up Galaxy Cluster initial conditions from the parsed Toycluster 2.0 output
 
@@ -31,17 +31,21 @@ def amuse_nth_root(quant, n):
 
 
 class Cluster(object):
-    def __init__(self, datadir):
+    def __init__(self, icdir, snapdir, icfile):
         # Output of runToycluster writes files with these filename
+        print icdir
+        print snapdir
         logfile="runToycluster.log"
-        icfile="IC_single_0"
+        if icfile is None:
+            icfile="IC_single_0"
+        print icfile
 
         # Read runtime output of Toycluster 2.0. Parse runtime output
-        self.toyclusterlog = Toycluster2RuntimeOutputParser(filename=datadir+logfile)
+        self.toyclusterlog = Toycluster2RuntimeOutputParser(filename=icdir+logfile)
         self.set_toycluster2_values()
 
 
-        self.raw_data = Gadget2BinaryF77UnformattedType2Parser(datadir+icfile)
+        self.raw_data = Gadget2BinaryF77UnformattedType2Parser(snapdir+icfile)
         # 1e10 because all masses are given in code units in cluster.par, which is set to 1e10 Msun
         self.M_gas = self.raw_data.Ngas * self.raw_data.massarr[0] * 1e10 | units.MSun
         self.M_dm = self.raw_data.Ndm * self.raw_data.massarr[1] * 1e10 | units.MSun
@@ -258,7 +262,7 @@ class Cluster(object):
 
         # Set RHO and RHOm
         rhogas = ic_data.rho#[0:ic_data.Ngas]
-        rhomgas = ic_data.rhom#[0:ic_data.Ngas]
+        # rhomgas = ic_data.rhom#[0:ic_data.Ngas]
 
         # Set up datamodel
         gas = datamodel.Particles(ic_data.Ngas)
@@ -271,8 +275,8 @@ class Cluster(object):
         gas.vz = vzgas | units.kms
         gas.rho = (rhogas * 1e10 * ic_data.hubbleParam**(2) | (units.MSun / units.kpc**3))\
             .as_quantity_in(units.g/units.cm**3)
-        gas.rhom = (rhomgas * 1e10 * ic_data.hubbleParam**(2) | (units.MSun / units.kpc**3))\
-            .as_quantity_in(units.g/units.cm**3)
+        # gas.rhom = (rhomgas * 1e10 * ic_data.hubbleParam**(2) | (units.MSun / units.kpc**3))\
+        #    .as_quantity_in(units.g/units.cm**3)
 
         dm = datamodel.Particles(ic_data.Ndm)
         dm.x = xdm | units.kpc

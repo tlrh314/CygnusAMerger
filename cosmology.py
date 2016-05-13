@@ -7,7 +7,7 @@ Copyright for the original (online) calculator 1999-2016 Edward L. Wright.
 If you use this calculator while preparing a paper, please cite Wright (2006, PASP, 118, 1711).
 
 Some additions/alterations were made by TLRH
-Last modified: Tue May 10, 2016 11:13 am
+Last modified: Tue May 10, 2016 11:53 am
 
 """
 #!/usr/bin/env python
@@ -15,9 +15,8 @@ Last modified: Tue May 10, 2016 11:13 am
 import sys
 import numpy
 
-class cosmology_calculator(object):
-
-    def __init__(self, z, H0, WM, WV):
+class CosmologyCalculator(object):
+    def __init__(self, z=0.0562, H0=70, WM=0.3, WV=0.7):
         # initialize constants
 
         WR = 0.        # Omega(radiation)
@@ -44,8 +43,8 @@ class cosmology_calculator(object):
         a = 1.0        # 1/(1+z), the scale factor of the Universe
         az = 0.5       # 1/(1+z(object))
 
-        h = H0/100.
-        WR = 4.165E-5/(h*h)   # includes 3 massless neutrino species, T0 = 2.72528
+        self.h = H0/100.
+        WR = 4.165E-5/(self.h*self.h)   # includes 3 massless neutrino species, T0 = 2.72528
         WK = 1-WM-WR-WV
         az = 1.0/(1+1.0*z)
         age = 0.
@@ -114,17 +113,31 @@ class cosmology_calculator(object):
         V_Gpc = 4.*numpy.pi*((0.001*c/H0)**3)*VCM
 
         # TODO: fix this quick'n'dirty fix
-        self.verbose, self.H0, self.WM, self.WV, self.z, self.age_Gyr,\
+        self.H0, self.WM, self.WV, self.z, self.age_Gyr,\
             self.zage_Gyr, self.DTT_Gyr, self.DCMR_Mpc, self.DCMR_Gyr,\
             self.V_Gpc, self.DA_Mpc, self.DA_Gyr, self.kpc_DA, self.DL_Mpc,\
             self.DL_Gyr\
-            = verbose, H0, WM, WV, z, age_Gyr,\
+            = H0, WM, WV, z, age_Gyr,\
             zage_Gyr, DTT_Gyr, DCMR_Mpc, DCMR_Gyr,\
             V_Gpc, DA_Mpc, DA_Gyr, kpc_DA, DL_Mpc,\
             DL_Gyr
 
+    @property
+    def Hubble_of_z(self):
+        """ Hubble constant as a function of redshift """
+        # units.H0 = units.named('H0', 'km/s/Mpc', (1 | units.km / units.s / units.Mpc).to_unit())
+
+        return self.H0 * numpy.sqrt(self.WM*(1+self.z)**3 + self.WV)
+
+    def rho_crit(self):
+        """ Critical density of the Universe as a function of redshift """
+        rho_crit = 3 * Hubble_of_z()**2 / (8 * numpy.pi * constants.G)
+        return rho_crit.as_quantity_in(units.g/units.cm**3)
+
     def __str__(self):
-        if self.verbose:
+        # TODO: fix this function such that it returns a proper string
+        verbose = 1
+        if verbose:
             print "Ned Wright's Cosmology Calculator with alterations by TLRH\n"
             print "H_0 = {H0:1.1f}, Omega_M = {WM:1.3f},".format(**{'H0': self.H0, 'WM': self.WM}),
             print "Omega_vac = {WV:1.3f}, z = {z:1.3f}\n".format(**{'WV': self.WV, 'z': self.z})
@@ -221,8 +234,8 @@ Options:   -h for this message
             sys.exit()
 
         # All parameters are fine. Calculate stuff
-        CC = cosmology_calculator(z, H0, WM, WV)
-        print CC
+        cc = CosmologyCalculator(z, H0, WM, WV)
+        print cc
 
     except IndexError:
         print usage
