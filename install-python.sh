@@ -68,15 +68,15 @@ else
 	fi
 fi
 
-if [ -e ${OPENSSLFILE} ] ; then
-	echo "...openssl file already downloaded";
-else
-	if which curl >/dev/null; then
-		curl -L -O ${OPENSSLURL} ;
-	else
-		wget ${OPENSSLURL};
-	fi
-fi
+# if [ -e ${OPENSSLFILE} ] ; then
+# 	echo "...openssl file already downloaded";
+# else
+# 	if which curl >/dev/null; then
+# 		curl -L -O ${OPENSSLURL} ;
+# 	else
+# 		wget ${OPENSSLURL};
+# 	fi
+# fi
 
 if [ -e ${BLASFILE} ] ; then
 	echo "...blas file already downloaded";
@@ -127,8 +127,9 @@ echo "..Done"
 
 cd ${SOURCE_DIR}
 rm -Rf ${OPENSSLDIR}
-echo "Unpacking openssl source files.."
-tar -xzf ${DOWNLOAD_DIR}/${OPENSSLFILE} || exit $?
+echo "Skipping openssl"
+# echo "Unpacking openssl source files.."
+# tar -xzf ${DOWNLOAD_DIR}/${OPENSSLFILE} || exit $?
 echo "..Done"
 cd ..
 
@@ -151,22 +152,22 @@ cd ..
 
 echo "Building files.."
 
-echo "Building openssl"
+# echo "Building openssl"
 
 cd ${SOURCE_DIR}
 cd ${OPENSSLDIR}
-
-
-MACHINE=`(uname -m) 2>/dev/null`
-
-./config \
-    --prefix=${PREFIX}  \
-    --openssldir=${PREFIX}/openssl \
-    --shared
-
-make -j8
-
-make -j8 install
+# 
+# 
+# MACHINE=`(uname -m) 2>/dev/null`
+# 
+# ./config \
+#     --prefix=${PREFIX}  \
+#     --openssldir=${PREFIX}/openssl \
+#     --shared
+# 
+# make -j8
+# 
+# make -j8 install
 
 # echo "Press enter to continue"
 # read enterKey
@@ -234,7 +235,7 @@ make -j8 install
 echo "..Done"
 
 #. ~/.bash_functions
-#which python
+which python
 #setup_amuse
 #which python
 #exit 0
@@ -242,7 +243,6 @@ echo "..Done"
 #cd ${SOURCE_DIR}
 #wget https://bootstrap.pypa.io/get-pip.py
 #python get-pip.py
-echo "..Done"
 
 #echo "Install scipy"
 #pip install scipy

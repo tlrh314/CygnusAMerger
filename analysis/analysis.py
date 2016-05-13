@@ -2,7 +2,7 @@
 File: analysis.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:28 pm
-Last modified: Fri Apr 22, 2016 09:20 AM
+Last modified: Tue May 03, 2016 12:11 pm
 
 Check if initial conditions file was parsed correctly, and check
 the stability of the pas in the dark matter halo.
@@ -23,15 +23,15 @@ from initial import Cluster
 
 def plot_individual_cluster_density(cluster):
     """ Plot the particles' density radial profile and compare to model """
-    pyplot.figure(figsize=(12, 9))
+    pyplot.figure(figsize=(24, 18))
 
     # AMUSE datamodel particles. Gas has RHO and RHOm; dm rho from model.
     amuse_plot.scatter(cluster.gas.r,
         cluster.gas.rho,
         c="g", edgecolor="face", s=1, label=r"Generated IC: gas $\rho$")
-    amuse_plot.scatter(cluster.gas.r,
-        cluster.gas.rhom,
-        c="r", edgecolor="face", s=1, label=r"Generated IC: gas $\rho_{\rm model}$")
+    # amuse_plot.scatter(cluster.gas.r,
+    #    cluster.gas.rhom,
+    #    c="r", edgecolor="face", s=1, label=r"Generated IC: gas $\rho_{\rm model}$")
     amuse_plot.scatter(cluster.dm.r,
         cluster.dm.rho,
         c="b", edgecolor="none", label=r"Generated IC: DM $\rho$")
@@ -53,7 +53,7 @@ def plot_individual_cluster_density(cluster):
         label=r"Analytical, Hernquist-model" "\n" r"$M_{{\rm dm}}= ${0:.2e} MSun; $a = $ {1} kpc".format(
         cluster.M_dm.number, cluster.a.number))
 
-    pyplot.legend(loc=3, fontsize=12)
+    pyplot.legend(loc=3)
     amuse_plot.xlabel(r"$r$")
     amuse_plot.ylabel(r"$\rho$")
     pyplot.gca().set_xlim(xmin=10, xmax=1e4)
@@ -92,7 +92,45 @@ def get_mass_via_number_density(cluster):
             sys.stdout.flush()
 
     sys.stdout.write("\n")
-    print "Done counting particles :-)... TODO: use different method"
+    print "Done counting particles :-)... TODO: improve this method?!"
+
+    M_gas_below_r *= cluster.M_gas/cluster.raw_data.Ngas
+    M_dm_below_r *= cluster.M_dm/cluster.raw_data.Ndm
+
+    amuse_plot.scatter(radii, M_gas_below_r, c="g", label="Gas")
+    amuse_plot.scatter(radii, M_dm_below_r, c="b", label="DM")
+
+
+def get_mass_via_number_density_parallel(cluster):
+    # progressbar
+    import sys
+    import multiprocessing
+    pool = multiprocessing.Pool(4)
+    pbwidth = 42
+
+    # TODO: find different method to calculate M(<r)
+    print "Counting particles for which radii < r to obtain M(<r)"
+    radii = VectorQuantity.arange(units.kpc(1), units.kpc(10000), units.parsec(1000))
+    M_gas_below_r = numpy.zeros(len(radii))
+    M_dm_below_r = numpy.zeros(len(radii))
+    N = len(radii)
+
+    def get_dens(i, r):
+        M_gas_below_r[i] = ((numpy.where(cluster.gas.r < r)[0]).size)
+        M_dm_below_r[i] = ((numpy.where(cluster.dm.r < r)[0]).size)
+        if i%1000 == 0:
+            # update the bar
+            progress = float(i+1000)/N
+            block = int(round(pbwidth*progress))
+            text = "\rProgress: [{0}] {1:.1f}%".format( "#"*block + "-"*(pbwidth-block), progress*100)
+            sys.stdout.write(text)
+            sys.stdout.flush()
+        return M_gas_below_r, M_dm_below_r
+
+    M_gas_below_r, M_dm_below_r = zip(*pool.map(get_dens, enumerate(radii)))
+
+    sys.stdout.write("\n")
+    print "Done counting particles :-)... TODO: improve this method?!"
 
     M_gas_below_r *= cluster.M_gas/cluster.raw_data.Ngas
     M_dm_below_r *= cluster.M_dm/cluster.raw_data.Ndm
@@ -127,11 +165,12 @@ def get_mass_via_density(cluster):
 
 
 def plot_individual_cluster_mass(cluster):
-    pyplot.figure(figsize=(12,9))
+    pyplot.figure(figsize=(24,18))
 
     # TODO: use different method :-)...
-    # get_mass_via_number_density(cluster)
-    get_mass_via_density(cluster)
+    get_mass_via_number_density(cluster)
+    # get_mass_via_number_density_parallel(cluster)
+    # get_mass_via_density(cluster)
 
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")

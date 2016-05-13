@@ -1,8 +1,8 @@
 """
-File: parser.py
+File: analysis/parser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Fri Apr 22, 2016 09:10 AM
+Last modified: Tue May 03, 2016 08:53 am
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -183,6 +183,7 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
         content = read_block(f)
         #  TODO: just read N bytes because we know the blocklength as it is written in the file
         # afterwards we can get the correct numbers because we know the datatype for a given attribute
+        print "First block", get_blockname(content)
         if get_blockname(content) == "POS":
             content = read_block(f)
             # https://stackoverflow.com/questions/23377274
@@ -191,6 +192,7 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
             self.pos = numpy.reshape(tmppos, self.pos.shape)
 
         content = read_block(f)
+        print "Second block", get_blockname(content)
         if get_blockname(content) == "VEL":
             content = read_block(f)
             self.vel = numpy.empty((self.N, 3), dtype="float32")
@@ -198,6 +200,7 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
             self.vel = numpy.reshape(tmpvel, self.vel.shape)
 
         content = read_block(f)
+        print "Third block", get_blockname(content)
         if get_blockname(content) == "ID":
             content = read_block(f)
             self.ids = numpy.frombuffer(content, dtype="uint32", count=self.N)
@@ -219,26 +222,30 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
 
         if self.Ngas > 0:
             content = read_block(f)
-            if get_blockname(content) == "RHO":
-                content = read_block(f)
-                self.rho = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
-            content = read_block(f)
-
-            if get_blockname(content) == "RHOM":
-                content = read_block(f)
-                self.rhom = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
-
-            content = read_block(f)
-            if get_blockname(content) == "HSML":
-                content = read_block(f)
-                self.hsml = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
-
-            content = read_block(f)
+            print "Fourth block", get_blockname(content)
             if get_blockname(content) == "U":
                 content = read_block(f)
                 self.u = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
 
-        magnetic_field = True
+            content = read_block(f)
+            print "Fifth block", get_blockname(content)
+            if get_blockname(content) == "RHO":
+                content = read_block(f)
+                self.rho = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
+
+            # content = read_block(f)
+            # print "Sixth block", get_blockname(content)
+            # if get_blockname(content) == "RHOM":
+            #     content = read_block(f)
+            #     self.rhom = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
+
+            content = read_block(f)
+            print "Sixth block", get_blockname(content)
+            if get_blockname(content) == "HSML":
+                content = read_block(f)
+                self.hsml = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
+
+        magnetic_field = False
         if magnetic_field:
             content = read_block(f)
             if get_blockname(content) == "BFLD":
@@ -278,14 +285,14 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
         tmp += str(self.ids[0:10]) + "\n...\n" + str(self.ids[-10:])
         tmp += "\n\nRHO\n"
         tmp += str(self.rho[0:10]) + "\n...\n" + str(self.rho[-10:])
-        tmp += "\n\nRHOM\n"
-        tmp += str(self.rhom[0:10]) + "\n...\n" + str(self.rhom[-10:])
+        #tmp += "\n\nRHOM\n"
+        #tmp += str(self.rhom[0:10]) + "\n...\n" + str(self.rhom[-10:])
         tmp += "\n\nHSML\n"
         tmp += str(self.hsml[0:10]) + "\n...\n" + str(self.hsml[-10:])
         tmp += "\n\nU\n"
         tmp += str(self.u[0:10]) + "\n...\n" + str(self.u[-10:])
-        tmp += "\n\nBFLD\n"
-        tmp += str(self.bfld[0:10]) + "\n...\n" + str(self.bfld[-10:])
+        # tmp += "\n\nBFLD\n"
+        # tmp += str(self.bfld[0:10]) + "\n...\n" + str(self.bfld[-10:])
 
         return tmp
 
