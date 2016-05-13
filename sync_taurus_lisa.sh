@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# File: sync_taurus_lisa.sh
+# File: ./CygnusAMerger/sync_taurus_lisa.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Sat Apr 23, 2016 11:09 PM
 # Last modified:
@@ -39,12 +39,22 @@ elif [ "${SYSTYPE}" == "*.lisa.surfsara.nl" ]; then
     nice -n $NICE rsync -auHxz --progress taurus:"${TAURUSDIR}" "${LISADIR}"
     nice -n $NICE rsync -auHxz --progress "${LISADIR}" taurus:"${TAURUSDIR}"
 elif [ "$(uname -s)" == "Darwin" ]; then
-    echo "MBP"
-    RUNDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code/runs/"
-    echo "${RUNDIR}"
-    ls -la "${RUNDIR}"
+    echo "Running at MBP"
 
+    MSCPROJDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/"
+    RUNDIR="${MSCPROJDIR}Code/runs/"
+
+    echo "Syncing Taurus <--> ChezTimo"
+    echo "TAURUSDIR = ${TAURUSDIR}"
+    echo "RUNDIR    = ${RUNDIR}"
     rsync -auHxz --progress taurus:"${TAURUSDIR}" "${RUNDIR}"
+    rsync -auHxz --progress "${RUNDIR}" taurus:"${TAURUSDIR}"
+
+    ZOLTANDIR="/media/WD30EFRX/Backups/Masterproject/"
+    echo "Backing up to ZoltaN"
+    echo "MSCPROJDIR = ${MSCPROJDIR}"
+    echo "ZOLTANDIR  = ${ZOLTANDIR}"
+    rsync -auHxz --progress "${MSCPROJDIR}" ZoltaN:"${ZOLTANDIR}"
 else
     echo "Unknown system: ${SYSTYPE}. Exiting"
     exit 1
