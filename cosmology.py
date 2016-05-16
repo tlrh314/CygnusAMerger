@@ -7,13 +7,16 @@ Copyright for the original (online) calculator 1999-2016 Edward L. Wright.
 If you use this calculator while preparing a paper, please cite Wright (2006, PASP, 118, 1711).
 
 Some additions/alterations were made by TLRH
-Last modified: Tue May 10, 2016 11:53 am
+Last modified: Sun May 15, 2016 09:52 pm
 
 """
 #!/usr/bin/env python
 
 import sys
 import numpy
+
+from amuse.units import units
+from amuse.units import constants
 
 class CosmologyCalculator(object):
     def __init__(self, z=0.0562, H0=70, WM=0.3, WV=0.7):
@@ -125,14 +128,14 @@ class CosmologyCalculator(object):
     @property
     def Hubble_of_z(self):
         """ Hubble constant as a function of redshift """
-        # units.H0 = units.named('H0', 'km/s/Mpc', (1 | units.km / units.s / units.Mpc).to_unit())
+        units.H0 = units.named('H0', 'km/s/Mpc', (1 | units.km / units.s / units.Mpc).to_unit())
 
-        return self.H0 * numpy.sqrt(self.WM*(1+self.z)**3 + self.WV)
+        return (self.H0 | units.H0) * numpy.sqrt(self.WM*(1+self.z)**3 + self.WV)
 
     def rho_crit(self):
         """ Critical density of the Universe as a function of redshift """
-        rho_crit = 3 * Hubble_of_z()**2 / (8 * numpy.pi * constants.G)
-        return rho_crit.as_quantity_in(units.g/units.cm**3)
+        rho_crit = 3 * self.Hubble_of_z**2 / (8 * numpy.pi * constants.G)
+        return rho_crit.value_in(units.g/units.cm**3)
 
     def __str__(self):
         # TODO: fix this function such that it returns a proper string
