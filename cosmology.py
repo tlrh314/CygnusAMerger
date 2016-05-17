@@ -7,7 +7,7 @@ Copyright for the original (online) calculator 1999-2016 Edward L. Wright.
 If you use this calculator while preparing a paper, please cite Wright (2006, PASP, 118, 1711).
 
 Some additions/alterations were made by TLRH
-Last modified: Sun May 15, 2016 09:52 pm
+Last modified: Tue May 17, 2016 03:29 pm
 
 """
 #!/usr/bin/env python
@@ -201,7 +201,7 @@ Options:   -h for this message
                 WM = 0.3                        # Omega(matter)
                 WV = 0.7                        # Omega(vacuum) or lambda
                 s8 = 0.9                        # TODO: find out what this is
-            wise_2016_in_prep = False
+            wise_2016_in_prep = True
             if wise_2016_in_prep:
                 # Komatsu et al. 2009
                 H0 = 71                         # Hubble constant

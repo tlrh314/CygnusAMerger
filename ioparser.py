@@ -1,8 +1,8 @@
 """
-File: parser.py
+File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Mon May 16, 2016 05:30 pm
+Last modified: Tue May 17, 2016 04:06 pm
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -47,36 +47,15 @@ def get_blockname(block):
 
 
 # Toycluster2RuntimeOutputParser helper functions
-def distance_str_to_quantity(s):
-    """ Eat string, return AMUSE quantity, e.g. '6961.5 kpc' """
-    value, unit = s.split(" ")
-    if unit != "kpc":
-        print "Warning: incorrect distance unit parsed. {0} {1}".format(value, unit)
-    quant = float(value) | units.kpc
-    return quant
-
-
-def mass_str_to_quantity(s):
-    """ Eat string, return AMUSE quantity, e.g. '100000 10^5 MSol' """
-    # TODO: change code_unit_mass to mass read from System of Units block
-    code_unit_mass = 1e10  # for now, read this also from toycluster output
-    value, factor, unit = s.split(" ")
-    if unit != "MSol" and unit != "Msol":
-        print "Warning: incorrect mass unit parsed. {0} {1} {2}"\
-            .format(value, factor, unit)
-    if factor != "10^5":
-        print "Warning: incorrect mass factor parsed. {0} {1} {2}"\
-            .format(value, factor, unit)
-    # Warning, the raw output is e.g. 100000 10^5 MSol, so something
-    #     strange is going on with the code_unit_mass and the 10^5 ?
-    quant = float(value) * code_unit_mass | units.MSun
-
-    return quant
-
-
 def unit_str_to_quantity(s):
-    raw_value, unit = s.split(" ")
+    s_split = s.split(" ")
+    if len(s_split) == 2:
+        raw_value, unit = s_split
+    elif len(s_split) == 3:
+        # e.g. '100000 10^10 MSol'
+        raw_value, factor, unit = s_split
     try:
+        # e.g. '3.08568e+21 cm'
         value, power = raw_value.split("e")
         value = float(value) * 10**int(power)
     except ValueError as e:
@@ -84,8 +63,7 @@ def unit_str_to_quantity(s):
         if e.message != "need more than 1 value to unpack":
             raise
         # print "Warning! ValueError", e, "occurred for unit:", raw_value, unit
-        value = raw_value
-        power = 0
+        value = float(raw_value)
     if unit == "cm":
         return units.cm(value)
     elif unit == "sec":
@@ -98,9 +76,18 @@ def unit_str_to_quantity(s):
         return value | units.g/units.cm**3
     elif unit == "erg":
         return units.erg(value)
+    elif unit == "kpc":
+        return units.kpc(value)
+    elif unit == "MSol" or unit == "Msol":
+        if factor != "10^10":
+            raise ValueError("incorrect mass factor parsed. value={0}, factor={1}, unit={2}"\
+                .format(value, factor, unit))
+        code_unit_mass = 1e10
+        return units.MSun(value * code_unit_mass)
     else:
         print "Error: Unit not defined. Add it :-)"
-        return None
+        raise ValueError("unknown unit given. value={0}, factor={1}, unit={2}"\
+            .format(value, factor, unit))
 
 
 class Gadget2BinaryF77UnformattedType2Parser(object):
@@ -160,14 +147,24 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
     def read_ic(self, f):
         """
             See Gadget-2 user guide for details. The data blocks are:
+            Header
             Block 0 (Coordinates)
             Block 1 (Velocities)
             Block 2 (ParticleIDs)
             Block 3 (Density)         <-- gas only
-            Block 4 (Model Density)   <-- gas only
+            Block 4 (Model Density)   <-- gas only (not in Gadget snaps)
             Block 5 (SmoothingLength) <-- gas only
             Block 6 (InternalEnergy)  <-- gas only
-            Block 7 (MagneticField)   <-- gas only
+            Block 7 (MagneticField)   <-- gas only (not in Gadget snaps)
+            TODO: implement for Gadget and Toycluster
+            NB for (hacked!) Toycluster output...
+            Header
+            Block 0 (Coordinates)
+            Block 1 (Velocities)
+            Block 2 (ParticleIDs)
+            Block 3 (InternalEnergy)  <-- gas only
+            Block 4 (Density)         <-- gas only
+            Block 5 (SmoothingLength) <-- gas only
         """
         content = read_block(f)
         if get_blockname(content) == "HEAD":
@@ -222,35 +219,38 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
 
         if self.Ngas > 0:
             content = read_block(f)
+            # print "Seventh block", get_blockname(content)
             print "Fourth block", get_blockname(content)
             if get_blockname(content) == "U":
                 content = read_block(f)
                 self.u = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
-
             content = read_block(f)
+
             print "Fifth block", get_blockname(content)
             if get_blockname(content) == "RHO":
                 content = read_block(f)
                 self.rho = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
 
             # content = read_block(f)
-            # print "Sixth block", get_blockname(content)
+            # print "Fifth block", get_blockname(content)
             # if get_blockname(content) == "RHOM":
             #     content = read_block(f)
             #     self.rhom = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
 
             content = read_block(f)
-            print "Sixth block", get_blockname(content)
-            if get_blockname(content) == "HSML":
+            # print "Sixth block", get_blockname(content)
+            print "Sixth block", get_blockname(content)[0:4]
+            if get_blockname(content)[0:4] == "HSML":
                 content = read_block(f)
                 self.hsml = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
 
-        magnetic_field = False
-        if magnetic_field:
-            content = read_block(f)
-            if get_blockname(content) == "BFLD":
-                content = read_block(f)
-                self.bfld = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
+        # magnetic_field = False
+        # if magnetic_field:
+        #     content = read_block(f)
+        #     mrint "Eigth block", get_blockname(content)
+        #     if get_blockname(content) == "BFLD":
+        #         content = read_block(f)
+        #         self.bfld = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
 
     @property
     def str_header(self):
@@ -314,32 +314,46 @@ class Toycluster2RuntimeOutputParser(object):
         print "Parsing runtime output of Toycluster 2.0"
         print "Warning: these values have rounding errors due to printing!\n"
 
+        # Set up dicts for different 'sections'
+        self.units = dict()
+        self.systemat = dict()
+        self.systemsetup = dict()
+        self.halosetup = dict()
+        self.halosampling = dict()
+        # self.halo0_sampling = dict()
+        # self.halo1_sampling = dict()
+        # self.halo1_sampling['i'] = None
+
         self.eat_file(filename)
-        self.parse_units()
-        self.parse_systemat()
-        self.parse_setup()
-        self.parse_halo0()
-        # self.parse_halo0_sampling()
 
     def eat_file(self, filename):
-        """ Eat the file and find indices where listings start. """
+        """ Eat logfile, find 'sections' start indices, then eat them """
         with open(filename) as f:
             self.lines = f.readlines()
 
         for i, line in enumerate(self.lines):
             if line.startswith("Setting System of Units:"):
-                self.units_i = i
+                self.units['i'] = i
             if line.startswith("System at:"):
-                self.systemat_i = i
-            if line.startswith("Halo Setup : <0>"):
-                self.halo0_i = i
+                self.systemat['i'] = i
+            for n in range(2):  # atm only using two haloes :-)
+                if line.startswith("Halo Setup : <{n}>".format(**{'n':n})):
+                    self.halosetup[n] = dict()
+                    self.halosetup[n]['i'] = i
+                # NB this is in the file twice: before and after WVT. Use last
+                if line.startswith("Sampling of Halo <{n}>".format(**{'n':n})):
+                    self.halosampling[0] = dict()
+                    self.halosampling[0]['i'] = i
             if line.startswith("System Setup :"):
-                self.setup_i = i
+                self.systemsetup['i'] = i
             if line.startswith("Grav. Softening"):
-                self.grav_softening = distance_str_to_quantity(line.split(" ~ ")[-1].strip())
-            # NB this is in the file twice: before and after WVT?
-            if line.startswith("Sampling of Halo <0>"):
-                self.halo0_sampling_i = i
+                self.grav_softening = unit_str_to_quantity(line.split(" ~ ")[-1].strip())
+
+        self.parse_units()
+        self.parse_systemat()
+        self.parse_halosetup()
+        self.parse_systemsetup()
+        # self.parse_halo0_sampling()
 
     def split(self, s):
         """ Split string 'name = value' and strip newline character. """
@@ -351,13 +365,13 @@ class Toycluster2RuntimeOutputParser(object):
         lines = self.lines
 
         # Set Unit parameters
-        i = self.units_i
-        self.units_length = unit_str_to_quantity(self.split(lines[i+1]))
-        self.units_time = unit_str_to_quantity(self.split(lines[i+2]))
-        self.units_mass = unit_str_to_quantity(self.split(lines[i+3]))
-        self.units_vel = unit_str_to_quantity(self.split(lines[i+4]))
-        self.units_density = unit_str_to_quantity(lines[i+5].split("= ")[-1].strip())
-        self.units_energy = unit_str_to_quantity(self.split(lines[i+6]))
+        i = self.units['i']
+        self.units['length'] = unit_str_to_quantity(self.split(lines[i+1]))
+        self.units['time'] = unit_str_to_quantity(self.split(lines[i+2]))
+        self.units['mass'] = unit_str_to_quantity(self.split(lines[i+3]))
+        self.units['vel'] = unit_str_to_quantity(self.split(lines[i+4]))
+        self.units['density'] = unit_str_to_quantity(lines[i+5].split("= ")[-1].strip())
+        self.units['energy'] = unit_str_to_quantity(self.split(lines[i+6]))
 
     def parse_systemat(self):
         """ Parse block with cosmological (system at) parameters. """
@@ -365,67 +379,66 @@ class Toycluster2RuntimeOutputParser(object):
         lines = self.lines
 
         # Set System At parameters
-        i = self.systemat_i
+        i = self.systemat['i']
 
-        self.system_z = float(self.split(lines[i]))
-        self.system_H_over_100 = float(self.split(lines[i+1]))
-        self.system_Omega_M = float(self.split(lines[i+2]))
-        self.system_rho_crit_0 = unit_str_to_quantity(self.split(lines[i+3]))
-        self.system_rho_crit_z = unit_str_to_quantity(self.split(lines[i+4]))
-        self.system_mean_mol_w = float(lines[i+5].split("= ")[-1].strip())
-        self.system_E_of_z = float(self.split(lines[i+6]))
-        self.system_Delta = float(self.split(lines[i+7]))
+        self.systemat['z'] = float(self.split(lines[i]))
+        self.systemat['H_over_100']  = float(self.split(lines[i+1]))
+        self.systemat['Omega_M']  = float(self.split(lines[i+2]))
+        self.systemat['rho_crit_0']  = unit_str_to_quantity(self.split(lines[i+3]))
+        self.systemat['rho_crit_z']  = unit_str_to_quantity(self.split(lines[i+4]))
+        self.systemat['mean_mol_w']  = float(lines[i+5].split("= ")[-1].strip())
+        self.systemat['E_of_z']  = float(self.split(lines[i+6]))
+        self.systemat['Delta']  = float(self.split(lines[i+7]))
 
-    def parse_halo0(self):
-        """ Parse block that contains halo <0> parameters """
-        # TODO: add halo1 if a mass ratio is set to a nonzero value.
-        # TODO: store these data in a dictionary instead of instance attributes
-        lines = self.lines
+    def parse_halosetup(self):
+        """ Parse block that contains halo <n> parameters """
+        for n in self.halosetup.keys():
+            lines = self.lines
 
-        # Set Halo 0 parameters
-        i = self.halo0_i
+            # Set Halo i parameters
+            i = self.halosetup[n]['i']
 
-        self.halo0_model = lines[i+1].split("=")[-1].strip()
-        self.halo0_rgas = distance_str_to_quantity(lines[i+2].split("=")[-1].strip())
-        self.halo0_rdm = distance_str_to_quantity(lines[i+3].split("=")[-1].strip())
-        self.halo0_qmax = float(lines[i+4].split("=")[-1].strip())
-        self.halo0_Mass = mass_str_to_quantity(lines[i+5].split("=")[-1].strip())
-        self.halo0_Mass_in_DM = mass_str_to_quantity(lines[i+6].split("=")[-1].strip())
-        self.halo0_Mass_in_gas = mass_str_to_quantity(lines[i+7].split("=")[-1].strip())
-        self.halo0_Mass_in_R200 = mass_str_to_quantity(lines[i+8].split("=")[-1].strip())
-        self.halo0_c_nfw = float(lines[i+9].split("=")[-1].strip())
-        self.halo0_R200 = distance_str_to_quantity(lines[i+10].split("=")[-1].strip())
-        self.halo0_a_hernquist = distance_str_to_quantity(lines[i+11].split("=")[-1].strip())
-        self.halo0_rho0gas_cgs = unit_str_to_quantity(self.split(lines[i+12]))
-        self.halo0_rho0gas_gadget = (lines[i+13].split("=")[-1].strip()).split(" ")[0]
-        if lines[i+14].split("=")[-1].strip() == "2/3": self.halo0_beta = 2./3
-        self.halo0_rc = distance_str_to_quantity(lines[i+15].split("=")[-1].strip())
-        # self.halo0_rcut = distance_str_to_quantity(lines[i+16].split("=")[-1].strip())
-        self.halo0_R500 = distance_str_to_quantity(lines[i+16].split("=")[-1].strip())
-        self.halo0_bf_200 = float(lines[i+17].split("=")[-1].strip())
-        self.halo0_bf_500 = float(lines[i+18].split("=")[-1].strip())
+            self.halosetup[n]['model'] = lines[i+1].split("=")[-1].strip()
+            self.halosetup[n]['rgas'] = unit_str_to_quantity(lines[i+2].split("=")[-1].strip())
+            self.halosetup[n]['rdm'] = unit_str_to_quantity(lines[i+3].split("=")[-1].strip())
+            self.halosetup[n]['qmax'] = float(lines[i+4].split("=")[-1].strip())
+            self.halosetup[n]['Mass'] = unit_str_to_quantity(lines[i+5].split("=")[-1].strip())
+            self.halosetup[n]['Mass_in_DM'] = unit_str_to_quantity(lines[i+6].split("=")[-1].strip())
+            self.halosetup[n]['Mass_in_gas'] = unit_str_to_quantity(lines[i+7].split("=")[-1].strip())
+            self.halosetup[n]['Mass_in_R200'] = unit_str_to_quantity(lines[i+8].split("=")[-1].strip())
+            self.halosetup[n]['c_nfw'] = float(lines[i+9].split("=")[-1].strip())
+            self.halosetup[n]['R200'] = unit_str_to_quantity(lines[i+10].split("=")[-1].strip())
+            self.halosetup[n]['a_hernquist'] = unit_str_to_quantity(lines[i+11].split("=")[-1].strip())
+            self.halosetup[n]['rho0gas_cgs'] = unit_str_to_quantity(self.split(lines[i+12]))
+            self.halosetup[n]['rho0gas_gadget'] = (lines[i+13].split("=")[-1].strip()).split(" ")[0]
+            if lines[i+14].split("=")[-1].strip() == "2/3": self.halosetup[n]['beta'] = 2./3
+            self.halosetup[n]['rc'] = unit_str_to_quantity(lines[i+15].split("=")[-1].strip())
+            self.halosetup[n]['R500'] = unit_str_to_quantity(lines[i+16].split("=")[-1].strip())
+            self.halosetup[n]['bf_200'] = float(lines[i+17].split("=")[-1].strip())
+            self.halosetup[n]['bf_500'] = float(lines[i+18].split("=")[-1].strip())
 
-    def parse_setup(self):
+    def parse_systemsetup(self):
         """ Parse block that contains the system setup parameters. """
         # TODO: store these data in a dictionary instead of instance attributes
         lines = self.lines
 
         # Set System Setup parameters
-        i = self.setup_i
-        self.system_boxsize = distance_str_to_quantity(lines[i+1].split("=")[-1].strip())
-        self.system_TotalMass = mass_str_to_quantity(lines[i+2].split("=")[-1].strip())
-        self.system_Mass_in_gas = mass_str_to_quantity(lines[i+3].split("=")[-1].strip())
-        self.system_Mass_in_DM = mass_str_to_quantity(lines[i+4].split("=")[-1].strip())
-        self.system_Mass_Ratio = float(lines[i+5].split("=")[-1].strip())
-        self.system_given_bf = float(lines[i+6].split("=")[-1].strip())
-        self.system_boxwide_bf = float(lines[i+7].split("=")[-1].strip())
-        self.system_npart = float(lines[i+8].split("=")[-1].strip())
-        self.system_Sph_Part_mass = mass_str_to_quantity(lines[i+9].split("=")[-1].strip())
-        self.system_DM_Part_mass = mass_str_to_quantity(lines[i+10].split("=")[-1].strip())
+        i = self.systemsetup['i']
+        self.systemsetup['Mass_Ratio'] = float(lines[i+1].split("=")[-1].strip())
+        self.systemsetup['Boxsize'] = unit_str_to_quantity(lines[i+2].split("=")[-1].strip())
+        self.systemsetup['TotalMass'] = unit_str_to_quantity(lines[i+3].split("=")[-1].strip())
+        self.systemsetup['Mass_in_gas'] = unit_str_to_quantity(lines[i+4].split("=")[-1].strip())
+        self.systemsetup['Mass_in_DM'] = unit_str_to_quantity(lines[i+5].split("=")[-1].strip())
+        self.systemsetup['Mass_Ratio'] = float(lines[i+6].split("=")[-1].strip())
+        self.systemsetup['given_bf'] = float(lines[i+7].split("=")[-1].strip())
+        self.systemsetup['boxwide_bf'] = float(lines[i+8].split("=")[-1].strip())
+        self.systemsetup['npart'] = float(lines[i+9].split("=")[-1].strip())
+        self.systemsetup['Sph_Part_mass'] = unit_str_to_quantity(lines[i+10].split("=")[-1].strip())
+        self.systemsetup['DM_Part_mass'] = unit_str_to_quantity(lines[i+11].split("=")[-1].strip())
         # Warning: not in correct dataformat
-        self.system_npart_partent = lines[i+11].split("=")[-1].strip()
-        self.system_npart_bullet = lines[i+12].split("=")[-1].strip()
-        self.system_npart_total = lines[i+13].split("=")[-1].strip()
+        self.systemsetup['npart_partent'] = lines[i+12].split("=")[-1].strip()
+        self.systemsetup['npart_bullet'] = lines[i+13].split("=")[-1].strip()
+        self.systemsetup['npart_total'] = lines[i+14].split("=")[-1].strip()
 
     def parse_halo0_sampling(self):
         """ Parse block with halo parameters after sph regularisation (?) """
@@ -449,67 +462,79 @@ class Toycluster2RuntimeOutputParser(object):
 
     def __str__(self):
         # Units
-        tmp = self.lines[self.units_i].strip() + "\n"
-        tmp += "    Unit Length       = " + str(self.units_length) + "\n"
-        tmp += "    Unit Time         = " + str(self.units_time) + "\n"
-        tmp += "    Unit Mass         = " + str(self.units_mass) + "\n"
-        tmp += "    Unit Vel          = " + str(self.units_vel) + "\n"
-        tmp += "    Unit Density      = " + str(self.units_density) + "\n"
-        tmp += "    Unit Energy       = " + str(self.units_energy) + "\n\n"
-
-        # System at
-        tmp += "System at:          z = {0}".format(self.system_z) + "\n"
-        tmp += "   H/100              = " + str(self.system_H_over_100) + "\n"
-        tmp += "   Omega_M            = " + str(self.system_Omega_M) + "\n"
-        tmp += "   rho_crit(0)        = " + str(self.system_rho_crit_0) + "\n"
-        tmp += "   rho_crit(z)        = " + str(self.system_rho_crit_z) + "\n"
-        tmp += "   mean mol. w.       = " + str(self.system_mean_mol_w) + "\n"
-        tmp += "   E(z)               = " + str(self.system_E_of_z) + "\n"
-        tmp += "   Delta              = " + str(self.system_Delta) + "\n\n"
-
-        # Halo 0
-        tmp += self.lines[self.halo0_i].strip() + "\n"
-        tmp += "    Model             = " + str(self.halo0_model) + "\n"
-        tmp += "    Sample Radius Gas = " + str(self.halo0_rgas) + "\n"
-        tmp += "    Sample Radius DM  = " + str(self.halo0_rdm) + "\n"
-        tmp += "    qmax              = " + str(self.halo0_qmax) + "\n"
-        tmp += "    Mass              = " + str(self.halo0_Mass) + "\n"
-        tmp += "    Mass in DM        = " + str(self.halo0_Mass_in_DM) + "\n"
-        tmp += "    Mass in Gas       = " + str(self.halo0_Mass_in_gas) + "\n"
-        tmp += "    Mass in R200      = " + str(self.halo0_Mass_in_R200) + "\n"
-        tmp += "    c_nfw             = " + str(self.halo0_c_nfw) + "\n"
-        tmp += "    R200              = " + str(self.halo0_R200) + "\n"
-        tmp += "    a_hernquist       = " + str(self.halo0_a_hernquist) + "\n"
-        tmp += "    rho0_gas          = " + str(self.halo0_rho0gas_cgs) + "\n"
-        tmp += "    rho0_gas          = " + str(self.halo0_rho0gas_gadget) + "\n"
-        tmp += "    beta              = " + str(self.halo0_beta) + "\n"
-        tmp += "    rc                = " + str(self.halo0_rc) + "\n"
-        # tmp += "    rcut              = " + str(self.halo0_rcut) + "\n"
-        tmp += "    R500              = " + str(self.halo0_R500) + "\n"
-        tmp += "    bf_200            = " + str(self.halo0_bf_200) + "\n"
-        tmp += "    bf_500            = " + str(self.halo0_bf_500) + "\n\n"
-
-        # System Setup
-        tmp += self.lines[self.setup_i].strip() + "\n"
-        tmp += "    Boxsize           = " + str(self.system_boxsize) + "\n"
-        tmp += "    Total Mass        = " + str(self.system_TotalMass) + "\n"
-        tmp += "    Mass in Gas       = " + str(self.system_Mass_in_gas) + "\n"
-        tmp += "    Mass in DM        = " + str(self.system_Mass_in_DM) + "\n"
-        tmp += "    Mass Ratio        = " + str(self.system_Mass_Ratio) + "\n"
-        tmp += "    given bf          = " + str(self.system_given_bf) + "\n"
-        tmp += "    boxwide bf        = " + str(self.system_boxwide_bf) + "\n"
-        tmp += "    # of Particles    = " + str(self.system_npart) + "\n"
-        tmp += "    Sph Part Mass     = " + str(self.system_Sph_Part_mass) + "\n"
-        tmp += "    DM Part Mass      = " + str(self.system_DM_Part_mass) + "\n"
-        tmp += "    Npart Parent      = " + str(self.system_npart_partent) + "\n"
-        tmp += "    Npart Bullet      = " + str(self.system_npart_bullet) + "\n"
-        tmp += "    Npart Total       = " + str(self.system_npart_total) + "\n\n"
-
-        tmp += "Grav. Softening ~ {0}".format(self.grav_softening)
-        tmp += "\n\n"
-
+        tmp = self.str_units()
+        tmp += self.str_systemat()
+        tmp += self.str_halosetup()
+        tmp += self.str_systemsetup()
         return tmp
 
+    def str_units(self):
+        tmp = self.lines[self.units['i']].strip() + "\n"
+        tmp += "    Unit Length       = " + str(self.units['length']) + "\n"
+        tmp += "    Unit Time         = " + str(self.units['time']) + "\n"
+        tmp += "    Unit Mass         = " + str(self.units['mass']) + "\n"
+        tmp += "    Unit Vel          = " + str(self.units['vel']) + "\n"
+        tmp += "    Unit Density      = " + str(self.units['density']) + "\n"
+        tmp += "    Unit Energy       = " + str(self.units['energy']) + "\n\n"
+        return tmp
+
+    def str_systemat(self):
+        tmp = "System at:          z = {0}".format(self.systemat['z']) + "\n"
+        tmp += "   H/100              = " + str(self.systemat['H_over_100']) + "\n"
+        tmp += "   Omega_M            = " + str(self.systemat['Omega_M']) + "\n"
+        tmp += "   rho_crit(0)        = " + str(self.systemat['rho_crit_0']) + "\n"
+        tmp += "   rho_crit(z)        = " + str(self.systemat['rho_crit_z']) + "\n"
+        tmp += "   mean mol. w.       = " + str(self.systemat['mean_mol_w']) + "\n"
+        tmp += "   E(z)               = " + str(self.systemat['E_of_z']) + "\n"
+        tmp += "   Delta              = " + str(self.systemat['Delta']) + "\n\n"
+        return tmp
+
+    def str_halosetup(self):
+        tmp = ""
+        for n in sorted(self.halosetup.keys()):
+            tmp += self.lines[self.halosetup[n]['i']].strip() + "\n"
+            tmp += "    Model             = " + str(self.halosetup[n]['model']) + "\n"
+            tmp += "    Sample Radius Gas = " + str(self.halosetup[n]['rgas']) + "\n"
+            tmp += "    Sample Radius DM  = " + str(self.halosetup[n]['rdm']) + "\n"
+            tmp += "    qmax              = " + str(self.halosetup[n]['qmax']) + "\n"
+            tmp += "    Mass              = " + str(self.halosetup[n]['Mass']) + "\n"
+            tmp += "    Mass in DM        = " + str(self.halosetup[n]['Mass_in_DM']) + "\n"
+            tmp += "    Mass in Gas       = " + str(self.halosetup[n]['Mass_in_gas']) + "\n"
+            tmp += "    Mass in R200      = " + str(self.halosetup[n]['Mass_in_R200']) + "\n"
+            tmp += "    c_nfw             = " + str(self.halosetup[n]['c_nfw']) + "\n"
+            tmp += "    R200              = " + str(self.halosetup[n]['R200']) + "\n"
+            tmp += "    a_hernquist       = " + str(self.halosetup[n]['a_hernquist']) + "\n"
+            tmp += "    rho0_gas          = " + str(self.halosetup[n]['rho0gas_cgs']) + "\n"
+            tmp += "    rho0_gas          = " + str(self.halosetup[n]['rho0gas_gadget']) + "\n"
+            tmp += "    beta              = " + str(self.halosetup[n]['beta']) + "\n"
+            tmp += "    rc                = " + str(self.halosetup[n]['rc']) + "\n"
+            tmp += "    R500              = " + str(self.halosetup[n]['R500']) + "\n"
+            tmp += "    bf_200            = " + str(self.halosetup[n]['bf_200']) + "\n"
+            tmp += "    bf_500            = " + str(self.halosetup[n]['bf_500']) + "\n\n"
+        return tmp
+
+    def str_systemsetup(self):
+        tmp = self.lines[self.systemsetup['i']].strip() + "\n"
+        tmp += "    Mass Ratio        = " + str(self.systemsetup['Mass_Ratio']) + "\n"
+        tmp += "    Boxsize           = " + str(self.systemsetup['Boxsize']) + "\n"
+        tmp += "    Total Mass        = " + str(self.systemsetup['TotalMass']) + "\n"
+        tmp += "    Mass in Gas       = " + str(self.systemsetup['Mass_in_gas']) + "\n"
+        tmp += "    Mass in DM        = " + str(self.systemsetup['Mass_in_DM']) + "\n"
+        tmp += "    Mass Ratio        = " + str(self.systemsetup['Mass_Ratio']) + "\n"
+        tmp += "    given bf          = " + str(self.systemsetup['given_bf']) + "\n"
+        tmp += "    boxwide bf        = " + str(self.systemsetup['boxwide_bf']) + "\n"
+        tmp += "    # of Particles    = " + str(self.systemsetup['npart']) + "\n"
+        tmp += "    Sph Part Mass     = " + str(self.systemsetup['Sph_Part_mass']) + "\n"
+        tmp += "    DM Part Mass      = " + str(self.systemsetup['DM_Part_mass']) + "\n"
+        tmp += "    Npart Parent      = " + str(self.systemsetup['npart_partent']) + "\n"
+        tmp += "    Npart Bullet      = " + str(self.systemsetup['npart_bullet']) + "\n"
+        tmp += "    Npart Total       = " + str(self.systemsetup['npart_total']) + "\n\n"
+        return tmp
+
+        # tmp += "Grav. Softening ~ {0}".format(self.grav_softening)
+        # tmp += "\n\n"
+
+        return tmp
 
 def parse_toycluster_parms(filename):
     parameters = dict()
@@ -531,16 +556,22 @@ def parse_toycluster_parms(filename):
 if __name__ == '__main__':
     print 80*'-'
     print "Parsing Toycluster Parameter file"
+    print 80*'-'
     parms = parse_toycluster_parms("toycluster.par")
 
     for key, value in parms.items():
         print key, "=", value
     print 80*'-'
 
-
     print "Parsing Toycluster output"
-    log = Toycluster2RuntimeOutputParser(filename)
-    data = Gadget2BinaryF77UnformattedType2Parser(filename)
+    print 80*'-'
+    log = Toycluster2RuntimeOutputParser("../runs/test/runToycluster_single.log")
     print log
+    data = Gadget2BinaryF77UnformattedType2Parser("../runs/test/IC_single_0")
+    print data
+
+    log = Toycluster2RuntimeOutputParser("../runs/test/runToycluster_double.log")
+    print log
+    data = Gadget2BinaryF77UnformattedType2Parser("../runs/test/IC_double_0")
     print data
     print 80*'-'
