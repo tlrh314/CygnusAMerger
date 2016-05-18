@@ -34,7 +34,7 @@ PeriodicBoundariesOn     1
 %  Caracteristics of run
 
 TimeBegin                0.0
-TimeMax                  2.0  % in units of Gyr
+TimeMax                  10.0  % in units of Gyr
 
 Omega0                   0.3
 OmegaLambda              0.7
@@ -44,10 +44,10 @@ BoxSize                  18965  % kpc
 
 % Output frequency
 
-TimeBetSnapshot          0.25  % in code units of time (Gyr)
+TimeBetSnapshot          0.125  % in code units of time (Gyr)
 TimeOfFirstSnapshot      0.0
 
-CpuTimeBetRestartFile    36000  % here in seconds
+CpuTimeBetRestartFile    18000  % here in seconds
 TimeBetStatistics        0.05
 
 NumFilesPerSnapshot       1
@@ -81,7 +81,7 @@ TreeDomainUpdateFrequency    0.1
 
 %  Further parameters of SPH
 
-DesNumNgb               50
+DesNumNgb               64   % TODO: ask Julius why did I have 50 here?
 MaxNumNgbDeviation      2
 ArtBulkViscConst        0.8
 InitGasTemp             0

@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
-#PBS -lnodes=1:ppn=16:cores16
+#PBS -lnodes=2:ppn=16:cores16
 #PBS -lwalltime=23:00:00
 
-# File: CygnusAMerger/run.sh
+# File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-<<<<<<< HEAD
-# Last modified: Mon May 02, 2016 01:44 pm
-=======
-# Last modified: Tue May 03, 2016 10:00 AM
->>>>>>> eb5185fda846dbf67cddc679a1fd6d091330f46c
+# Last modified: Wed May 18, 2016 03:46 AM
 #
 # Description: run simulation pipeline
 
@@ -160,7 +156,7 @@ setup_system() {
         module load fftw2/dp/intel
         module load openmpi/intel
     elif [ "${SYSTYPE}" == "taurus" ]; then
-        THREADS=4
+        THREADS=8
         NICE=19
         BASEDIR="/scratch/timo"
     elif [ "${SYSTYPE}" == "Darwin" ]; then
@@ -718,9 +714,9 @@ echo -e "\nStart of program at $(date)\n"
 
 setup_system
 setup_toycluster
-setup_gadget
+# setup_gadget
 # echo "Press enter to continue" && read enterKey
-setup_psmac2
+# setup_psmac2
 
 case "${EFFECT}" in
     "DMrho")
