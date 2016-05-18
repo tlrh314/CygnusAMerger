@@ -2,7 +2,7 @@
 File: cluster.py
 Author: Timo L. R. Halbesma <timohalbesma@gmail.com>
 Date created: Tue May 17, 2016 01:59 pm
-Last modified: Wed May 18, 2016 12:56 am
+Last modified: Wed May 18, 2016 02:27 am
 
 
 """
@@ -228,7 +228,10 @@ class NumericalCluster(object):
 
         # Price (2012) equation 11: Mtot = 4/3 pi R_kern**3 rho.
         # Rkern**3 = hsml**3/295 (Toycluster: Wendland C6 with 295 neighbours)
-        gas_mass = (4./3*numpy.pi*(gas_h**3/295)*gas_rho)
+        # For ICs!
+        # gas_mass = (4./3*numpy.pi*(gas_h**3/295)*gas_rho)
+        # For Gadget-2 (TODO: check Kernel, also check Nngb)
+        gas_mass = (4./3*numpy.pi*(gas_h**3/50)*gas_rho)
 
         self.gas_radii = gas_r | units.kpc
         self.M_gas_below_r = gas_mass.cumsum() | units.MSun
@@ -325,7 +328,7 @@ class AnalyticalCluster(object):
         # TODO: implement without need for dm_parms
 
         if radius is None:
-            self.radius = VectorQuantity.arange(units.kpc(1), units.kpc(1e5), units.parsec(100))
+            self.radius = VectorQuantity.arange(units.kpc(1), units.kpc(4e4), units.parsec(100))
         else:
             if type(radius) == numpy.ndarray:
                 self.radius = radius | units.kpc
@@ -566,6 +569,7 @@ if __name__ == "__main__":
         snapdir="../runs/no_wvt_relax/ICs/",
         logfile="runToycluster.log",
         icfile="IC_single_0")
+    numerical_cluster.perform_sanity_checks()
     print 80*'-'
 
     pyplot.show()
