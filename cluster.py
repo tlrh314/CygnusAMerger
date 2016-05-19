@@ -2,7 +2,7 @@
 File: cluster.py
 Author: Timo L. R. Halbesma <timohalbesma@gmail.com>
 Date created: Tue May 17, 2016 01:59 pm
-Last modified: Wed May 18, 2016 02:27 am
+Last modified: Wed May 18, 2016 09:21 pm
 
 
 """
@@ -244,22 +244,61 @@ class NumericalCluster(object):
 
         print "Counting particles for which radii < r to obtain M(<r)"
 
-        radii = VectorQuantity.arange(units.kpc(1), units.kpc(10000), units.parsec(10000))  # TODO: remove a zero from units.parsec(10000)
-        M_dm_below_r = numpy.zeros(len(radii))
+        radii = numpy.arange(0, 1e4, 10)
         N = len(radii)
+
+        particles = numpy.zeros(N)
+        dr = radii[1] - radii[0]  # Because evenly spaced
         for i, r in enumerate(radii):
-            M_dm_below_r[i] = ((numpy.where(self.dm.r < r)[0]).size)
+            particles[i] = ((numpy.where(self.dm.r.value_in(units.kpc) < r)[0]).size)
             if i==(N-1) or i%100 == 0:
                 globals.print_progressbar(i, N)
 
-        M_dm_below_r *= (self.M_dm/self.raw_data.Ndm)
+            # print i, r, particles[i]
 
-        self.dm_radii = radii
+        particles_in_shell = numpy.zeros(len(particles))
+        for i in range(1, len(particles)):
+            particles_in_shell[i-1] = particles[i] - particles[i-1]
+
+        self.dm_volume = 4 * numpy.pi * radii**2 * dr
+        self.dm_particles_in_shell = particles_in_shell
+        # density = particles_in_shell/(self.raw_data.Ndm*volume*self.M_dm.number)
+        # density *= globals.mu  # TODO: Why ??
+        # Using volume = 4/3 pi r**3
+        # M_dm_below_r = numpy.zeros(len(radii))
+        # N = len(radii)
+        # for i, r in enumerate(radii):
+        #     M_dm_below_r[i] = ((numpy.where(self.dm.r < r)[0]).size)
+        #     if i==(N-1) or i%100 == 0:
+        #         globals.print_progressbar(i, N)
+
+        # M_dm_below_r *= (self.M_dm/self.raw_data.Ndm)
+
+        # Works
+        M_dm_below_r = particles * self.M_dm/self.raw_data.Ndm
+
+        # Also works
+        # DM_Part_mass = self.toyclusterlog.systemsetup['DM_Part_mass']
+        # M_dm_below_r = particles * DM_Part_mass
+        self.dm_radii = radii | units.kpc
         self.M_dm_below_r = M_dm_below_r
 
     def set_dm_density(self):
-        volume = (4./3 * numpy.pi*self.dm_radii**3)
-        self.rho_dm_below_r = self.M_dm_below_r / volume
+        # Works, but what is up with the 0.1 ? O_o
+        # self.rho_dm_below_r = 0.1*(self.dm_particles_in_shell/(self.raw_data.Ndm*self.dm_volume*self.M_dm.number)) | units.g/units.cm**3
+
+        # Does not work
+        # self.rho_dm_below_r = self.M_dm_below_r / (self.dm_radii**3)
+
+        # Does not work
+        # volume = self.dm_volume.cumsum()
+        # self.rho_dm_below_r = self.M_dm_below_r / (volume | units.kpc**3)
+
+        # Works, seems good enough alright
+        # DM_Part_mass = self.toyclusterlog.systemsetup['DM_Part_mass']
+        # self.rho_dm_below_r = DM_Part_mass * self.dm_particles_in_shell / (self.dm_volume | units.kpc**3)
+
+        self.rho_dm_below_r = self.M_dm * (self.dm_particles_in_shell/self.raw_data.Ndm) / (self.dm_volume | units.kpc**3)
 
     def perform_sanity_checks(self):
 

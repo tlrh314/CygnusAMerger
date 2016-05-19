@@ -108,15 +108,15 @@ def plot_individual_cluster_mass(numerical, analytical):
 
 
 if __name__ == "__main__":
-    snaps = sorted(glob.glob("../runs/no_wvt_relax/snaps/snapshot_*"),  key=os.path.getmtime)
+    snaps = sorted(glob.glob("../runs/yes_wvt_relax/snaps/snapshot_*"),  key=os.path.getmtime)
 
     for i, snap in enumerate(snaps):
         fname = snap.split('/')[-1]
         snapnr = fname.split('_')[-1]
 
         numerical_cluster = NumericalCluster(
-            icdir="../runs/no_wvt_relax/ICs/",
-            snapdir="../runs/no_wvt_relax/snaps/",
+            icdir="../runs/yes_wvt_relax/ICs/",
+            snapdir="../runs/yes_wvt_relax/snaps/",
             logfile="runToycluster.log",
             icfile="snapshot_"+snapnr)
 
@@ -132,22 +132,38 @@ if __name__ == "__main__":
 
         fast_dm_density_computation = False
         if fast_dm_density_computation:
+            # magenta, dark blue, orange, green, light blue (?)
+            data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                           (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                           (41./255, 239./255, 239./255)]
             print numerical_cluster.dm
-            radii = numpy.arange(1, 10000, 100)
+            radii = numpy.arange(1, 10000, 1)
             particles = numpy.zeros(len(radii))
+            dr = radii[1] - radii[0]
+            print dr
             for i, r in enumerate(radii):
                 particles[i] = ((numpy.where(numerical_cluster.dm.r.value_in(units.kpc) < r)[0]).size)
 
                 print i, r, particles[i]
 
+            dparticle = numpy.zeros(len(particles))
+            for i in range(1, len(particles)):
+                dparticle[i-1] = particles[i] - particles[i-1]
+
+            print dparticle
+
             pyplot.figure(figsize=(12,9))
-            volume = 4./3 * numpy.pi * radii**3
-            pyplot.plot(radii, particles/(numerical_cluster.raw_data.Ndm*volume*numerical_cluster.M_dm.number), label="numerical")
+            volume2 = 4./3 * numpy.pi * radii**3
+            volume = 4 * numpy.pi * radii**2 * dr
+            density = dparticle/(numerical_cluster.raw_data.Ndm*volume*numerical_cluster.M_dm.number)
+            density2 = particles/(numerical_cluster.raw_data.Ndm*volume2*numerical_cluster.M_dm.number)
+            pyplot.scatter(radii, 0.17*density, c=data_colour[0], edgecolor="face", label="numerical")
+            pyplot.scatter(radii, 0.17*density2, c=data_colour[2], edgecolor="face", label="numerical cubed")
             amuse_plot.plot(analytical_cluster.radius, analytical_cluster.dm_density(), label="analytical")
-            amuse_plot.plot(analytical_cluster.radius, analytical_cluster.gas_density(), label="gas")
+            # amuse_plot.plot(analytical_cluster.radius, analytical_cluster.gas_density(), label="gas")
             pyplot.gca().set_xscale("log")
             pyplot.gca().set_yscale("log")
-            pyplot.legend()
+            pyplot.legend(loc=3)
             pyplot.show()
 
             import sys; sys.exit(0)
@@ -158,11 +174,11 @@ if __name__ == "__main__":
 
         plot_individual_cluster_density(numerical_cluster, analytical_cluster)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*0.25))
-        pyplot.savefig("out/no_wvt_relax-density-"+snapnr+".png")
+        pyplot.savefig("out/yes_wvt_relax-density-"+snapnr+".png")
         pyplot.close()
         plot_individual_cluster_mass(numerical_cluster, analytical_cluster)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*0.25))
-        pyplot.savefig("out/no_wvt_relax-mass-"+snapnr+".png")
+        pyplot.savefig("out/yes_wvt_relax-mass-"+snapnr+".png")
         pyplot.close()
 
         print "Done checking snapshot:", snap
