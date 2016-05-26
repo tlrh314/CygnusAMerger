@@ -10,6 +10,8 @@ OPT     += -DZERO_ENERGY_ORBIT_FRACTION=0.0 # fraction of zero energy orbit in v
 
 OPT     += -DGIVEPARAMS        # more merger parameters in .par file
 
+#OPT     += -DDOUBLE_BETA_COOL_CORES
+
 #OPT    += -DSUBSTRUCTURE    # add substructure
 #OPT    += -DSUBHOST=1        # host halos
 #OPT    += -DSLOW_SUBSTRUCTURE    # put subhalos on Hernquist orbits

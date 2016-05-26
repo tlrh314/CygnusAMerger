@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Wed May 18, 2016 03:46 AM
+# Last modified: Fri May 20, 2016 11:45 am
 #
 # Description: run simulation pipeline
 
@@ -53,6 +53,7 @@ Examples:
   `basename $0` --timestamp="20160502T1553" --mail
   `basename $0` -mt "20160502T1553"
   `basename $0` -m -t "20160502T1553"
+  `basename $0` -m -t "20160518T0348" -e "xray"
 EOF
 }
 
@@ -159,12 +160,11 @@ setup_system() {
         THREADS=8
         NICE=19
         BASEDIR="/scratch/timo"
-    elif [ "${SYSTYPE}" == "Darwin" ]; then
+    elif [ "$(uname -s)" == "Darwin" ]; then
+        SYSTYPE="MBP"
+        BASEDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code"
         THREADS=$(sysctl -n hw.ncpu)  # OSX *_*
-        NICE=0
-        BASEDIR=""
-        echo "Not implemented for OS X. Exiting."
-        exit 1
+        NICE=10
     else
         echo "Unknown system. Exiting."
         exit 1
@@ -293,7 +293,7 @@ run_toycluster() {
     cd "${ICOUTDIR}"
 
     SECONDS=0
-    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE "${TOYCLUSTEREXEC}" "${TOYCLUSTERPARAMETERS}" 2>&1 >> "${TOYCLUSTERLOGFILE}"
+    OMP_NUM_THREADS=$THREADS nice -n $NICE "${TOYCLUSTEREXEC}" "${TOYCLUSTERPARAMETERS}" 2>&1 >> "${TOYCLUSTERLOGFILE}"
     RUNTIME=$SECONDS
     HOUR=$(($RUNTIME/3600))
     MINS=$(( ($RUNTIME%3600) / 60))
@@ -372,10 +372,19 @@ setup_gadget() {
     check_gadget_run
 
     # stat: -c --> format, where %Y --> last modification; %n --> filename
+    # And of course osx requires stat -f '%m %N' to do the exact same thing
     # sort: -n --> numerical, -k1 --> key = 1 (==last modification)
     # so we do not let glob do its thing but we get a sorted list of snapshots
-    GADGETSNAPSHOTS=($(stat -c '%Y %n' "${SIMOUTDIR}"/snapshot_*  \
-        | sort -t ' ' -nk1 | cut -d ' ' -f2-))  # outer parenthesis --> array
+    if [ "${SYSTYPE}" == "MBP" ]; then
+        cd "${SIMOUTDIR}"
+        GADGETSNAPSHOTS=($(stat -f '%m %N' snapshot_*\
+            | sort -t ' ' -nk1 | cut -d ' ' -f2-))  # outer parenthesis --> array
+        cd -
+    else
+
+        GADGETSNAPSHOTS=($(stat -c '%Y %n' "${SIMOUTDIR}"/snapshot_*  \
+            | sort -t ' ' -nk1 | cut -d ' ' -f2-))  # outer parenthesis --> array
+    fi
 
     if [ "${LOGLEVEL}" == "DEBUG" ]; then
         echo -e "\nSimulation paths"
@@ -461,7 +470,7 @@ run_gadget() {
         # the pee-bee-es situation fixes nodes/threads?
         mpiexec "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
     elif [ "${SYSTYPE}" == "taurus" ]; then
-        nice --adjustment=$NICE mpiexec.hydra -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
+        nice -n $NICE mpiexec.hydra -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
     fi
 
     echo "... done running Gadget2"
@@ -639,6 +648,11 @@ set_psmac_parameterfile_snapshot_path() {
         FIRST="${GADGETSNAPSHOTS[0]}"  # Globbed, then sorted array
         LAST="${GADGETSNAPSHOTS[-1]}"
 
+        if [ "${SYSTYPE}" == "MBP" ]; then
+            FIRST="../snaps/${FIRST}"
+            LAST="../snaps/${LAST}"
+        fi
+
         # Escape forward slashes. If / not escaped we break perl :)
         FIRST=$(echo "${FIRST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
         LAST=$(echo "${LAST}" | sed -e 's/[]\/$*.^|[]/\\&/g')
@@ -650,6 +664,7 @@ set_psmac_parameterfile_snapshot_path() {
 }
 
 run_psmac2_for_given_module() {
+    check_psmac2_generic_runtime_files
     SMAC_PREFIX="${1}"
     EFFECT_MODULE="${2}"
     EFFECT_FLAG="${3}"
@@ -694,6 +709,10 @@ run_psmac2_for_given_module() {
         mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
     elif [ "${SYSTYPE}" == "taurus" ]; then
         OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
+    elif [ "${SYSTYPE}" == "MBP" ]; then
+        # EXEC="./${PSMAC2EXEC##*/}"
+        # PARM="${PSMAC2PARAMETERS##*/}"
+        OMP_NUM_THREADS=$THREADS nice -n $NICE mpiexec -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
     fi
     RUNTIME=$SECONDS
     HOUR=$(($RUNTIME/3600))
@@ -714,9 +733,11 @@ echo -e "\nStart of program at $(date)\n"
 
 setup_system
 setup_toycluster
-# setup_gadget
+setup_gadget
 # echo "Press enter to continue" && read enterKey
-# setup_psmac2
+setup_psmac2
+
+# TODO: if directories do not exist the parameter is empty and echoing it makes no sense...
 
 case "${EFFECT}" in
     "DMrho")

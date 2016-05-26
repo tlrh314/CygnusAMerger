@@ -1,0 +1,62 @@
+--- This is Toycluster_IC, Version 2.0 ---
+Running with 4 Threads
+
+Reading Parameter file : ToyclusterTrial.par 
+
+Setting System of Units: 
+   Unit Length = 3.08568e+21 cm 
+   Unit Time   = 3.08568e+16 sec
+   Unit Mass   = 1.989e+43 g  
+   Unit Vel    = 100000 cm/s
+   Unit Density= 6.76991e-22 g/cm^3
+   Unit Energy = 1.989e+53 erg
+
+System at:   z = 0.0562 
+   H/100       = 0.7
+   Omega_M     = 0.3
+   rho_crit(0) = 9.20565e-30 g/cm^3
+   rho_crit(z) = 9.69793e-30 g/cm^3
+   mean mol. w.= 0.588235
+   E(z)        = 1.02639
+   Delta       = 103.09
+
+Halo Setup : <0>
+   Model             = rc from parameter file 
+   Sample Radius Gas = 6683.12 kpc
+   Sample Radius DM  = 3858.5 kpc
+   qmax              = 0.82603 
+   Mass              = 10275.6 10^10 MSol
+   Mass in DM        = 9008.68 10^10 MSol
+   Mass in Gas       = 1266.89 10^10 MSol
+   Mass in R200      = 6739 10^10 MSol
+   c_nfw             = 3 
+   R200              = 1028.96 kpc
+   a_hernquist       = 386.919 kpc
+   rho0_gas          = 3.86695e-26 g/cm^3
+   rho0_gas          = 0.000116571 [gadget]
+   beta              = 2/3 
+   rc                = 28.06 kpc
+   R500               = 607.874 kpc
+   bf_200          = 0.17 
+   bf_500          = 0.0949439 
+
+
+System Setup : 
+   Mass Ratio      = 0
+   Boxsize         = 7717 kpc
+   Total Mass      = 10275.6 10^10 Msol
+   Mass in Gas     = 1266.89 10^10 Msol
+   Mass in DM      = 9008.68 10^10 Msol
+   Mass Ratio      = 0
+   given bf        = 0.17
+   boxwide bf      = 0.140629
+   # of Particles  = 200000
+   Sph Part Mass   = 0.0126689 10^10 Msol
+   DM Part Mass    = 0.0900868 10^10 Msol
+   Npart Parent    =   100000,   100000 
+   Npart Bullet    =        0,        0 
+   Npart Total     =   100000,   100000
+
+
+Grav. Softening ~ 9.42562 kpc
+

@@ -2,7 +2,7 @@
 File: cluster.py
 Author: Timo L. R. Halbesma <timohalbesma@gmail.com>
 Date created: Tue May 17, 2016 01:59 pm
-Last modified: Wed May 18, 2016 09:21 pm
+Last modified: Wed May 25, 2016 02:42 pm
 
 
 """
@@ -45,7 +45,7 @@ class ObservedCluster(object):
         self.binsize = (self.outer_radius - self.inner_radius) * arcsec2kpc
 
     def __str__(self):
-        tmp = ""
+        tmp = "" + str(self.name)
 
         tmp += "\nbin_number\n" + str(self.bin_number)
         tmp += "\n\nbin_volume\n" + str(self.bin_volume)
@@ -398,8 +398,9 @@ class AnalyticalCluster(object):
                       2: r"cut-off double $\beta$-model"}
         self.modelname = modelnames[self.model]
 
-        self.M_dm = dm_parms[0]
-        self.a = dm_parms[1]
+        if dm_parms:
+            self.M_dm = dm_parms[0]
+            self.a = dm_parms[1]
 
         # self.get_r200()
 

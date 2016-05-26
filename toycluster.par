@@ -2,8 +2,10 @@
 
 Output_file ./IC_single_0   % Base name 
 
-Ntotal      2000000  % Total Number of Particles in R200
-Mtotal      1e4    % Total Mass in Code Units
+Ntotal      200000  % Total Number of Particles in R200
+% CygA gets Mtot = 6642 with c=3
+% CygB gets Mtot = ? with c=3
+Mtotal      6642 % Total Mass in Code Units
 
 Mass_Ratio  0.33333333      % set =0 for single cluster
 
@@ -30,23 +32,28 @@ UnitVelocity_in_cm_per_s     1e5                %  1 km/sec
 
 % cluster 0
 c_nfw_0     3
-v_com_0     200 
+v_com_0     0
 rc_0        28.06  % From fit to Chandra data. Do I believe this?
 
 % cluster 1
 c_nfw_1     3
-v_com_1     900     
+v_com_1     -1100
 rc_1        276.26  % From fit to Chandra data. Do I believe this?
 
 %% -DADD_THIRD_SUBHALO Options
 
-SubFirstMass 1e12
+%SubFirstMass 1e12
 
-SubFirstPos0 0
-SubFirstPos1 0
-SubFirstPos2 0
+%SubFirstPos0 0
+%SubFirstPos1 0
+%SubFirstPos2 0
 
-SubFirstVel0 0
-SubFirstVel1 0
-SubFirstVel2 0
+%SubFirstVel0 0
+%SubFirstVel1 0
+%SubFirstVel2 0
+
+%% -DDOUBLE_BETA_COOL_CORES Options
+
+%Rho0_Fac      50    % increase in Rho0
+%Rc_Fac        40    % decrease in Rcore
 

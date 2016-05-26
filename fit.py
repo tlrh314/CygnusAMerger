@@ -1,8 +1,10 @@
+import os
 import numpy
 import pandas
 import csv
 import scipy
 from scipy import stats
+from collections import OrderedDict
 
 import matplotlib
 matplotlib.rcParams.update({'font.size': 22})
@@ -21,6 +23,7 @@ from macro import *
 import globals
 from cosmology import CosmologyCalculator
 from ioparser import parse_toycluster_parms
+from ioparser import Toycluster2RuntimeOutputParser
 from cluster import ObservedCluster
 from cluster import AnalyticalCluster
 
@@ -375,9 +378,28 @@ def get_mass_profile(cluster, result):
     # pyplot.show()
 
 
+def write_parms_to_textfile(parms):
+    """ Write Toycluster parms (dict) to plain text file """
+
+    with open("ToyclusterTrial.par", "w") as f:
+        str=""
+        for k, v in parms.iteritems():
+            str += "{0} {1}\n".format(k, v)
+
+        # print "Toycluster parameters"
+        # print str
+
+        f.write(str)
+
+
 if __name__ == "__main__":
+    print "Reading Chandra Observed Density Profiles"
+    print 80*"-"
     cygA_observed = ObservedCluster("cygA")
     cygB_observed = ObservedCluster("cygB")
+    print cygA_observed
+    print cygB_observed
+    print 80*"-"
 
     fit = True
     if fit:
@@ -396,11 +418,11 @@ if __name__ == "__main__":
         cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.002, 1.])
         print 80*"-"
 
-    # Giving radius --> discrete (observed) radius; not 'continuous'
-    cygA_analytical = AnalyticalCluster(cygA_fit["x"], cygA_observed.radius)
-    cygB_analytical = AnalyticalCluster(cygB_fit["x"], cygB_observed.radius)
+        # Giving radius --> discrete (observed) radius; not 'continuous'
+        cygA_analytical = AnalyticalCluster(cygA_fit["x"], None, cygA_observed.radius)
+        cygB_analytical = AnalyticalCluster(cygB_fit["x"], None, cygB_observed.radius)
 
-    plot_fit = True
+    plot_fit = False
     if plot_fit:
         # Number density
         plot_fit_results(cygA_observed, cygA_analytical)
@@ -457,3 +479,63 @@ if __name__ == "__main__":
         print 80*"-"
 
     pyplot.show()
+
+    fit_toycluster = True
+    if fit_toycluster:
+        print "Fitting Toycluster calculated rho_0, rc to Chandra data"
+        print 80*"-"
+        print "CygA"
+        for M in xrange(6540, 6740, 1):
+            parms = OrderedDict({
+                ('Output_file', './IC_single_0'),
+                ('Ntotal', 200000),
+                ('Mtotal', 100000),
+                ('Mass_Ratio', 0),
+                ('ImpactParam', 0),
+                ('Cuspy', 1),
+                ('Redshift', 0.0562),
+                ('Bfld_Norm', 0),
+                ('Bfld_Eta', 0),
+                ('Bfld_Scale', 0),
+                ('bf', 0.17),
+                ('h_100', 0.7),
+                ('UnitLength_in_cm', "3.085678e+21"),
+                ('UnitMass_in_g', "1.989e+43"),
+                ('UnitVelocity_in_cm_per_s', 100000),
+                ('c_nfw_0', 3.0),
+                ('v_com_0', 0.0),
+                ('rc_0', 28.06),
+                ('c_nfw_1', 3.0),
+                ('v_com_1', -1100),
+                ('rc_1', 276.26)
+            })
+            parms['Mtotal'] = M
+
+            write_parms_to_textfile(parms)
+
+            # Run Toycluster
+            # os.system("some_command < input_file | another_command > output_file")
+            os.system("./NoParticles.sh")
+
+            # Read Toycluster output
+            tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
+            # rho0, rc, rcut, rho0_fac, rc_fac
+            # print tc
+
+            toycluster_rho0 = (tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3)
+            chandra_rho0 = cygA_analytical.rho0.value_in(units.g/units.cm**3)
+
+            epsilon = 0.0001
+            if (1-epsilon) < (toycluster_rho0  / chandra_rho0) < (1+epsilon):
+                print "For mass:", parms['Mtotal']
+                print "Chandra:", chandra_rho0
+                print "Toycluster:", toycluster_rho0
+                print
+                # break
+
+            # print "Trying mass:", parms['Mtotal'], "goal rho0:", chandra_rho0,
+            # print "toycluster rho0:", toycluster_rho0
+
+
+            # Fit rho_0, rc to the data
+        print 80*"-"

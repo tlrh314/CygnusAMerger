@@ -2,7 +2,7 @@
 File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Tue May 17, 2016 04:06 pm
+Last modified: Wed May 25, 2016 03:51 pm
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -311,8 +311,8 @@ class Toycluster2RuntimeOutputParser(object):
     WARNING! The numbers have huge rounding errors due to printing .4f or so!
     """
     def __init__(self, filename):
-        print "Parsing runtime output of Toycluster 2.0"
-        print "Warning: these values have rounding errors due to printing!\n"
+        # print "Parsing runtime output of Toycluster 2.0"
+        # print "Warning: these values have rounding errors due to printing!\n"
 
         # Set up dicts for different 'sections'
         self.units = dict()
