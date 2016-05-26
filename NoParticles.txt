@@ -22,41 +22,41 @@ System at:   z = 0.0562
 
 Halo Setup : <0>
    Model             = rc from parameter file 
-   Sample Radius Gas = 6683.12 kpc
-   Sample Radius DM  = 3858.5 kpc
-   qmax              = 0.82603 
-   Mass              = 10275.6 10^10 MSol
-   Mass in DM        = 9008.68 10^10 MSol
-   Mass in Gas       = 1266.89 10^10 MSol
-   Mass in R200      = 6739 10^10 MSol
+   Sample Radius Gas = 5307.87 kpc
+   Sample Radius DM  = 3064.5 kpc
+   qmax              = 0.826033 
+   Mass              = 5226.59 10^10 MSol
+   Mass in DM        = 4512.92 10^10 MSol
+   Mass in Gas       = 713.674 10^10 MSol
+   Mass in R200      = 3375.9 10^10 MSol
    c_nfw             = 3 
-   R200              = 1028.96 kpc
-   a_hernquist       = 386.919 kpc
-   rho0_gas          = 3.86695e-26 g/cm^3
-   rho0_gas          = 0.000116571 [gadget]
+   R200              = 817.201 kpc
+   a_hernquist       = 307.292 kpc
+   rho0_gas          = 5.51646e-28 g/cm^3
+   rho0_gas          = 1.66296e-06 [gadget]
    beta              = 2/3 
-   rc                = 28.06 kpc
-   R500               = 607.874 kpc
+   rc                = 237.377 kpc
+   R500               = 482.775 kpc
    bf_200          = 0.17 
-   bf_500          = 0.0949439 
+   bf_500          = 0.0747755 
 
 
 System Setup : 
    Mass Ratio      = 0
-   Boxsize         = 7717 kpc
-   Total Mass      = 10275.6 10^10 Msol
-   Mass in Gas     = 1266.89 10^10 Msol
-   Mass in DM      = 9008.68 10^10 Msol
+   Boxsize         = 6129 kpc
+   Total Mass      = 5226.59 10^10 Msol
+   Mass in Gas     = 713.674 10^10 Msol
+   Mass in DM      = 4512.92 10^10 Msol
    Mass Ratio      = 0
    given bf        = 0.17
-   boxwide bf      = 0.140629
+   boxwide bf      = 0.15814
    # of Particles  = 200000
-   Sph Part Mass   = 0.0126689 10^10 Msol
-   DM Part Mass    = 0.0900868 10^10 Msol
+   Sph Part Mass   = 0.00713674 10^10 Msol
+   DM Part Mass    = 0.0451292 10^10 Msol
    Npart Parent    =   100000,   100000 
    Npart Bullet    =        0,        0 
    Npart Total     =   100000,   100000
 
 
-Grav. Softening ~ 9.42562 kpc
+Grav. Softening ~ 7.48602 kpc
 

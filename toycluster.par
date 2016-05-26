@@ -3,8 +3,8 @@
 Output_file ./IC_single_0   % Base name 
 
 Ntotal      200000  % Total Number of Particles in R200
-% CygA gets Mtot = 6642 with c=3
-% CygB gets Mtot = ? with c=3
+% CygA:     Mtot = 6351.5 with c=3 and rc = 27.6453855153 kpc
+% CygB:     Mtot = 5.574  with c=3 and rc = 237.376653295 kpc
 Mtotal      6642 % Total Mass in Code Units
 
 Mass_Ratio  0.33333333      % set =0 for single cluster

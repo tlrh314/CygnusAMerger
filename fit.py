@@ -392,6 +392,78 @@ def write_parms_to_textfile(parms):
         f.write(str)
 
 
+def get_cluster_mass_from_toycluster(observed, analytical):
+    parms = OrderedDict({
+        ('Output_file', './IC_single_0'),
+        ('Ntotal', 200000),
+        ('Mtotal', 100000),
+        ('Mass_Ratio', 0),
+        ('ImpactParam', 0),
+        ('Cuspy', 1),
+        ('Redshift', 0.0562),
+        ('Bfld_Norm', 0),
+        ('Bfld_Eta', 0),
+        ('Bfld_Scale', 0),
+        ('bf', 0.17),
+        ('h_100', 0.7),
+        ('UnitLength_in_cm', "3.085678e+21"),
+        ('UnitMass_in_g', "1.989e+43"),
+        ('UnitVelocity_in_cm_per_s', 100000),
+        ('c_nfw_0', 3.0),
+        ('v_com_0', 0.0),
+        ('rc_0', 28.06),
+        ('c_nfw_1', 3.0),
+        ('v_com_1', -1100),
+        ('rc_1', 276.26)
+    })
+
+    # Adjust for cygA/cygB
+    parms['rc_0'] = analytical.rc
+    print parms['rc_0']
+
+    if observed.name == "cygA":
+        search_range = numpy.arange(6351, 6352, 0.1)
+        epsilon = 0.00001
+        # GETS 6351.5e10 MSun
+    elif observed.name == "cygB":
+        search_range = numpy.arange(3374, 3376, 0.1)
+        epsilon = 0.00001
+        # GETS 3374.7e10 MSun
+    else:
+        print "Incorrect clustername"
+        return None
+
+    for M in search_range:
+        parms['Mtotal'] = M
+
+        write_parms_to_textfile(parms)
+
+        # Run Toycluster
+        # os.system("some_command < input_file | another_command > output_file")
+        os.system("./NoParticles.sh")
+
+        # Read Toycluster output
+        tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
+        # rho0, rc, rcut, rho0_fac, rc_fac
+        # print tc
+
+        toycluster_rho0 = (tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3)
+        chandra_rho0 = analytical.rho0.value_in(units.g/units.cm**3)
+
+        if (1-epsilon) < (toycluster_rho0  / chandra_rho0) < (1+epsilon):
+            print "For mass:", parms['Mtotal']
+            print "Chandra    :", chandra_rho0
+            print "Toycluster :", toycluster_rho0
+            print
+            # break
+
+        # print "Trying mass:", parms['Mtotal'], "goal rho0:", chandra_rho0,
+        # print "toycluster rho0:", toycluster_rho0
+
+
+        # Fit rho_0, rc to the data
+
+
 if __name__ == "__main__":
     print "Reading Chandra Observed Density Profiles"
     print 80*"-"
@@ -438,16 +510,14 @@ if __name__ == "__main__":
         print "Obtaining observed mass profiles"
         print 80*"-"
         cygA_mass = get_mass_profile(cygA_observed, cygA_fit)
-        # cygB_mass = get_mass_profile(cygB_observed, cygA_fit)
+        cygB_mass = get_mass_profile(cygB_observed, cygA_fit)
         print 80*"-"
 
     plot_mass = False
     if plot_mass:
-        # get_mass_profile(cygA_observed, cygA_mass)
-        # get_mass_profile(cygB_observed, cygB_mass)
-        pass
-
-    # pyplot.show()
+        get_mass_profile(cygA_observed, cygA_mass)
+        get_mass_profile(cygB_observed, cygB_mass)
+        # pass
 
     todo = False
     if todo:
@@ -478,64 +548,14 @@ if __name__ == "__main__":
         get_cluster_mass_analytical(cygB_observed, cygB_fit)
         print 80*"-"
 
-    pyplot.show()
-
     fit_toycluster = True
     if fit_toycluster:
         print "Fitting Toycluster calculated rho_0, rc to Chandra data"
         print 80*"-"
         print "CygA"
-        for M in xrange(6540, 6740, 1):
-            parms = OrderedDict({
-                ('Output_file', './IC_single_0'),
-                ('Ntotal', 200000),
-                ('Mtotal', 100000),
-                ('Mass_Ratio', 0),
-                ('ImpactParam', 0),
-                ('Cuspy', 1),
-                ('Redshift', 0.0562),
-                ('Bfld_Norm', 0),
-                ('Bfld_Eta', 0),
-                ('Bfld_Scale', 0),
-                ('bf', 0.17),
-                ('h_100', 0.7),
-                ('UnitLength_in_cm', "3.085678e+21"),
-                ('UnitMass_in_g', "1.989e+43"),
-                ('UnitVelocity_in_cm_per_s', 100000),
-                ('c_nfw_0', 3.0),
-                ('v_com_0', 0.0),
-                ('rc_0', 28.06),
-                ('c_nfw_1', 3.0),
-                ('v_com_1', -1100),
-                ('rc_1', 276.26)
-            })
-            parms['Mtotal'] = M
-
-            write_parms_to_textfile(parms)
-
-            # Run Toycluster
-            # os.system("some_command < input_file | another_command > output_file")
-            os.system("./NoParticles.sh")
-
-            # Read Toycluster output
-            tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
-            # rho0, rc, rcut, rho0_fac, rc_fac
-            # print tc
-
-            toycluster_rho0 = (tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3)
-            chandra_rho0 = cygA_analytical.rho0.value_in(units.g/units.cm**3)
-
-            epsilon = 0.0001
-            if (1-epsilon) < (toycluster_rho0  / chandra_rho0) < (1+epsilon):
-                print "For mass:", parms['Mtotal']
-                print "Chandra:", chandra_rho0
-                print "Toycluster:", toycluster_rho0
-                print
-                # break
-
-            # print "Trying mass:", parms['Mtotal'], "goal rho0:", chandra_rho0,
-            # print "toycluster rho0:", toycluster_rho0
-
-
-            # Fit rho_0, rc to the data
+        get_cluster_mass_from_toycluster(cygA_observed, cygA_analytical)
+        print "CygB"
+        get_cluster_mass_from_toycluster(cygB_observed, cygB_analytical)
         print 80*"-"
+
+    pyplot.show()

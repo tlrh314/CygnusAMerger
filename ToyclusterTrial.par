@@ -4,8 +4,8 @@ Bfld_Scale 0
 UnitVelocity_in_cm_per_s 100000
 c_nfw_1 3.0
 v_com_0 0.0
-rc_0 28.06
-Mtotal 6739
+rc_0 237.376653295 kpc
+Mtotal 3375.9
 ImpactParam 0
 rc_1 276.26
 Bfld_Eta 0
