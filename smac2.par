@@ -96,10 +96,10 @@ UnitVelocity_in_cm_per_s     1e5                %  1 km/sec
 %  4 - Temperature
 %      0 - Mass Weighted
 %      1 - Sound Speed
-%      2 - Emission Weighted
+%      2 - Emission Weighted <---
 %      3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)  <---
 %  5 - Pressure
-%      0 - Thermal
+%      0 - Thermal <---
 %      1 - Magnetic
 %      2 - Turbulent
 %  6 - Magnetic Field (req -DBFLD)

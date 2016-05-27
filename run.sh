@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Fri May 20, 2016 11:45 am
+# Last modified: Thu May 26, 2016 03:46 pm
 #
 # Description: run simulation pipeline
 
@@ -769,8 +769,8 @@ case "${EFFECT}" in
         # 4 - Temperature
         #     3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)
         echo "Running P-Smac2 for Spectroscopic Temperature (Chandra)."
-        # run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
-        echo "TODO: there is a bug due to not having BFLD in snapshots!"
+        run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
+        # echo "TODO: there is a bug due to not having BFLD in snapshots!"
         exit 0
         ;;
     "all")

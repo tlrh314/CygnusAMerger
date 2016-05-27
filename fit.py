@@ -152,7 +152,7 @@ def obtain_mles(cluster, result):
 
     print cluster.name
     print "Results for the '{0}' model:".format("Cut-off beta")
-    print "  Using scipy.optimize.minimze to minimize chi^2 yields:"
+    print "  Using scipy.optimize.minimize to minimize chi^2 yields:"
     print "    n_e,0       = {0:.3f}".format(ml_vals[0])
     print "    r_c         = {0:.3f}".format(ml_vals[1])
     if len(ml_vals) == 3:
@@ -392,7 +392,13 @@ def write_parms_to_textfile(parms):
         f.write(str)
 
 
-def get_cluster_mass_from_toycluster(observed, analytical):
+def get_cluster_mass_from_toycluster(observed, analytical, verbose=False):
+    """ We have rho0 and r_c from Chandra data. We want Toycuster to give us
+        the same rho0. For which mass is this? We brute force which mass
+        to plug into Toycluster for a given r_c to match rho0.
+
+        Note that in order to run fast Toycluster should exit after
+        the setup only. (i.e. hack Toycluster executable!!). """
     parms = OrderedDict({
         ('Output_file', './IC_single_0'),
         ('Ntotal', 200000),
@@ -419,49 +425,52 @@ def get_cluster_mass_from_toycluster(observed, analytical):
 
     # Adjust for cygA/cygB
     parms['rc_0'] = analytical.rc
-    print parms['rc_0']
+    if verbose:
+        print "core radius:", parms['rc_0']
 
-    if observed.name == "cygA":
-        search_range = numpy.arange(6351, 6352, 0.1)
-        epsilon = 0.00001
-        # GETS 6351.5e10 MSun
-    elif observed.name == "cygB":
-        search_range = numpy.arange(3374, 3376, 0.1)
-        epsilon = 0.00001
-        # GETS 3374.7e10 MSun
-    else:
-        print "Incorrect clustername"
-        return None
+    write_parms_to_textfile(parms)
+    os.system("./NoParticles.sh")
+    tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
+    toycluster_rho0 = (tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3)
+    chandra_rho0 = analytical.rho0.value_in(units.g/units.cm**3)
+    epsilon = 0.01
+    mass_decrement = 0.9
+    epsilon_desired = 0.0000001
+    n=1
+    while epsilon > epsilon_desired:
+        while (toycluster_rho0  / chandra_rho0) > 1+epsilon:
+            parms['Mtotal'] *= mass_decrement
+            write_parms_to_textfile(parms)
+            os.system("./NoParticles.sh")
+            tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
+            toycluster_rho0 = (tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3)
+            chandra_rho0 = analytical.rho0.value_in(units.g/units.cm**3)
 
-    for M in search_range:
-        parms['Mtotal'] = M
+            if verbose:
+                print "Found mass :", parms['Mtotal'], "10^10 Msun"
+                print "Chandra    :", chandra_rho0
+                print "Toycluster :", toycluster_rho0
+                print "Ratio      :", toycluster_rho0/chandra_rho0
+                print
+
+        parms['Mtotal'] /= mass_decrement
+        mass_decrement = 10.**(-1.*n)*(-1.+10.**n)
+        n += 1
+        epsilon /= 10
+        if verbose:
+            print "Increasing mass to previous step. Going again."
+            print "decrement =", mass_decrement
+            print "epsilon   =", epsilon
+            raw_input("Press enter to continue")
+            print
 
         write_parms_to_textfile(parms)
-
-        # Run Toycluster
-        # os.system("some_command < input_file | another_command > output_file")
         os.system("./NoParticles.sh")
-
-        # Read Toycluster output
         tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
-        # rho0, rc, rcut, rho0_fac, rc_fac
-        # print tc
-
         toycluster_rho0 = (tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3)
         chandra_rho0 = analytical.rho0.value_in(units.g/units.cm**3)
 
-        if (1-epsilon) < (toycluster_rho0  / chandra_rho0) < (1+epsilon):
-            print "For mass:", parms['Mtotal']
-            print "Chandra    :", chandra_rho0
-            print "Toycluster :", toycluster_rho0
-            print
-            # break
-
-        # print "Trying mass:", parms['Mtotal'], "goal rho0:", chandra_rho0,
-        # print "toycluster rho0:", toycluster_rho0
-
-
-        # Fit rho_0, rc to the data
+    return parms['Mtotal']
 
 
 if __name__ == "__main__":
@@ -552,10 +561,21 @@ if __name__ == "__main__":
     if fit_toycluster:
         print "Fitting Toycluster calculated rho_0, rc to Chandra data"
         print 80*"-"
-        print "CygA"
-        get_cluster_mass_from_toycluster(cygA_observed, cygA_analytical)
-        print "CygB"
-        get_cluster_mass_from_toycluster(cygB_observed, cygB_analytical)
+        cygA_mass = get_cluster_mass_from_toycluster(cygA_observed, cygA_analytical)
+        print "M_CygA          =", cygA_mass, "10^10 MSun"
+        print "core radius     =", cygA_analytical.rc
+        print "Warning! Here c = 3"
+        print
+        cygB_mass = get_cluster_mass_from_toycluster(cygB_observed, cygB_analytical)
+        print "M_CygB          =", cygB_mass, "10^10 MSun"
+        print "core radius     =", cygB_analytical.rc
+        print "Warning! Here c = 3"
+
+        print
+        print "M_CygA/M_CygB   =", cygA_mass/cygB_mass
+        print "M_CygB/M_CygA   =", cygB_mass/cygA_mass
+        print "Mtotal          =", cygA_mass + cygB_mass
+
         print 80*"-"
 
     pyplot.show()
