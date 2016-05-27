@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# File: inventory.sh
+# File: ./inventory.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Thu May 19, 2016 10:31 am
-# Last modified: Fri May 27, 2016 04:33 pm
+# Last modified: Fri May 27, 2016 08:34 pm
 #
 # Description: Make table of all run simulation parameters
 
@@ -148,3 +148,5 @@ do
         echo
     fi
 done
+
+open -a /Applications/Microsoft\ Office\ 2008/Microsoft\ Excel.app/ "${INVENTORY}"
