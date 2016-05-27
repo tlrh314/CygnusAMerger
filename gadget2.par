@@ -34,7 +34,7 @@ PeriodicBoundariesOn     1
 %  Caracteristics of run
 
 TimeBegin                0.0
-TimeMax                  10.0  % in units of Gyr
+TimeMax                  5.0  % in units of Gyr
 
 Omega0                   0.3
 OmegaLambda              0.7
@@ -44,7 +44,7 @@ BoxSize                  18965  % kpc
 
 % Output frequency
 
-TimeBetSnapshot          0.125  % in code units of time (Gyr)
+TimeBetSnapshot          0.05  % in code units of time (Gyr)
 TimeOfFirstSnapshot      0.0
 
 CpuTimeBetRestartFile    18000  % here in seconds
@@ -90,7 +90,7 @@ MinGasTemp              0
 
 % Memory allocation
 
-PartAllocFactor        1.6
+PartAllocFactor        2
 TreeAllocFactor        0.8
 BufferSize             100          % in MByte
 
