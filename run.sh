@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Thu May 26, 2016 03:46 pm
+# Last modified: Fri May 27, 2016 11:35 pm
 #
 # Description: run simulation pipeline
 
@@ -659,6 +659,8 @@ set_psmac_parameterfile_snapshot_path() {
 
         echo -e "\nSetting Input_File to: /path/to/snapshot_000 /path/to/snapshot_max 1"
         perl -pi -e "s/Input_File.*/Input_File ${FIRST} ${LAST} 1/g" "${PSMAC2PARAMETERS}"
+        #For IC only
+        #perl -pi -e "s/Input_File.*/Input_File ${FIRST}/g" "${PSMAC2PARAMETERS}"
         grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
     fi
 }
@@ -685,7 +687,7 @@ run_psmac2_for_given_module() {
     grep -n --color=auto "Effect_Module" "${PSMAC2PARAMETERS}"
 
     echo -e "\nSetting Effect_Flag to: ${EFFECT_FLAG}"
-    perl -pi -e 's/Effect_Module.*/Effect_Module '${EFFECT_FLAG}'/g' "${PSMAC2PARAMETERS}"
+    perl -pi -e 's/Effect_Flag.*/Effect_Flag '${EFFECT_FLAG}'/g' "${PSMAC2PARAMETERS}"
     grep -n --color=auto "Effect_Flag" "${PSMAC2PARAMETERS}"
 
     echo "Generating DM fits file"
