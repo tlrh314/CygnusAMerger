@@ -393,6 +393,12 @@ def write_parms_to_textfile(parms):
 
 
 def get_cluster_mass_from_toycluster(observed, analytical, verbose=False):
+    """ We have rho0 and r_c from Chandra data. We want Toycuster to give us
+        the same rho0. For which mass is this? We brute force which mass
+        to plug into Toycluster for a given r_c to match rho0.
+
+        Note that in order to run fast Toycluster should exit after
+        the setup only. (i.e. hack Toycluster executable!!). """
     parms = OrderedDict({
         ('Output_file', './IC_single_0'),
         ('Ntotal', 200000),
