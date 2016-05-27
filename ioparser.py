@@ -2,7 +2,7 @@
 File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Wed May 25, 2016 03:51 pm
+Last modified: Fri May 27, 2016 09:41 pm
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -78,6 +78,8 @@ def unit_str_to_quantity(s):
         return units.erg(value)
     elif unit == "kpc":
         return units.kpc(value)
+    elif unit == "km/s":
+        return value | units.km/units.s
     elif unit == "MSol" or unit == "Msol":
         if factor != "10^10":
             raise ValueError("incorrect mass factor parsed. value={0}, factor={1}, unit={2}"\
@@ -243,6 +245,7 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
             if get_blockname(content)[0:4] == "HSML":
                 content = read_block(f)
                 self.hsml = numpy.frombuffer(content, dtype="float32", count=self.Ngas)
+            print
 
         # magnetic_field = False
         # if magnetic_field:
@@ -291,6 +294,7 @@ class Gadget2BinaryF77UnformattedType2Parser(object):
         tmp += str(self.hsml[0:10]) + "\n...\n" + str(self.hsml[-10:])
         tmp += "\n\nU\n"
         tmp += str(self.u[0:10]) + "\n...\n" + str(self.u[-10:])
+        tmp += "\n"
         # tmp += "\n\nBFLD\n"
         # tmp += str(self.bfld[0:10]) + "\n...\n" + str(self.bfld[-10:])
 
@@ -320,6 +324,7 @@ class Toycluster2RuntimeOutputParser(object):
         self.systemsetup = dict()
         self.halosetup = dict()
         self.halosampling = dict()
+        self.kinematics = dict()
         # self.halo0_sampling = dict()
         # self.halo1_sampling = dict()
         # self.halo1_sampling['i'] = None
@@ -348,11 +353,15 @@ class Toycluster2RuntimeOutputParser(object):
                 self.systemsetup['i'] = i
             if line.startswith("Grav. Softening"):
                 self.grav_softening = unit_str_to_quantity(line.split(" ~ ")[-1].strip())
+            if line.startswith("Kinematics of Collision :"):
+                self.kinematics['i'] = i
 
         self.parse_units()
         self.parse_systemat()
         self.parse_halosetup()
         self.parse_systemsetup()
+        if 0 < self.systemsetup['Mass_Ratio'] < 1:
+            self.parse_kinematics()
         # self.parse_halo0_sampling()
 
     def split(self, s):
@@ -361,7 +370,6 @@ class Toycluster2RuntimeOutputParser(object):
 
     def parse_units(self):
         """ Parse block that contains system of units. """
-        # TODO: store these data in a dictionary instead of instance attributes
         lines = self.lines
 
         # Set Unit parameters
@@ -375,7 +383,6 @@ class Toycluster2RuntimeOutputParser(object):
 
     def parse_systemat(self):
         """ Parse block with cosmological (system at) parameters. """
-        # TODO: store these data in a dictionary instead of instance attributes
         lines = self.lines
 
         # Set System At parameters
@@ -419,7 +426,6 @@ class Toycluster2RuntimeOutputParser(object):
 
     def parse_systemsetup(self):
         """ Parse block that contains the system setup parameters. """
-        # TODO: store these data in a dictionary instead of instance attributes
         lines = self.lines
 
         # Set System Setup parameters
@@ -439,6 +445,23 @@ class Toycluster2RuntimeOutputParser(object):
         self.systemsetup['npart_partent'] = lines[i+12].split("=")[-1].strip()
         self.systemsetup['npart_bullet'] = lines[i+13].split("=")[-1].strip()
         self.systemsetup['npart_total'] = lines[i+14].split("=")[-1].strip()
+
+    def parse_kinematics(self):
+        """ Parse block with kinematics parameters """
+        lines = self.lines
+
+        # Set Kinematics parameters
+        i = self.kinematics['i']
+        self.kinematics['Zero-E_fraction'] = float(lines[i+1].split("=")[-1].strip())
+        self.kinematics['Initial_Distance'] = unit_str_to_quantity(lines[i+2].split("=")[-1].strip())
+        self.kinematics['D_CoM_0'] = unit_str_to_quantity(lines[i+3].split("=")[-1].strip())
+        self.kinematics['D_CoM_1'] = unit_str_to_quantity(lines[i+4].split("=")[-1].strip())
+        self.kinematics['v_CoM_0'] = unit_str_to_quantity(lines[i+5].split("=")[-1].strip())
+        self.kinematics['v_CoM_1'] = unit_str_to_quantity(lines[i+6].split("=")[-1].strip())
+        # Note: empty line in Toycluster output!
+        self.kinematics['Impact_Parameter'] =  unit_str_to_quantity(lines[i+8].split("=")[-1].strip())
+        self.kinematics['b_CoM_0'] = unit_str_to_quantity(lines[i+9].split("=")[-1].strip())
+        self.kinematics['b_CoM_1'] = unit_str_to_quantity(lines[i+10].split("=")[-1].strip())
 
     def parse_halo0_sampling(self):
         """ Parse block with halo parameters after sph regularisation (?) """
@@ -466,6 +489,9 @@ class Toycluster2RuntimeOutputParser(object):
         tmp += self.str_systemat()
         tmp += self.str_halosetup()
         tmp += self.str_systemsetup()
+        tmp += self.str_grav_softening()
+        if 0 < self.systemsetup['Mass_Ratio'] < 1:
+            tmp += self.str_kinematics()
         return tmp
 
     def str_units(self):
@@ -531,10 +557,26 @@ class Toycluster2RuntimeOutputParser(object):
         tmp += "    Npart Total       = " + str(self.systemsetup['npart_total']) + "\n\n"
         return tmp
 
-        # tmp += "Grav. Softening ~ {0}".format(self.grav_softening)
-        # tmp += "\n\n"
+    def str_grav_softening(self):
+        tmp = "Grav. Softening ~ {0}\n\n".format(self.grav_softening)
 
         return tmp
+
+    def str_kinematics(self):
+        tmp = self.lines[self.kinematics['i']].strip() + "\n"
+        tmp += "    Zero-E fraction    = " + str(self.kinematics['Zero-E_fraction']) + "\n"
+        tmp += "    Initial Distance   = " + str(self.kinematics['Initial_Distance']) + "\n"
+        tmp += "    CoM Distance of <0>= " + str(self.kinematics['D_CoM_0']) + "\n"
+        tmp += "    CoM Distance of <1>= " + str(self.kinematics['D_CoM_1']) + "\n"
+        tmp += "    CoM Velocity of <0>= " + str(self.kinematics['v_CoM_0']) + "\n"
+        tmp += "    CoM Velocity of <1>= " + str(self.kinematics['v_CoM_1']) + "\n"
+        tmp += "\n"
+        tmp += "    Impact Parameter   = " + str(self.kinematics['Impact_Parameter']) + "\n"
+        tmp += "    CoM Impact of <0>  = " + str(self.kinematics['b_CoM_0']) + "\n"
+        tmp += "    CoM Impact of <1>  = " + str(self.kinematics['b_CoM_1']) + "\n\n"
+
+        return tmp
+
 
 def parse_toycluster_parms(filename):
     parameters = dict()
@@ -563,13 +605,16 @@ if __name__ == '__main__':
         print key, "=", value
     print 80*'-'
 
-    print "Parsing Toycluster output"
+    print "Parsing Toycluster output: single cluster (Xm = 0)"
     print 80*'-'
     log = Toycluster2RuntimeOutputParser("../runs/test/runToycluster_single.log")
     print log
     data = Gadget2BinaryF77UnformattedType2Parser("../runs/test/IC_single_0")
     print data
+    print 80*'-'
 
+    print "Parsing Toycluster output: two clusters (Xm != 0)"
+    print 80*'-'
     log = Toycluster2RuntimeOutputParser("../runs/test/runToycluster_double.log")
     print log
     data = Gadget2BinaryF77UnformattedType2Parser("../runs/test/IC_double_0")
