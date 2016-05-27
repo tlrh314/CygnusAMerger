@@ -207,3 +207,5 @@ IC_single_0
 data
 *.dat
 out
+run.sh.[eo]*
+NoParticles.txt
