@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-#PBS -lnodes=2:ppn=16:cores16
-#PBS -lwalltime=23:00:00
+#PBS -lnodes=4:ppn=16:cores16
+#PBS -lwalltime=03:00:00
 
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Fri May 27, 2016 11:35 pm
+# Last modified: Sat May 28, 2016 01:31 AM
 #
 # Description: run simulation pipeline
 
@@ -148,9 +148,12 @@ setup_system() {
     if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
         # TODO: check how multiple threas/nodes works on Lisa?
         # TODO: is the PBS situation the scheduler that also sets nodes/threads?
-        THREADS=$(grep -c ^processor /proc/cpuinfo)
+        # THREADS=$(grep -c ^processor /proc/cpuinfo)
+        THREADS=64  # set based on the nr of nodes requested
         NICE=0  # default is 0
         BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
+        TIMESTAMP="20160519T1749"  # qsub no parse options..
+        MAIL=true
         # TODO: I think home should not be used, instead use scratch??
         module load c/intel
         module load fftw2/sp/intel
@@ -524,6 +527,9 @@ check_gadget_run() {
 }
 
 setup_psmac2() {
+    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+        return
+    fi
     PSMAC2DIR="${BASEDIR}/P-Smac2"
     PSMAC2LOGFILENAME="runPSmac2.log"
 
