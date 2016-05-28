@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Sat May 28, 2016 01:31 AM
+# Last modified: Sat May 28, 2016 03:30 PM
 #
 # Description: run simulation pipeline
 
@@ -40,7 +40,8 @@ parameter to the runscript. Leaving it blank results in a new simulation.
 
 Options:
   -e   --effect         select which observable to calculate using P-Smac2
-                        valid options: "DMrho", "DMan", "xray", "SZ", "T", "all"
+                        valid options: "rho", "xray", "Tem", "Tspec", "Pth",
+                                       "SZy", "SZdt", "DMrho", "DMan", "all"
   -h   --help           display this help and exit
   -l   --loglevel       set loglevel to 'ERROR', 'WARNING', 'INFO', 'DEBUG'
                         TODO: to implement loglevel (do I want this?)
@@ -160,7 +161,7 @@ setup_system() {
         module load fftw2/dp/intel
         module load openmpi/intel
     elif [ "${SYSTYPE}" == "taurus" ]; then
-        THREADS=8
+        THREADS=16
         NICE=19
         BASEDIR="/scratch/timo"
     elif [ "$(uname -s)" == "Darwin" ]; then
@@ -668,67 +669,116 @@ set_psmac_parameterfile_snapshot_path() {
         #For IC only
         #perl -pi -e "s/Input_File.*/Input_File ${FIRST}/g" "${PSMAC2PARAMETERS}"
         grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
+        echo
     fi
 }
 
 run_psmac2_for_given_module() {
     check_psmac2_generic_runtime_files
-    SMAC_PREFIX="${1}"
-    EFFECT_MODULE="${2}"
-    EFFECT_FLAG="${3}"
+    for PROJECTION in x y z; do
+        SMAC_PREFIX="${1}_projection-${PROJECTION}"
+        EFFECT_MODULE="${2}"
+        EFFECT_FLAG="${3}"
 
-    PSMAC2PARAMETERS="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2PARAMETERSNAME}"
-    PSMAC2LOGFILE="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2LOGFILENAME}"
-    cp "${ANALYSISDIR}/${PSMAC2PARAMETERSNAME}" "${PSMAC2PARAMETERS}"
+        PSMAC2PARAMETERS="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2PARAMETERSNAME}"
+        PSMAC2LOGFILE="${ANALYSISDIR}/${SMAC_PREFIX}_${PSMAC2LOGFILENAME}"
+        cp "${ANALYSISDIR}/${PSMAC2PARAMETERSNAME}" "${PSMAC2PARAMETERS}"
 
-    # Set smac2.par to run DM, change outputfile and logfile
-    # Match line containing Output_File; set fits output name
-    OUTPUTFILE="${SMAC_PREFIX}.fits"
-    echo -e "\nSetting Output_File to: ${OUTPUTFILE}"
-    perl -pi -e 's/Output_File.*/Output_File '${OUTPUTFILE}'/g' "${PSMAC2PARAMETERS}"
-    grep -n --color=auto "Output_File" "${PSMAC2PARAMETERS}"
+        if [ "${PROJECTION}" == "x" ]; then
+            echo "  Running x-projection: [deg] along x : (0,90,90)"
+            Euler_Angle_0="0"
+            Euler_Angle_1="90"
+            Euler_Angle_2="90"
+        elif [ "${PROJECTION}" == "y" ]; then
+            echo "   Running y-projection: [deg] along y : (0,90,0)"
+            Euler_Angle_0="0"
+            Euler_Angle_1="90"
+            Euler_Angle_2="0"
+        elif [ "${PROJECTION}" == "z" ]; then
+            echo  "  Running z-projection: [deg] along z : (0,0,0)"
+            Euler_Angle_0="0"
+            Euler_Angle_1="0"
+            Euler_Angle_2="0"
+        else
+            echo "Error: unknown projection angle!"
+        fi
 
-    echo -e "\nSetting Effect_Module to: ${EFFECT_MODULE}"
-    perl -pi -e 's/Effect_Module.*/Effect_Module '${EFFECT_MODULE}'/g' "${PSMAC2PARAMETERS}"
-    grep -n --color=auto "Effect_Module" "${PSMAC2PARAMETERS}"
+        # echo "    Setting Euler_Angle_0 to: ${Euler_Angle_0}"
+        perl -pi -e 's/^Euler_Angle_0.*/Euler_Angle_0 '${Euler_Angle_0}'/g' "${PSMAC2PARAMETERS}"
 
-    echo -e "\nSetting Effect_Flag to: ${EFFECT_FLAG}"
-    perl -pi -e 's/Effect_Flag.*/Effect_Flag '${EFFECT_FLAG}'/g' "${PSMAC2PARAMETERS}"
-    grep -n --color=auto "Effect_Flag" "${PSMAC2PARAMETERS}"
+        # echo "    Setting Euler_Angle_1 to: ${Euler_Angle_1}"
+        perl -pi -e 's/^Euler_Angle_1.*/Euler_Angle_1 '${Euler_Angle_1}'/g' "${PSMAC2PARAMETERS}"
 
-    echo "Generating DM fits file"
-    echo "Analysis dir    : ${ANALYSISDIR}"
-    echo "Effect_Module   : ${EFFECT_MODULE}"
-    echo "Effect_Flag     : ${EFFECT_FLAG}"
-    echo "Logging to      : ${PSMAC2LOGFILE}"
-    echo "Parameterfile   : ${PSMAC2PARAMETERS}"
-    echo "Output fits file: ${OUTPUTFILE}"
+        # echo "    Setting Euler_Angle_2 to: ${Euler_Angle_2}"
+        perl -pi -e 's/^Euler_Angle_2.*/Euler_Angle_2 '${Euler_Angle_2}'/g' "${PSMAC2PARAMETERS}"
 
-    if [ ! -f "${PSMAC2PARAMETERS}" ]; then
-        echo "Error: ${PSMAC2PARAMETERS} does not exist!"
-        exit 1
-    fi
+        # Set smac2.par to run DM, change outputfile and logfile
+        # Match line containing Output_File; set fits output name
+        OUTPUTFILE="${SMAC_PREFIX}.fits"
+        # echo "    Setting Output_File to: ${OUTPUTFILE}"
+        perl -pi -e 's/Output_File.*/Output_File '${OUTPUTFILE}'/g' "${PSMAC2PARAMETERS}"
 
-    echo "Running P-Smac2..."
-    cd "${ANALYSISDIR}"
-    SECONDS=0
-    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
-        # the pee-bee-es situation fixes nodes/threads?
-        mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
-    elif [ "${SYSTYPE}" == "taurus" ]; then
-        OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" 2>&1 >> "${PSMAC2LOGFILE}"
-    elif [ "${SYSTYPE}" == "MBP" ]; then
-        # EXEC="./${PSMAC2EXEC##*/}"
-        # PARM="${PSMAC2PARAMETERS##*/}"
-        OMP_NUM_THREADS=$THREADS nice -n $NICE mpiexec -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
-    fi
-    RUNTIME=$SECONDS
-    HOUR=$(($RUNTIME/3600))
-    MINS=$(( ($RUNTIME%3600) / 60))
-    SECS=$(( ($RUNTIME%60) ))
-    printf "Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
+        # echo "    Setting Effect_Module to: ${EFFECT_MODULE}"
+        perl -pi -e 's/Effect_Module.*/Effect_Module '${EFFECT_MODULE}'/g' "${PSMAC2PARAMETERS}"
 
-    echo "... done running P-Smac2"
+
+        # echo "    Setting Effect_Flag to: ${EFFECT_FLAG}"
+        perl -pi -e 's/Effect_Flag.*/Effect_Flag '${EFFECT_FLAG}'/g' "${PSMAC2PARAMETERS}"
+
+        echo
+        echo "    Analysis dir    : ${ANALYSISDIR}"
+        echo "    Parameterfile   : ${PSMAC2PARAMETERS}"
+        echo "    Logging to      : ${PSMAC2LOGFILE}"
+        echo "    Output fits file: ${OUTPUTFILE}"
+        echo "    Effect_Module   : ${EFFECT_MODULE}"
+        echo "    Effect_Flag     : ${EFFECT_FLAG}"
+        echo "    Projection      : ${PROJECTION}"
+        echo "    Euler_Angle_0   : ${Euler_Angle_0}"
+        echo "    Euler_Angle_1   : ${Euler_Angle_1}"
+        echo "    Euler_Angle_2   : ${Euler_Angle_2}"
+
+        echo
+        echo "    Checking ${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "Output_File" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "Effect_Module" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "Effect_Flag" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "^Euler_Angle_0" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "^Euler_Angle_1" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "^Euler_Angle_2" "${PSMAC2PARAMETERS}"
+        echo
+
+        if [ ! -f "${PSMAC2PARAMETERS}" ]; then
+            echo "Error: ${PSMAC2PARAMETERS} does not exist!"
+            exit 1
+        fi
+
+        echo "    Running P-Smac2..."
+        cd "${ANALYSISDIR}"
+        SECONDS=0
+        if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+            # the pee-bee-es situation fixes nodes/threads?
+            mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
+        elif [ "${SYSTYPE}" == "taurus" ]; then
+            OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1 
+        elif [ "${SYSTYPE}" == "MBP" ]; then
+            # EXEC="./${PSMAC2EXEC##*/}"
+            # PARM="${PSMAC2PARAMETERS##*/}"
+            OMP_NUM_THREADS=$THREADS nice -n $NICE mpiexec -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
+        fi
+        RUNTIME=$SECONDS
+        HOUR=$(($RUNTIME/3600))
+        MINS=$(( ($RUNTIME%3600) / 60))
+        SECS=$(( ($RUNTIME%60) ))
+        printf "      Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
+
+        echo "    ... done running P-Smac2"
+    done
 }
 
 
@@ -748,6 +798,53 @@ setup_psmac2
 # TODO: if directories do not exist the parameter is empty and echoing it makes no sense...
 
 case "${EFFECT}" in
+    "rho")
+        echo "Running P-Smac2 for physical density."
+        #  0 - Physical Density [g/cm^2]; no Flag
+        run_psmac2_for_given_module "physical-density" "0" "0"
+        exit 0
+        ;;
+    "xray")
+        # 2 - X-Ray Surface Brightness; no Flag
+        echo "Running P-Smac2 for X-Ray Surface Brightness."
+        run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
+        exit 0
+        ;;
+    "Tem")
+        # 4 - Temperature
+        #     2 - Emission Weighted
+        echo "Running P-Smac2 for Emission Weighted Temperature."
+        run_psmac2_for_given_module "temperature-emission-weighted" "4" "2"
+        exit 0
+        ;;
+    "Tspec")
+        # 4 - Temperature
+        #     3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)
+        echo "Running P-Smac2 for Spectroscopic Temperature (Chandra)."
+        run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
+        exit 0
+        ;;
+    "Pth")
+        # 5 - Pressure
+        #     0 - Thermal
+        echo "Running P-Smac2 for Thermal Pressure."
+        run_psmac2_for_given_module "presssure" "5" "0"
+        exit 0
+        ;;
+    "SZy")
+        # 7 - SZ Effect
+        #     0 - Compton-y (=Smac1 thermal DT/T)
+        echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Compton-y parameter."
+        run_psmac2_for_given_module "SZ-Compton-y" "7" "0"
+        exit 0
+        ;;
+    "SZdt")
+        # 7 - SZ Effect
+        #     1 - Thermal SZ DT/T
+        echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Thermal, DT/T"
+        run_psmac2_for_given_module "sz-thermal-dt-over-t" "7" "1"
+        exit 0
+        ;;
     "DMrho")
         echo "Running P-Smac2 for Dark Matter density."
         # 10 - DM Density; no Flag
@@ -760,36 +857,34 @@ case "${EFFECT}" in
         run_psmac2_for_given_module "dm-annihilation" "11" "0"
         exit 0
         ;;
-    "xray")
-        # 2 - X-Ray Surface Brightness; no Flag
+    "all")
+        echo "Running P-Smac2 for physical density."
+        run_psmac2_for_given_module "physical-density" "0" "0"
+
         echo "Running P-Smac2 for X-Ray Surface Brightness."
         run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
-        exit 0
-        ;;
-    "SZ")
-        # 7 - SZ Effect
-        #     0 - Compton-y (=Smac1 thermal DT/T)
-        echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Compton-y parameter."
-        run_psmac2_for_given_module "SZ-Compton-y" "7" "0"
-        exit 0
-        ;;
-    "T")
-        # 4 - Temperature
-        #     3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)
+
+        echo "Running P-Smac2 for Emission Weighted Temperature."
+        run_psmac2_for_given_module "temperature-emission-weighted" "4" "2"
+
         echo "Running P-Smac2 for Spectroscopic Temperature (Chandra)."
         run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
-        # echo "TODO: there is a bug due to not having BFLD in snapshots!"
-        exit 0
-        ;;
-    "all")
-        run_psmac2_for_given_module "dm-density" "10" "0"
+
+        echo "Running P-Smac2 for Thermal Pressure."
+        run_psmac2_for_given_module "presssure" "5" "0"
+
+        echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Compton-y parameter."
+        run_psmac2_for_given_module "sz-compton-y" "7" "0"
+
+        echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Thermal, DT/T"
+        run_psmac2_for_given_module "sz-thermal-dt-over-t" "7" "1"
+
+        echo "Running P-Smac2 for Dark Matter density."
+        #run_psmac2_for_given_module "dm-density" "10" "0"
+
+        echo "Running P-Smac2 for Dark Matter Annihilation."
         run_psmac2_for_given_module "dm-annihilation" "11" "0"
-        run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
-        run_psmac2_for_given_module "SZ-Compton-y" "7" "0"
-        # run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
 esac
-
-
 
 if [ "$MAIL" = true ]; then
     send_mail
