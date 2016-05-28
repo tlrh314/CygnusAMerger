@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# File: ./CygnusAMerger/sync_taurus_lisa.sh
+# File: sync_taurus_lisa.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Sat Apr 23, 2016 11:09 PM
 # Last modified:
@@ -48,7 +48,7 @@ elif [ "$(uname -s)" == "Darwin" ]; then
     echo "TAURUSDIR = ${TAURUSDIR}"
     echo "RUNDIR    = ${RUNDIR}"
     rsync -auHxz --progress taurus:"${TAURUSDIR}" "${RUNDIR}"
-    rsync -auHxz --progress "${RUNDIR}" taurus:"${TAURUSDIR}"
+    # rsync -auHxz --progress "${RUNDIR}" taurus:"${TAURUSDIR}"
 
     ZOLTANDIR="/media/WD30EFRX/Backups/Masterproject/"
     echo "Backing up to ZoltaN"
