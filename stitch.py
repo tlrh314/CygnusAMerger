@@ -6,6 +6,70 @@ import matplotlib.gridspec as gridspec
 # pyplot.rcParams.update({"text.usetex": True})
 from astropy.io import fits
 
+# http://www.ifweassume.com/2014/04/cubehelix-colormap-for-python.html
+# https://github.com/jradavenport/cubehelix
+import cubehelix
+
+def helix_tables(module, flag, inv=False, values=None):
+    """ Port of P-Smac2/lib/idl/helix_tables.pro of P-Smac colormaps.
+
+        @param module --> int, corresponds to P-Smac2 module
+        @param flag   --> int, corresponds to P-Smac2 flag
+        @param inv    --> bool, invert colormap
+        @param values --> iterable of length 4, use given values instead
+
+        Cubehelix parameters: [ start, rots, hue, gamma]
+        returns a cubehelix colormap ready to use in e.g. pyplot :-) """
+
+    nModule = 15
+    nFlag = 15
+    setup = numpy.zeros((4, nModule, nFlag), dtype=numpy.float)
+
+    # std values
+    for i in range(0, nModule-1):
+        for j in range(0, nFlag-1):
+            setup[:,i,j] = [ -0, 0, 2.5, 1 ]
+
+    # density
+    setup[:, 0, 0] = [ 3, 3, 3, 2 ]
+
+    # velocities
+    setup[:, 1, 0] = [ 1, 1.5, 2, 1 ]
+
+    # x-rays
+    setup[:, 2, 0] = [ 2, -2, 3, 1 ]
+
+    # Temperature
+    setup[:, 4, 0] = [ 0.9, 0, 1, 1 ]     # Mass Weighted
+    setup[:, 4, 1] = [ 1, 0, 1, 1 ]       # Sound Speed
+    setup[:, 4, 2] = [ 1, 0, 1, 1 ]       # Emission Weighted
+    setup[:, 4, 3] = [ 1.3, -0.5, 2, 2 ]  # Spectroscopic
+
+    # Pressure
+    setup[:, 5, 0] = [ 0, 3, 1, 1 ]
+
+    # magnetic field
+    setup[:, 6, 0] = [ 3, 0, 3, 2]
+
+    # Compton-Y / SZ
+    setup[:, 7, 0] = [ 3, -1, 4, 1 ]
+    setup[:, 7, 1] = [ 2, 1, 4, 1 ]
+
+    # Dm density
+    setup[:, 10, 0] = [ 3, -1, 4, 1 ]
+    setup[:, 11, 0] = [ 1, 0, 1.4, 1 ]
+
+    if values:
+        setup[:, module, flag] = values
+
+    # set
+    start, rots, hue, gamma = setup[:, module, flag]
+    # Cubehelix guy changed "hue" to "sat".
+    cx = cubehelix.cmap(start=start, rot=rots, sat=hue, gamma=gamma, reverse=inv)
+
+    return cx
+
+
 def make_video(analysis_dir):
     """ Make a video of four physical properties (options) """
     def plot_panels(chosen):
@@ -14,17 +78,25 @@ def make_video(analysis_dir):
 
         headers = []
         data = []
+        cmap = []
         for option in chosen:
             with fits.open(analysis_dir+option+projection+".fits.fz") as f:
                 headers.append(f[0].header)
                 data.append(f[0].data)
 
+                # Set colourtable based on what the fits header says it is
+                for line in repr(f[0].header).split("\n"):
+                    if "Effect_Module" in line:
+                        module = line.strip().split("=")[-1].strip().split("/")[0]
+                    if "Effect_Flag" in line:
+                        flag = line.strip().split("=")[-1].strip().split("/")[0]
+                cmap.append(helix_tables(module, flag))
+
         number_of_snapshots = headers[0]['NAXIS3']
         # number_of_pixels_x = headers[0]['NAXIS1']
         # number_of_pixels_y = headers[0]['NAXIS2']
         # See entire header, including comments starting with "/"
-        # for line in repr(headers[0]).split("\n"):
-        #    print line
+
         for n in range(number_of_snapshots):
             # Set up four-panel plot, stitched together
             pyplot.figure(figsize=(16,16))
@@ -39,7 +111,7 @@ def make_video(analysis_dir):
                 ax.set_aspect('equal')
 
                 # Plot every panel
-                ax.imshow(data[i][n])
+                ax.imshow(data[i][n], cmap=cmap[i])
 
             pyplot.tight_layout()
             pyplot.savefig("out/snapshot_{0:03d}.png".format(n))
