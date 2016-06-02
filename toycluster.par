@@ -3,13 +3,14 @@
 Output_file ./IC_single_0   % Base name 
 
 Ntotal      2000000  % Total Number of Particles in R200
-Mtotal      9726.19003341   % Total Mass in Code Units
+Mtotal      100000   % Total Mass in Code Units
 % CygA:     Mtot = 6351.51228994 with c=3 and rc = 27.6453855153 kpc
 % CygB:     Mtot = 3374.67774347 with c=3 and rc = 237.376653295 kpc
 
-Mass_Ratio  0.531318777232      % set =0 for single cluster
+Mass_Ratio  0        % set =0 for single cluster
 
 ImpactParam 0
+ZeroEOrbitFrac 0.1
 
 Cuspy       1        % Use cuspy model (rc /= 10)
 
@@ -31,14 +32,14 @@ UnitVelocity_in_cm_per_s     1e5                %  1 km/sec
 %% here some more merger parameters can be set by hand
 
 % cluster 0
-c_nfw_0     3              % TODO 
-v_com_0     300
-rc_0        27.6453855153  % From fit to Chandra data. Do I believe this?
+%c_nfw_0     3              % TODO 
+%v_com_0     300
+%rc_0        27.6453855153  % From fit to Chandra data. Do I believe this?
 
 % cluster 1
-c_nfw_1     3              % TODO
-v_com_1     -2350
-rc_1        237.376653295  % From fit to Chandra data. Do I believe this?
+%c_nfw_1     3              % TODO
+%v_com_1     -2350
+%rc_1        237.376653295  % From fit to Chandra data. Do I believe this?
 
 %% -DADD_THIRD_SUBHALO Options
 
