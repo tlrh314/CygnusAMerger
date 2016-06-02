@@ -79,6 +79,7 @@ def make_video(analysis_dir):
         headers = []
         data = []
         cmap = []
+        names = []
         for option in chosen:
             with fits.open(analysis_dir+option+projection+".fits.fz") as f:
                 headers.append(f[0].header)
@@ -90,13 +91,19 @@ def make_video(analysis_dir):
                         module = line.strip().split("=")[-1].strip().split("/")[0]
                     if "Effect_Flag" in line:
                         flag = line.strip().split("=")[-1].strip().split("/")[0]
+                    if "XYSize" in line:
+                        scale = line.strip().split("=")[-1].strip().split("/")[0]
+                    if "Description" in line:
+                        names.append(line.strip().split("/")[-1])
                 cmap.append(helix_tables(module, flag))
+        scale = "[{0:.1f} Mpc]^2".format(float(scale)/1000)
 
         number_of_snapshots = headers[0]['NAXIS3']
-        # number_of_pixels_x = headers[0]['NAXIS1']
-        # number_of_pixels_y = headers[0]['NAXIS2']
+        xlen = headers[0]['NAXIS1']
+        ylen = number_of_pixels_y = headers[0]['NAXIS2']
         # See entire header, including comments starting with "/"
 
+        pad = 4  # number of pixels padding for text placement
         for n in range(number_of_snapshots):
             # Set up four-panel plot, stitched together
             pyplot.figure(figsize=(16,16))
@@ -111,8 +118,20 @@ def make_video(analysis_dir):
                 ax.set_aspect('equal')
 
                 # Plot every panel
-                ax.imshow(data[i][n], cmap=cmap[i])
+                if i != 0:
+                    ax.imshow(numpy.log(data[i][n]), cmap=cmap[i])
+                else:
+                    ax.imshow(data[i][n], cmap=cmap[i])
+                pyplot.text(pad if i%2==0 else xlen-pad, pad,
+                            names[i], color="white", size=22,
+                            horizontalalignment="left" if i%2==0 else "right",
+                            verticalalignment="top")
+            pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=22,
+                        horizontalalignment="right", verticalalignment="bottom")
 
+            # pyplot.suptitle("T = {0:05.2f} Myr".format(0.05*n),
+            pyplot.suptitle("T = {0:04.2f} Myr".format(0.05*n),
+                color="white", size=30)
             pyplot.tight_layout()
             pyplot.savefig("out/snapshot_{0:03d}.png".format(n))
             pyplot.close()
