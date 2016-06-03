@@ -10,6 +10,8 @@ from astropy.io import fits
 # https://github.com/jradavenport/cubehelix
 import cubehelix
 
+from ioparser import parse_gadget_parms
+
 def helix_tables(module, flag, inv=False, values=None):
     """ Port of P-Smac2/lib/idl/helix_tables.pro of P-Smac colormaps.
 
@@ -70,72 +72,89 @@ def helix_tables(module, flag, inv=False, values=None):
     return cx
 
 
-def make_video(analysis_dir):
-    """ Make a video of four physical properties (options) """
-    def plot_panels(chosen):
-        """ Fill four panels with one snapshot, save png """
-        projection = "_projection-z"
+def make_video(rundir, chosen):
+    """ Make a video of four physical properties: the chosen options """
+    projection = "_projection-z"
 
-        headers = []
-        data = []
-        cmap = []
-        names = []
-        for option in chosen:
-            with fits.open(analysis_dir+option+projection+".fits.fz") as f:
-                headers.append(f[0].header)
-                data.append(f[0].data)
+    # For time counter
+    gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
+    TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
 
-                # Set colourtable based on what the fits header says it is
-                for line in repr(f[0].header).split("\n"):
-                    if "Effect_Module" in line:
-                        module = line.strip().split("=")[-1].strip().split("/")[0]
-                    if "Effect_Flag" in line:
-                        flag = line.strip().split("=")[-1].strip().split("/")[0]
-                    if "XYSize" in line:
-                        scale = line.strip().split("=")[-1].strip().split("/")[0]
-                    if "Description" in line:
-                        names.append(line.strip().split("/")[-1])
-                cmap.append(helix_tables(module, flag))
-        scale = "[{0:.1f} Mpc]^2".format(float(scale)/1000)
+    headers = []
+    data = []
+    cmap = []
+    names = []
+    for option in chosen:
+        with fits.open(rundir+"analysis/"+option+projection+".fits.fz") as f:
+            headers.append(f[0].header)
+            data.append(f[0].data)
 
-        number_of_snapshots = headers[0]['NAXIS3']
-        xlen = headers[0]['NAXIS1']
-        ylen = number_of_pixels_y = headers[0]['NAXIS2']
-        # See entire header, including comments starting with "/"
+            # Set colourtable based on P-Smac module/flag (in fits header)
+            for line in repr(f[0].header).split("\n"):
+                if "Effect_Module" in line:
+                    module = line.strip().split("=")[-1].strip().split("/")[0]
+                if "Effect_Flag" in line:
+                    flag = line.strip().split("=")[-1].strip().split("/")[0]
+                if "XYSize" in line:  # Could also be obtained from gadgetparms
+                    scale = line.strip().split("=")[-1].strip().split("/")[0]
+                if "Description" in line:  # For tile title: physical property
+                    names.append(line.strip().split("/")[-1])
+            cmap.append(helix_tables(module.strip(), flag.strip()))
 
-        pad = 4  # number of pixels padding for text placement
-        for n in range(number_of_snapshots):
-            # Set up four-panel plot, stitched together
-            pyplot.figure(figsize=(16,16))
-            gs1 = gridspec.GridSpec(2, 2)
-            gs1.update(wspace=0, hspace=0) # remove spacing between axes.
+            # To see entire header, including comments starting with "/"
+            # print line
 
-            for i in range(4):  # gridspec indexes start at 0
-                ax = pyplot.subplot(gs1[i])
-                pyplot.axis('on')
-                ax.set_xticklabels([])
-                ax.set_yticklabels([])
-                ax.set_aspect('equal')
+    scale = "[{0:.1f} Mpc]^2".format(float(scale)/1000)
 
-                # Plot every panel
-                if i != 0:
-                    ax.imshow(numpy.log(data[i][n]), cmap=cmap[i])
-                else:
-                    ax.imshow(data[i][n], cmap=cmap[i])
-                pyplot.text(pad if i%2==0 else xlen-pad, pad,
-                            names[i], color="white", size=22,
-                            horizontalalignment="left" if i%2==0 else "right",
-                            verticalalignment="top")
-            pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=22,
-                        horizontalalignment="right", verticalalignment="bottom")
+    number_of_snapshots = headers[0]['NAXIS3']
+    xlen = headers[0]['NAXIS1']
+    ylen = headers[0]['NAXIS2']
 
-            # pyplot.suptitle("T = {0:05.2f} Myr".format(0.05*n),
-            pyplot.suptitle("T = {0:04.2f} Myr".format(0.05*n),
-                color="white", size=30)
-            pyplot.tight_layout()
-            pyplot.savefig("out/snapshot_{0:03d}.png".format(n))
-            pyplot.close()
+    pad = 4  # number of pixels padding for text placement (of tile titles)
+    for n in range(number_of_snapshots):
+        # Set up four-panel plot, stitched together
+        pyplot.figure(figsize=(16,16))
+        gs1 = gridspec.GridSpec(2, 2)
+        gs1.update(wspace=0, hspace=0) # remove spacing between axes.
 
+        for i in range(4):  # gridspec indexes start at 0
+            ax = pyplot.subplot(gs1[i])
+            pyplot.axis('on')
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            # NB: breaks when using pyplot.show(), save only!
+            ax.set_aspect('equal')
+
+            # Plot every panel. TODO: change way log/sqrt scheme is chosen
+            # Now all properties look good in log stretch, but DM density
+            # seems to look better using sqrt scaling!
+            if "dm" not in chosen[i]:
+                ax.imshow(numpy.log(data[i][n]), cmap=cmap[i])
+            else:
+                ax.imshow(numpy.sqrt(data[i][n]), cmap=cmap[i])
+            # Tile text: name of physical property
+            pyplot.text(pad if i%2==0 else xlen-pad, pad,
+                        names[i], color="white", size=22,
+                        horizontalalignment="left" if i%2==0 else "right",
+                        verticalalignment="top")
+        # Image scale (lives in lower right corner of tile 3)
+        pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=22,
+                    horizontalalignment="right", verticalalignment="bottom")
+
+        # pyplot.suptitle("T = {0:05.2f} Myr".format(0.05*n),
+        pyplot.suptitle("T = {0:04.2f} Myr".format(TimeBetSnapshot*n),
+            color="white", size=30)
+        pyplot.tight_layout()
+        pyplot.savefig("out/snapshot_{0:03d}.png".format(n))
+        pyplot.close()
+        # import sys; sys.exit(0)
+
+
+if __name__ == "__main__":
+    """ Generate movie with four tiles. Physical property to be displayed
+        in the tile can be selected by choosing an option. """
+
+    # TODO: add optionparser to set chosen and rundir from command line?
     options = {0: "dm-density",
                1: "dm-annihilation",
                2: "physical-density",
@@ -147,10 +166,7 @@ def make_video(analysis_dir):
                8: "xray-surface-brightness",
                }
 
-    chosen = (options[0], options[7], options[8], options[4])
-    number_of_snapshots = plot_panels(chosen)
+    chosen = (options[2], options[7], options[8], options[4])
+    rundir = "../runs/20160603T0103/"
+    make_video(rundir, chosen)
     os.system("./make_movie.sh")
-
-
-if __name__ == "__main__":
-    make_video(analysis_dir="../runs/20160526T1354/analysis/")

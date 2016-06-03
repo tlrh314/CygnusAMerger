@@ -2,7 +2,7 @@
 File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Fri May 27, 2016 09:41 pm
+Last modified: Fri Jun 03, 2016 10:51 am
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -13,6 +13,8 @@ Class Toycluster2RuntimeOutputParser
     - Parse Toycluster 2.0 runtime output
     - Can eat raw output of Sun Grid Engine (qsub); the footer is ignored.
 """
+
+from collections import OrderedDict
 
 import numpy
 
@@ -579,7 +581,8 @@ class Toycluster2RuntimeOutputParser(object):
 
 
 def parse_toycluster_parms(filename):
-    parameters = dict()
+    """ Eat toycluster parameter file, return ordered dictionary """
+    parameters = OrderedDict()
 
     with open(filename, "r") as f:
         for line in f:
@@ -595,7 +598,37 @@ def parse_toycluster_parms(filename):
     return parameters
 
 
+def parse_gadget_parms(filename):
+    parameters = OrderedDict()
+    string_parms = ["InitCondFile", "OutputDir", "EnergyFile", "InfoFile",
+                    "TimingsFile", "CpuFile", "RestartFile", "SnapshotFileBase",
+                    "OutputListFilename", "ResubmitCommand"]
+
+    with open(filename, "r") as f:
+        for line in f:
+            # Ignore commented lines
+            if len(line) > 1 and not line.strip().startswith("%"):
+                line = line.strip().split("%")[0]  # Ignore comments in lines
+                keyvaluepair = line.split()
+                if keyvaluepair[0] not in string_parms:
+                    parameters[keyvaluepair[0]] = float(keyvaluepair[1])
+                else:
+                    parameters[keyvaluepair[0]] = keyvaluepair[1]
+
+    return parameters
+
+
 if __name__ == '__main__':
+    print 80*'-'
+    print "Parsing Gadget Parameter file"
+    print 80*'-'
+    parms = parse_gadget_parms("gadget2.par")
+
+    for key, value in parms.items():
+        print key, "=", value
+    print 80*'-'
+    import sys; sys.exit(0)
+
     print 80*'-'
     print "Parsing Toycluster Parameter file"
     print 80*'-'
