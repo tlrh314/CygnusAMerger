@@ -44,10 +44,9 @@ Output_File test.fits
 Effect_Module 10
 Effect_Flag 0
 
-% TODO: 0.5 - 8 KeV ?
-% Chandra values
-E_min 1e2           % Energy Range [eV]: Xray, Gamma, Synchro
-E_max 1e4
+% Final Chandra mosaic: 0.5 - 7 KeV  (Wise, de Vries et al. 2016, in prep)
+E_min 5e2           % Energy Range [eV]: Xray, Gamma, Synchro
+E_max 7e3
 
 Freq 1.4e9          % Frequency [Hz]: Sz,Synchro
 
