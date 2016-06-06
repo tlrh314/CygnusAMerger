@@ -7,7 +7,7 @@ Copyright for the original (online) calculator 1999-2016 Edward L. Wright.
 If you use this calculator while preparing a paper, please cite Wright (2006, PASP, 118, 1711).
 
 Some additions/alterations were made by TLRH
-Last modified: Tue May 17, 2016 03:29 pm
+Last modified: Mon Jun 06, 2016 10:31 am
 
 """
 #!/usr/bin/env python
@@ -154,6 +154,7 @@ class CosmologyCalculator(object):
             print "This gives a scale of {0:.3f} kpc/\".".format(self.kpc_DA)
             print "The luminosity distance D_L is {0:1.1f} Mpc or {1:1.3f} Gly.".format(self.DL_Mpc, self.DL_Gyr)
             print "The distance modulus, m-M, is {0:1.2f}".format(5*numpy.log10(self.DL_Mpc*1e6)-5)
+            print "Critical density is {0:1.5e} g/cm**3".format(self.rho_crit())
         else:
             print "Ned Wright's Cosmology Calculator with alterations by TLRH\n"
             print "H_0 = {H0:1.1f}, Omega_M = {WM:1.3f},".format(**{'H0': self.H0, 'WM': self.WM}),
@@ -162,6 +163,7 @@ class CosmologyCalculator(object):
             print "Comoving radial distance = {0:1.2f} Mpc".format(self.DCMR_Mpc)
             print "kpc_DA                   = {0:1.2f} kpc/\"".format(self.kpc_DA)
             print "Distance modulus, m-M    = {0:1.2f}".format((5*numpy.log10(self.DL_Mpc*1e6)-5))
+            print "Critical density is {0:1.5e g/cm**3}".format(self.rho_crit())
 
         return ""
 
@@ -201,7 +203,7 @@ Options:   -h for this message
                 WM = 0.3                        # Omega(matter)
                 WV = 0.7                        # Omega(vacuum) or lambda
                 s8 = 0.9                        # TODO: find out what this is
-            wise_2016_in_prep = True
+            wise_2016_in_prep = False
             if wise_2016_in_prep:
                 # Komatsu et al. 2009
                 H0 = 71                         # Hubble constant

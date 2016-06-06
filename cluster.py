@@ -2,7 +2,7 @@
 File: cluster.py
 Author: Timo L. R. Halbesma <timohalbesma@gmail.com>
 Date created: Tue May 17, 2016 01:59 pm
-Last modified: Wed May 25, 2016 02:42 pm
+Last modified: Mon Jun 06, 2016 07:52 pm
 
 
 """
@@ -18,11 +18,11 @@ from amuse import datamodel
 import amuse.plot as amuse_plot
 
 from macro import *
-import globals
 from cosmology import CosmologyCalculator
 from ioparser import parse_toycluster_parms
 from ioparser import Toycluster2RuntimeOutputParser
 from ioparser import Gadget2BinaryF77UnformattedType2Parser
+import converter
 
 
 class ObservedCluster(object):
@@ -36,9 +36,14 @@ class ObservedCluster(object):
         density_file = "data/{0}_1T_fixnH_pressureprofile.dat".format(name)
         radius_file = "data/{0}_sn100_sbprofile.dat".format(name)
 
+        if self.name == "cygA":
+            z = 0.0562
+        if self.name == "cygB":
+            z = 0.070
+        self.cc = CosmologyCalculator(z)
+
         self.parse_data(density_file, radius_file)
 
-        self.cc = CosmologyCalculator()
         arcsec2kpc = self.cc.kpc_DA # | units.kpc
 
         self.radius = (self.inner_radius+self.outer_radius)/2 * arcsec2kpc
@@ -49,6 +54,8 @@ class ObservedCluster(object):
 
         tmp += "\nbin_number\n" + str(self.bin_number)
         tmp += "\n\nbin_volume\n" + str(self.bin_volume)
+        tmp += "\n\nnumber_density\n" + str(self.number_density)
+        tmp += "\n\nnumber_density_std\n" + str(self.number_density_std)
         tmp += "\n\ndensity\n" + str(self.density)
         tmp += "\n\ndensity_std\n" + str(self.density_std)
         tmp += "\n\npressure\n" + str(self.pressure)
@@ -72,8 +79,12 @@ class ObservedCluster(object):
 
         self.bin_number = raw[" Bin number "].as_matrix()
         self.bin_volume = raw[" Bin volume (cm^3) "].as_matrix()
-        self.density = raw["   Density (cm^-3) "].as_matrix()
-        self.density_std = raw["     Sigma density "].as_matrix()
+        self.number_density = raw["   Density (cm^-3) "].as_matrix()
+        self.number_density_std = raw["     Sigma density "].as_matrix()
+        self.density = globals.density_converter(
+            self.number_density, X=0.75, z=self.cc.z, is_ne=True)
+        self.density_std = globals.density_converter(
+            self.number_density_std, X=0.75, z=self.cc.z, is_ne=True)
         self.pressure = raw[" Pressure (erg cm^-3) "].as_matrix()
         self.pressure_std = raw["    Sigma Pressure "].as_matrix()
         self.compton_y = raw[" Compton Y parameter "].as_matrix()
@@ -360,7 +371,7 @@ class NumericalCluster(object):
 
 class AnalyticalCluster(object):
     """ Set up an analytical cluster based on the Chandra observed density """
-    def __init__(self, parms, dm_parms=None, radius=None):
+    def __init__(self, parms, dm_parms=None, radius=None, z=0):
         """ parms = ne0, rc, [rcut], [ne0_fac, rc_fac]
             dm_parms = M_DM, a  """
 
@@ -373,9 +384,13 @@ class AnalyticalCluster(object):
                 self.radius = radius | units.kpc
             else:
                 self.radius = radius
-
-        self.ne0 = parms[0] | units.cm**-3
-        self.rho0 = self.ne0 * globals.mu * (globals.m_p | units.g)
+        self.z = z
+        self.ne0 = parms[0]
+        # TODO: check that this makes sense...
+        # self.rho0 = self.ne0 * globals.mu * (globals.m_p | units.g)
+        self.rho0 = globals.density_converter(self.ne0, X=0.75, z=self.z)
+        self.rho0 = self.rho0 | units.g/units.cm**3
+        self.ne0 = self.ne0 | units.cm**-3
         self.rc = parms[1] | units.kpc
         self.model = 0
         self.rcut = None
@@ -424,6 +439,11 @@ class AnalyticalCluster(object):
             rho_gas += self.rho0_cc / (1 + p2(r/rc_cc)) / (1 + p3(r/rcut) * (r/rcut))
 
         return rho_gas.as_quantity_in(units.g/units.cm**3)
+
+    def gas_number_density(self, r=None):
+        return (globals.density_converter(
+            self.gas_density(r).value_in(units.g/units.cm**3),
+            X=0.75, z=self.z, is_ne=False)) | (1/units.cm**3)
 
     def gas_mass(self, r=None):
         """ return M(<r) """

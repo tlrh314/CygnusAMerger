@@ -13,7 +13,6 @@ import globals
 from ioparser import Gadget2BinaryF77UnformattedType2Parser
 from ioparser import Toycluster2RuntimeOutputParser
 from cluster import NumericalCluster
-from cluster import AnalyticalCluster
 
 
 if __name__ == "__main__":
