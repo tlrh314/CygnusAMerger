@@ -2,7 +2,7 @@
 File: cluster.py
 Author: Timo L. R. Halbesma <timohalbesma@gmail.com>
 Date created: Tue May 17, 2016 01:59 pm
-Last modified: Mon Jun 06, 2016 07:52 pm
+Last modified: Tue Jun 07, 2016 09:10 pm
 
 
 """
@@ -22,7 +22,7 @@ from cosmology import CosmologyCalculator
 from ioparser import parse_toycluster_parms
 from ioparser import Toycluster2RuntimeOutputParser
 from ioparser import Gadget2BinaryF77UnformattedType2Parser
-import converter
+import convert
 
 
 class ObservedCluster(object):
@@ -81,10 +81,8 @@ class ObservedCluster(object):
         self.bin_volume = raw[" Bin volume (cm^3) "].as_matrix()
         self.number_density = raw["   Density (cm^-3) "].as_matrix()
         self.number_density_std = raw["     Sigma density "].as_matrix()
-        self.density = globals.density_converter(
-            self.number_density, X=0.75, z=self.cc.z, is_ne=True)
-        self.density_std = globals.density_converter(
-            self.number_density_std, X=0.75, z=self.cc.z, is_ne=True)
+        self.density = convert.ne_to_rho(self.number_density, self.cc.z)
+        self.density_std = convert.ne_to_rho(self.number_density_std, self.cc.z)
         self.pressure = raw[" Pressure (erg cm^-3) "].as_matrix()
         self.pressure_std = raw["    Sigma Pressure "].as_matrix()
         self.compton_y = raw[" Compton Y parameter "].as_matrix()
@@ -263,7 +261,7 @@ class NumericalCluster(object):
         for i, r in enumerate(radii):
             particles[i] = ((numpy.where(self.dm.r.value_in(units.kpc) < r)[0]).size)
             if i==(N-1) or i%100 == 0:
-                globals.print_progressbar(i, N)
+                print_progressbar(i, N)
 
             # print i, r, particles[i]
 
@@ -386,10 +384,7 @@ class AnalyticalCluster(object):
                 self.radius = radius
         self.z = z
         self.ne0 = parms[0]
-        # TODO: check that this makes sense...
-        # self.rho0 = self.ne0 * globals.mu * (globals.m_p | units.g)
-        self.rho0 = globals.density_converter(self.ne0, X=0.75, z=self.z)
-        self.rho0 = self.rho0 | units.g/units.cm**3
+        self.rho0 = convert.ne_to_rho(self.ne0, self.z) | units.g/units.cm**3
         self.ne0 = self.ne0 | units.cm**-3
         self.rc = parms[1] | units.kpc
         self.model = 0
@@ -441,9 +436,8 @@ class AnalyticalCluster(object):
         return rho_gas.as_quantity_in(units.g/units.cm**3)
 
     def gas_number_density(self, r=None):
-        return (globals.density_converter(
-            self.gas_density(r).value_in(units.g/units.cm**3),
-            X=0.75, z=self.z, is_ne=False)) | (1/units.cm**3)
+        return (convert.rho_to_ne(self.gas_density(r).value_in(units.g/units.cm**3),
+            self.z) | (1/units.cm**3))
 
     def gas_mass(self, r=None):
         """ return M(<r) """
@@ -523,16 +517,18 @@ class AnalyticalCluster(object):
         F_1 = numpy.pi**2/(8*self.rc) - numpy.arctan(r/self.rc)**2/(2*self.rc) -\
             numpy.arctan(r/self.rc)/r
 
-        T_r_gas = constants.G*self.mu*constants.proton_mass/constants.kB *\
-            (1 + r**2/self.rc**2) * (4*numpy.pi*self.rc**3*self.rho0gas*F_1)
+        # TODO: use mu from convert.py?
+        # T_r_gas = constants.G*self.mu*constants.proton_mass/constants.kB *\
+        #    (1 + r**2/self.rc**2) * (4*numpy.pi*self.rc**3*self.rho0gas*F_1)
         return T_r_gas.as_quantity_in(units.K)
 
     def dm_temperature(self, r):
         F_0 = self.rc/(self.a**2 + self.rc**2)**2 * (numpy.pi/2*(self.a**2 - self.rc**2) +\
             self.r_c*(self.a**2 + self.rc**2)/(self.a + r) - (self.a**2 - self.rc**2)*\
             numpy.arctan(r/self.rc) - self.rc*self.a*numpy.log((self.a + r)**2/(r**2 + self.rc**2)))
-        T_r_dm = constants.G*self.mu*constants.proton_mass/constants.kB * (1 + r**2/self.rc**2) *\
-            (self.M_dm*F_0)
+        # TODO: use mu from convert.py?
+        #T_r_dm = constants.G*self.mu*constants.proton_mass/constants.kB * (1 + r**2/self.rc**2) *\
+        #    (self.M_dm*F_0)
         return T_r_dm.as_quantity_in(units.K)
 
     def temperature(self, r):
@@ -540,21 +536,24 @@ class AnalyticalCluster(object):
 
     def characteristic_temperature_analytically(self):
         # Charecteristic temperature
-        T_c = 2*constants.G*self.mu*constants.proton_mass/constants.kB * \
-            (self.M_dm * self.rc**2/(self.a**2 + self.rc**2)**2 * (numpy.pi/(4*self.rc) * \
-            (self.a**2 - self.rc**2) + (self.a**2 + self.rc**2)/(self.a + self.rc) - \
-            self.a*numpy.log((self.a + self.rc)**2/(2*self.rc**2))) \
-            + numpy.pi**2*self.rc**2*self.rho_0*(3*numpy.pi/8 - 1))
+        # TODO: use mu from convert.py?
+        #T_c = 2*constants.G*self.mu*constants.proton_mass/constants.kB * \
+        #    (self.M_dm * self.rc**2/(self.a**2 + self.rc**2)**2 * (numpy.pi/(4*self.rc) * \
+        #    (self.a**2 - self.rc**2) + (self.a**2 + self.rc**2)/(self.a + self.rc) - \
+        #    self.a*numpy.log((self.a + self.rc)**2/(2*self.rc**2))) \
+        #    + numpy.pi**2*self.rc**2*self.rho_0*(3*numpy.pi/8 - 1))
         return T_c.as_quantity_in(units.K)
 
     def gas_pressure(self, r):
-        P_gas = constants.kB*self.temperature(r)*self.gas_density(r)/\
-            (self.mu*constants.proton_mass)
+        # TODO: use mu from convert.py?
+        #P_gas = constants.kB*self.temperature(r)*self.gas_density(r)/\
+        #    (self.mu*constants.proton_mass)
         return P_gas.as_quantity_in(units.Pa)
 
     def dm_pressure(self, r):
-        P_dm = constants.kB*self.temperature(r)*self.dm_density(r)/\
-            (self.mu*constants.proton_mass)
+        # TODO: use mu from convert.py?
+        #P_dm = constants.kB*self.temperature(r)*self.dm_density(r)/\
+        #    (self.mu*constants.proton_mass)
         return P_dm.as_quantity_in(units.Pa)
 
     def find_characteristic_r(self, mass=None, rscale=200):
@@ -568,8 +567,9 @@ class AnalyticalCluster(object):
     def find_p500_analytically(self):
         """ Calculate characteristic pressure at r_500 using
         the analytical formula given by Arnaud et al. (2010) in Appendix A """
-        P_500 = 3/(8*numpy.pi) * ((500./2)*constants.G**(-1./4)*self.Hubble_of_z**2)**(4./3) *\
-            self.mu/self.mu_e * self.f_b * self.M_500**(2./3)
+        # TODO: use mu from convert.py?
+        #P_500 = 3/(8*numpy.pi) * ((500./2)*constants.G**(-1./4)*self.Hubble_of_z**2)**(4./3) *\
+        #    self.mu/self.mu_e * self.f_b * self.M_500**(2./3)
 
         return P_500.as_quantity_in(units.Pa)
 
@@ -614,8 +614,9 @@ if __name__ == "__main__":
         print 80*"-"
         print cygA_observed
         print cygB_observed
+        print
 
-        for property in ["bin_volume", "density", "pressure",
+        for property in ["bin_volume", "density", "number_density", "pressure",
                 "compton_y", "source_sb", "background_sb"]:
             print "Plotting property:", property
             simple_plot(cygA_observed, property)

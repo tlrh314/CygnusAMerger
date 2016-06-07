@@ -56,7 +56,7 @@ def plot_individual_cluster_density(numerical, analytical):
     amuse_plot.xlabel(r"$r$")
     amuse_plot.ylabel(r"$\rho$")
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
-    pyplot.gca().set_ylim(ymin=1e-30, ymax=9e-24)
+    #pyplot.gca().set_ylim(ymin=1e-30, ymax=9e-24)
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
 
@@ -108,17 +108,23 @@ def plot_individual_cluster_mass(numerical, analytical):
 
 
 if __name__ == "__main__":
-    snaps = sorted(glob.glob("../runs/yes_wvt_relax/snaps/snapshot_*"),  key=os.path.getmtime)
+    myRun = "yes_wvt_relax"
+    myRun = "no_wvt_relax"
+    myRun = "20160607T2042"
+    snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*".format(myRun)),  key=os.path.getmtime)
+    snaps = ["hank"]
 
     for i, snap in enumerate(snaps):
         fname = snap.split('/')[-1]
         snapnr = fname.split('_')[-1]
 
         numerical = NumericalCluster(
-            icdir="../runs/yes_wvt_relax/ICs/",
-            snapdir="../runs/yes_wvt_relax/snaps/",
+            icdir="../runs/{0}/ICs/".format(myRun),
+            #snapdir="../runs/{0}/snaps/".format(myRun),
+            snapdir="../runs/{0}/ICs/".format(myRun),
             logfile="runToycluster.log",
-            icfile="snapshot_"+snapnr)
+            #icfile="snapshot_"+snapnr)
+            icfile="IC_single_0")
 
         # Caution: parms[0] is number density! Caution: use unitsless numbers!
         ne0 = convert.rho_to_ne(numerical.rho0gas.value_in(units.g/units.cm**3),
@@ -178,11 +184,11 @@ if __name__ == "__main__":
 
         plot_individual_cluster_density(numerical, analytical)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*0.25))
-        pyplot.savefig("out/yes_wvt_relax-density-"+snapnr+".png")
+        pyplot.savefig("out/{0}-density-".format(myRun)+snapnr+".png")
         pyplot.close()
         plot_individual_cluster_mass(numerical, analytical)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*0.25))
-        pyplot.savefig("out/yes_wvt_relax-mass-"+snapnr+".png")
+        pyplot.savefig("out/{0}-mass-".format(myRun)+snapnr+".png")
         pyplot.close()
 
         break

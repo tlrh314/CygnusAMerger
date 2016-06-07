@@ -210,3 +210,7 @@ out
 run.sh.[eo]*
 NoParticles.txt
 ToyclusterTrial.par
+NoParticles_cygA.txt
+NoParticles_cygB.txt
+CygA_trial
+CygB_trial

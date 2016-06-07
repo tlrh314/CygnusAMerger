@@ -26,6 +26,7 @@ from ioparser import Toycluster2RuntimeOutputParser
 from cluster import ObservedCluster
 from cluster import AnalyticalCluster
 from cluster import NumericalCluster
+import convert
 
 
 def Gas_density_profile(parm, r):
@@ -292,7 +293,7 @@ def get_cluster_mass_analytical(observed, result):
         Rc_Fac = ml_vals[4]
 
     kpc2cm = units.kpc(1).value_in(units.cm)
-    rho0_analytical = globals.density_converter(ne0_fit, X=0.75, z=observed.cc.z, is_ne=True) # g/cm**3
+    rho0_analytical = convert.ne_to_rho(ne0_fit) # g/cm**3
     rc_analytical = rc_fit * kpc2cm  # cm
     rhocrit200 = 200*observed.cc.rho_crit()
 
@@ -353,7 +354,7 @@ def get_mass_profile(observed, result):
         Rc_Fac = ml_vals[4]
 
     kpc2cm = units.kpc(1).value_in(units.cm)
-    rho0_analytical = globals.density_converter(ne0_fit, X=0.75, z=0.0562)  # g/cm**3
+    rho0_analytical = convert.ne_to_rho(ne0_fit)  # g/cm**3
     rc_analytical = rc_fit * kpc2cm  # cm
 
     analytical_radius = numpy.arange(min(observed.radius), max(observed.radius), 0.01) * kpc2cm
@@ -631,7 +632,7 @@ if __name__ == "__main__":
         cygB_mass = get_mass_profile(cygB_observed, cygA_fit)
         print 80*"-"
 
-    find_r200_observed = True
+    find_r200_observed = False
     if find_r200_observed:
         print "Obtaining r_200 from Chandra observation"
         print 80*"-"
@@ -639,7 +640,17 @@ if __name__ == "__main__":
         rhocrit200B = 200*cygB_observed.cc.rho_crit()
 
         mass_densityA = cygA_observed.density
-        rho_averageA = (cygA_observed.density / (4./3*numpy.pi*cygA_observed.radius**3))
+        volumeA = 4*numpy.pi*cygA_observed.radius**2 * cygA_observed.binsize
+        # cm**-3 --> kpc**-3 = 2.9379989455e+64 ?
+        rho_averageA = (cygA_observed.bin_volume/2.9379989455e+64)*cygA_observed.density / volumeA
+        pyplot.figure(figsize=(12,9))
+        pyplot.plot(cygA_observed.radius, cygA_observed.density, label="obs")
+        pyplot.plot(cygA_observed.radius, rho_averageA, label="avg")
+        pyplot.axhline(rhocrit200A)
+        pyplot.gca().set_xscale("log")
+        pyplot.gca().set_yscale("log")
+        pyplot.legend()
+        pyplot.show()
         print rho_averageA
         r_200A = cygA_observed.radius[(numpy.abs(rho_averageA-rhocrit200A)).argmin()]
 
@@ -649,13 +660,13 @@ if __name__ == "__main__":
 
         print "CygA"
         print "  200*rhocrit =", rhocrit200A
-        print "  Indicies of rho_average where rho_average > 200*rhocrit"
+        print "  Indices of rho_average where rho_average > 200*rhocrit"
         print "   ", numpy.where(rho_averageA > rhocrit200A)
         print "  r200        =", r_200A
         print
         print "CygB"
         print "  200*rhocrit =", rhocrit200B
-        print "  Indicies of rho_average where rho_average > 200*rhocrit"
+        print "  Indices of rho_average where rho_average > 200*rhocrit"
         print "   ", numpy.where(rho_averageB > rhocrit200B)
         print "  r200        =", r_200B
         print 80*"-"

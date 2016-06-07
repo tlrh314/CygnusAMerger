@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Sat May 28, 2016 03:30 PM
+# Last modified: Tue Jun 07, 2016 08:37 pm
 #
 # Description: run simulation pipeline
 

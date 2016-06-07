@@ -39,7 +39,7 @@ def rho_to_ne(rho, z=None):
     ne = rho/(umu*constants.proton_mass.value_in(units.g))
     return ne
 
-def ne_to_rho(ne, z):
+def ne_to_rho(ne, z=None):
     """ convert electron number density to mass density """
 
     # TODO: if z: comoving?
