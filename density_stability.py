@@ -30,7 +30,7 @@ def plot_individual_cluster_density(numerical, analytical):
     # Gas RHO and RHOm from Toycluster living in AMUSE datamodel
     amuse_plot.scatter(numerical.gas.r,
         numerical.gas.rho,
-        c=data_colour[0], edgecolor="face", s=40, label=r"Gas")
+        c=data_colour[0], edgecolor="face", s=20, label=r"Gas")
 
     # amuse_plot.scatter(numerical.gas.r,
     #    numerical.gas.rhom,
@@ -38,18 +38,18 @@ def plot_individual_cluster_density(numerical, analytical):
 
     # DM density obtained from mass profile (through number density)
     amuse_plot.scatter(numerical.dm_radii, numerical.rho_dm_below_r,
-       c=data_colour[2], edgecolor="face", s=40, label=r"DM")
+       c=data_colour[2], edgecolor="face", s=20, label=r"DM")
 
     # Analytical solutions.
 
     # Plot analytical cut-off beta model (Donnert 2014) for the gas density
-    amuse_plot.plot(analytical.radius, analytical.gas_density(), c=fit_colour, lw=4, ls="dotted",
+    amuse_plot.plot(analytical.radius, analytical.gas_density(), c=fit_colour, lw=2, ls="dotted",
         label=analytical.modelname+"\n"+\
             r"$\rho_0$ = {0:.3e} g/cm$^3$; $rc = ${1:.2f} kpc"\
             .format(analytical.rho0.number, analytical.rc.number))
 
     # Plot analytical Hernquist model for the DM density
-    amuse_plot.plot(analytical.radius, analytical.dm_density(), c=fit_colour, lw=4, ls="solid",
+    amuse_plot.plot(analytical.radius, analytical.dm_density(), c=fit_colour, lw=2, ls="solid",
         label=r"Analytical, Hernquist-model" "\n" r"$M_{{\rm dm}}= ${0:.2e} MSun; $a = $ {1} kpc".format(
         analytical.M_dm.number, analytical.a.number))
 
@@ -81,10 +81,10 @@ def plot_individual_cluster_mass(numerical, analytical):
 
 
     amuse_plot.scatter(numerical.gas_radii, numerical.M_gas_below_r,
-        c=data_colour[0], edgecolor="face", s=40, label="Gas")
+        c=data_colour[0], edgecolor="face", s=20, label="Gas")
 
     amuse_plot.scatter(numerical.dm_radii, numerical.M_dm_below_r,
-        c=data_colour[2], edgecolor="face", s=40, label="DM")
+        c=data_colour[2], edgecolor="face", s=20, label="DM")
 
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
@@ -92,11 +92,11 @@ def plot_individual_cluster_mass(numerical, analytical):
     # Analytical solutions. Sample radii and plug into analytical expression.
 
     # Plot analytical Hernquist model for the DM mass M(<r)
-    amuse_plot.plot(analytical.radius, analytical.dm_cummulative_mass(), ls="solid", c=fit_colour, lw=4, label="DM")
+    amuse_plot.plot(analytical.radius, analytical.dm_cummulative_mass(), ls="solid", c=fit_colour, lw=2, label="DM")
 
     # Plot analytical cut-off beta model (Donnert 2014) for the gas mass M(<r)
     amuse_plot.plot(analytical.radius, analytical.gas_mass(),
-        ls="dotted", c=fit_colour, lw=4, label=analytical.modelname)
+        ls="dotted", c=fit_colour, lw=2, label=analytical.modelname)
 
     pyplot.xlabel(r"$r$ [kpc]")
     pyplot.ylabel(r"$M (<r)$ [MSun]")
@@ -110,7 +110,7 @@ def plot_individual_cluster_mass(numerical, analytical):
 if __name__ == "__main__":
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160607T2118"
+    myRun = "20160617T1535"
     snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*".format(myRun)),  key=os.path.getmtime)
 
     for i, snap in enumerate(snaps):
@@ -125,13 +125,15 @@ if __name__ == "__main__":
             icfile="snapshot_"+snapnr)
             #icfile="IC_single_0")
 
+        """ TODO: can use cluster.py setup_analytical_cluster
+                  to obtain AnalyticalCluster from NumericalCluster"""
         # Caution: parms[0] is number density! Caution: use unitsless numbers!
         ne0 = convert.rho_to_ne(numerical.rho0gas.value_in(units.g/units.cm**3),
             numerical.z)
         parms = (ne0, numerical.rc.value_in(units.kpc),
             numerical.R200.value_in(units.kpc))
         # TODO: not use this, but if doing so then use halo0_sampling...
-        dm_parms = numerical.Mass_in_DM, numerical.a
+        dm_parms = (numerical.Mass_in_DM, numerical.a)
 
         analytical = AnalyticalCluster(parms, dm_parms, z=numerical.z)
 

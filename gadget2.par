@@ -31,7 +31,7 @@ TypeOfTimestepCriterion  0
 OutputListOn             0
 PeriodicBoundariesOn     1
 
-%  Caracteristics of run
+% Characteristics of run
 
 TimeBegin                0.0
 TimeMax                  5.0  % in units of Gyr

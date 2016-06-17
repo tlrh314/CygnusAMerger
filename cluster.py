@@ -1,12 +1,3 @@
-"""
-File: cluster.py
-Author: Timo L. R. Halbesma <timohalbesma@gmail.com>
-Date created: Tue May 17, 2016 01:59 pm
-Last modified: Fri Jun 17, 2016 03:21 pm
-
-
-"""
-
 import numpy
 import pandas
 from matplotlib import pyplot
@@ -127,38 +118,52 @@ class NumericalCluster(object):
 
         # Read runtime output of Toycluster 2.0. Parse runtime output
         self.toyclusterlog = Toycluster2RuntimeOutputParser(filename=icdir+logfile)
-        self.set_toycluster2_values()
-
         self.raw_data = Gadget2BinaryF77UnformattedType2Parser(snapdir+icfile)
-        # 1e10 because all masses are given in code units in cluster.par, which is set to 1e10 Msun
-        self.M_gas = self.raw_data.Ngas * self.raw_data.massarr[0] * 1e10 | units.MSun
-        self.M_dm = self.raw_data.Ndm * self.raw_data.massarr[1] * 1e10 | units.MSun
-        self.gas, self.dm = self.place_ic_data_in_datamodel(self.raw_data)
 
-        # self.get_gas_mass_via_density()
-        # self.get_dm_mass_via_number_density()
-        # self.set_dm_density()
+        # if the mass ratio is 0.0 we only have one cluster in the box
+        if (-2**-14 < self.toyclusterlog.systemsetup['Mass_Ratio'] < 2**-14):
+            self.set_toycluster2_values(i=0)
+            # 1e10 because all masses are given in code units in cluster.par, which is set to 1e10 Msun
+            # Only makes sense if Mass_Ratio = 0.0
+            self.M_gas = self.raw_data.Ngas * self.raw_data.massarr[0] * 1e10 | units.MSun
+            self.M_dm = self.raw_data.Ndm * self.raw_data.massarr[1] * 1e10 | units.MSun
 
-    def set_toycluster2_values(self):
-        self.model = self.toyclusterlog.halosetup[0]['model']
-        self.rgas = self.toyclusterlog.halosetup[0]['rgas']
-        self.rdm  = self.toyclusterlog.halosetup[0]['rdm']
-        self.qmax = self.toyclusterlog.halosetup[0]['qmax']
-        self.Mass = self.toyclusterlog.halosetup[0]['Mass']
-        self.Mass_in_DM = self.toyclusterlog.halosetup[0]['Mass_in_DM']
-        self.Mass_in_gas = self.toyclusterlog.halosetup[0]['Mass_in_gas']
-        self.Mass_in_R200 = self.toyclusterlog.halosetup[0]['Mass_in_R200']
-        self.c_nfw = self.toyclusterlog.halosetup[0]['c_nfw']
-        self.R200 = self.toyclusterlog.halosetup[0]['R200']
-        self.a = self.toyclusterlog.halosetup[0]['a_hernquist']
-        self.rho0gas = self.toyclusterlog.halosetup[0]['rho0gas_cgs']
-        self.rho0gas_gadget = self.toyclusterlog.halosetup[0]['rho0gas_gadget']
-        self.beta = self.toyclusterlog.halosetup[0]['beta']
-        self.rc = self.toyclusterlog.halosetup[0]['rc']
-        self.rcut = self.toyclusterlog.halosetup[0]['R200']
-        self.R500  = self.toyclusterlog.halosetup[0]['R500']
-        self.bf_200 = self.toyclusterlog.halosetup[0]['bf_200']
-        self.bf_500 = self.toyclusterlog.halosetup[0]['bf_500']
+            """ This actually also works if Mass_Ratio != 0.0
+            NB then the gas and dm contain datamodels with all
+            gas/dm particles.
+
+            Elsewhere we explicitly split both particles,
+            then use this class for a single cluster """
+
+            # TODO: this step is already rather slow fow 2e6 particles...
+            self.gas, self.dm = self.place_ic_data_in_datamodel(self.raw_data)
+
+            # Only makes sense if Mass_Ratio = 0.0
+            # Use these functions in density_stability
+            # self.get_gas_mass_via_density()
+            # self.get_dm_mass_via_number_density()
+            # self.set_dm_density()
+
+    def set_toycluster2_values(self, i=0):
+        self.model = self.toyclusterlog.halosetup[i]['model']
+        self.rgas = self.toyclusterlog.halosetup[i]['rgas']
+        self.rdm  = self.toyclusterlog.halosetup[i]['rdm']
+        self.qmax = self.toyclusterlog.halosetup[i]['qmax']
+        self.Mass = self.toyclusterlog.halosetup[i]['Mass']
+        self.Mass_in_DM = self.toyclusterlog.halosetup[i]['Mass_in_DM']
+        self.Mass_in_gas = self.toyclusterlog.halosetup[i]['Mass_in_gas']
+        self.Mass_in_R200 = self.toyclusterlog.halosetup[i]['Mass_in_R200']
+        self.c_nfw = self.toyclusterlog.halosetup[i]['c_nfw']
+        self.R200 = self.toyclusterlog.halosetup[i]['R200']
+        self.a = self.toyclusterlog.halosetup[i]['a_hernquist']
+        self.rho0gas = self.toyclusterlog.halosetup[i]['rho0gas_cgs']
+        self.rho0gas_gadget = self.toyclusterlog.halosetup[i]['rho0gas_gadget']
+        self.beta = self.toyclusterlog.halosetup[i]['beta']
+        self.rc = self.toyclusterlog.halosetup[i]['rc']
+        self.rcut = self.toyclusterlog.halosetup[i]['R200']
+        self.R500  = self.toyclusterlog.halosetup[i]['R500']
+        self.bf_200 = self.toyclusterlog.halosetup[i]['bf_200']
+        self.bf_500 = self.toyclusterlog.halosetup[i]['bf_500']
 
         self.Omega_M = self.toyclusterlog.systemat['Omega_M']
         self.Omega_Lambda = 1 - self.Omega_M
@@ -230,9 +235,11 @@ class NumericalCluster(object):
 
         return gas, dm
 
-    def get_gas_mass_via_density(self):
+    def get_gas_mass_via_density(self, DESNNGB=50):
         """ Kernel weigthed sph density beautifully fits analytical solution <3
-            DM has no density, so we obtain it trough counting particles. """
+            DM has no density, so we obtain it trough counting particles.
+
+            @param DESNNGB: 50 for Gadget-2, 295 for toycluster """
 
         gas_i = numpy.argsort(self.gas.r.value_in(units.kpc))
         gas_r = self.gas.r[gas_i].value_in(units.kpc)
@@ -244,7 +251,7 @@ class NumericalCluster(object):
         # For ICs!
         # gas_mass = (4./3*numpy.pi*(gas_h**3/295)*gas_rho)
         # For Gadget-2 (TODO: check Kernel, also check Nngb)
-        gas_mass = (4./3*numpy.pi*(gas_h**3/50)*gas_rho)
+        gas_mass = (4./3*numpy.pi*(gas_h**3/DESNNGB)*gas_rho)
 
         self.gas_radii = gas_r | units.kpc
         self.M_gas_below_r = gas_mass.cumsum() | units.MSun
@@ -576,6 +583,216 @@ class AnalyticalCluster(object):
         #    self.mu/self.mu_e * self.f_b * self.M_500**(2./3)
 
         return P_500.as_quantity_in(units.Pa)
+
+
+class SampledBox(object):
+    """ The Toycluster output contains a box with two haloes living
+    inside it. A halo consists of gas and DM particles, but we do
+    not know the order of the particles.
+
+    We do know the x-axis is the merger axis, so we split the two
+    haloes by taking all particles on the left (negative x), and the
+    particles on the right (positive x).
+
+    Here we explicitly split the particles of both haloes, but this
+    only works for Toycluster output (i.e. when we explicitly know the
+    positions of the centers of mass for the haloes).
+
+    We then give the SampledBox class an AnalyticalCluster instance
+    for both haloes, and place the sampled particles for the halo
+    in a NumericalCluster instance which we again place at (0, 0, 0).
+
+    NB, we initially do use the NumericalCluster instance because
+    it already parses the F77Unformatted data rather neatly and places
+    it in an AMUSE datamodel, which we then use take subsets of the
+    particles in the datamodel :-)... """
+
+    def __init__(self, timestamp):
+        debug = False
+
+        """ First read IC output where two clusters live in the box.
+        NB simulation to make distinction between `numerical' (has 1 cluster),
+        and `simulation' where two clusters live in the box. """
+        simulation = NumericalCluster(
+            icdir="../runs/{0}/ICs/".format(timestamp),
+            snapdir="../runs/{0}/ICs/".format(timestamp),
+            logfile="runToycluster.log",
+            icfile="IC_single_0")
+
+        # NB simulation contains particles of both haloes
+        gas, dm = simulation.place_ic_data_in_datamodel(simulation.raw_data)
+
+        # Placeholders for now, will be filled with single-cluster data later
+        # NB this is rather stupid but we cannot say halo0_numerical = simulation
+        # because then id(halo0_numerical) = id(halo1_numerical) = id(simulation)
+        halo0_numerical = NumericalCluster(
+            icdir="../runs/{0}/ICs/".format(timestamp),
+            snapdir="../runs/{0}/ICs/".format(timestamp),
+            logfile="runToycluster.log",
+            icfile="IC_single_0")
+
+        halo1_numerical = NumericalCluster(
+            icdir="../runs/{0}/ICs/".format(timestamp),
+            snapdir="../runs/{0}/ICs/".format(timestamp),
+            logfile="runToycluster.log",
+            icfile="IC_single_0")
+
+        """ Second, set up analytical models of both sampled clusters. """
+        halo0_analytical = setup_analytical_cluster(simulation, i=0)
+        halo1_analytical = setup_analytical_cluster(simulation, i=1)
+
+        # Histogram of gas x-values is beautifully bimodal (y, z aint)
+        if debug:
+            pyplot.figure(figsize=(12, 12))
+            amuse_plot.hist(gas.x, bins=int(numpy.sqrt(len(gas.x))))
+            pyplot.show()
+
+
+        """ Third, split up particles in two haloes. Shift back to (0,0,0) """
+        print "Splitting up haloes, halo0: x<0; halo1: x>0."
+        # The merger-axis is x. We know halo center x position, is D_CoM_0/1
+        # TODO: can we assume the box is split in two at x=0?
+        # halo0 lives on the left-hand side of the box (negative x)
+        halo0gas = gas.select_array(lambda l : l < 0.0 | units.kpc, ["x"])
+        halo0dm = dm.select_array(lambda l : l < 0.0 | units.kpc, ["x"])
+        # halo1 lives on the left-hand side of the box (negative x)
+        halo1gas = gas.select_array(lambda l : l > 0.0 | units.kpc, ["x"])
+        halo1dm = dm.select_array(lambda l : l > 0.0 | units.kpc, ["x"])
+
+        # TODO: check if this routine is valid only for -DCOMET ?
+        # TODO: boxhalf is added in Shift_Origin, but then subtracted in
+        # Apply_kinematics ?
+        # NB, already corrected for in place_ic_data_in_datamodel
+        boxhalf = simulation.toyclusterlog.systemsetup['Boxsize']/2
+
+        # The x-position is shifted back from the CoM to the center (x=0)
+        # TODO: properly shift back
+        # d_clusters = 0.9 * (halo[0].R200 + halo[1].R200)
+        # D_CoM_0 = -1 * d_clusters * halo[1].Mtotal200/param.Mtot200 (why?)
+        # D_CoM_1 = d_clusters + D_CoM_0
+        # dx =
+        print "Shifting haloes, back to origin."
+        halo0gas.x -= simulation.toyclusterlog.kinematics['D_CoM_0']
+        halo0dm.x -= simulation.toyclusterlog.kinematics['D_CoM_0']
+        halo1gas.x -= simulation.toyclusterlog.kinematics['D_CoM_1']
+        halo1dm.x -= simulation.toyclusterlog.kinematics['D_CoM_1']
+
+        # TODO: when an impact parameter is given, then y is also shifted!
+        if not (-2**-14 < simulation.toyclusterlog.kinematics['Impact_Parameter'].value_in(units.kpc) < 2**-14):
+            # TODO: properly shift back
+            # b_CoM_0 = -1 * param.Impact_Param * halo[0].Mtotal200/param.Mtot200 (why?)
+            # b_CoM_1 = param.Impact_Param + b_CoM_0
+            #
+            print "WARNING: correcting for impact parameter is untested"
+            halo0gas.y -= simulation.toyclusterlog.kinematics['b_CoM_0']
+            halo0dm.y -= simulation.toyclusterlog.kinematics['b_CoM_0']
+            halo1gas.y -= simulation.toyclusterlog.kinematics['b_CoM_1']
+            halo1dm.y -= simulation.toyclusterlog.kinematics['b_CoM_1']
+
+        if debug:
+            # Bimodality is gone; cluster now centered around x=0
+            pyplot.figure(figsize=(12, 12))
+            amuse_plot.hist(halo0gas.x, bins=int(numpy.sqrt(len(halo0gas.x))))
+            pyplot.show()
+
+            pyplot.figure(figsize=(12, 12))
+            amuse_plot.hist(halo1gas.x, bins=int(numpy.sqrt(len(halo1gas.x))))
+            pyplot.show()
+
+        # recalculate r because now it is calculated with uncentered x, y values
+        print "Recalculating halo radii."
+        halo0gas.r = numpy.sqrt(p2(halo0gas.x.value_in(units.kpc))+
+                                p2(halo0gas.y.value_in(units.kpc))+
+                                p2(halo0gas.z.value_in(units.kpc))) | units.kpc
+        halo0dm.r = numpy.sqrt(p2(halo0dm.x.value_in(units.kpc))+
+                               p2(halo0dm.y.value_in(units.kpc))+
+                               p2(halo0dm.z.value_in(units.kpc))) | units.kpc
+        halo1gas.r = numpy.sqrt(p2(halo1gas.x.value_in(units.kpc))+
+                                p2(halo1gas.y.value_in(units.kpc))+
+                                p2(halo1gas.z.value_in(units.kpc))) | units.kpc
+        halo1dm.r = numpy.sqrt(p2(halo1dm.x.value_in(units.kpc))+
+                               p2(halo1dm.y.value_in(units.kpc))+
+                               p2(halo1dm.z.value_in(units.kpc))) | units.kpc
+
+        # Now fill the placeholders created earlier with the split up, reshifted haloes
+        print "Filling AMUSE datamodel with particle properties."
+        halo0_numerical.set_toycluster2_values(i=0)
+        halo0_numerical.gas = halo0gas
+        halo0_numerical.dm = halo0dm
+        halo0_numerical.M_dm = halo0_numerical.Mass_in_DM
+        halo0_numerical.M_gas = halo0_numerical.Mass_in_gas
+        # Rather ugly hack, but ensures set_dm_density() method works
+        halo0_numerical.raw_data.Ndm = len(halo0_numerical.dm)
+
+        halo1_numerical.set_toycluster2_values(i=1)
+        halo1_numerical.gas = halo1gas
+        halo1_numerical.dm = halo1dm
+        halo1_numerical.M_dm = halo1_numerical.Mass_in_DM
+        halo1_numerical.M_gas = halo1_numerical.Mass_in_gas
+        # Rather ugly hack, but ensures set_dm_density() method works
+        halo1_numerical.raw_data.Ndm = len(halo1_numerical.dm)
+
+        self.halo0_analytical = halo0_analytical
+        self.halo0_numerical = halo0_numerical
+        self.halo1_analytical = halo1_analytical
+        self.halo1_numerical = halo1_numerical
+
+        # To plot density profiles :-)...
+        # self.halo0_numerical.get_gas_mass_via_density()
+        # self.halo0_numerical.get_dm_mass_via_number_density()
+        # self.halo0_numerical.set_dm_density()
+
+        # self.halo1_numerical.get_gas_mass_via_density()
+        # self.halo1_numerical.get_dm_mass_via_number_density()
+        # self.halo1_numerical.set_dm_density()
+
+        return
+
+        # TODO: this can be used in plot_individual_cluster_density to sort
+        # Sort subset of the particles by the radius such that we can
+        # integrate in spherical shells to obtain the radial density profile
+        sorted0gas = halo0gas.sorted_by_attribute('r')
+        sorted1gas = halo1gas.sorted_by_attribute('r')
+        sorted0dm = halo0dm.sorted_by_attribute('r')
+        sorted1dm = halo1dm.sorted_by_attribute('r')
+
+
+def setup_analytical_cluster(simulation, i=0):
+    """ Set up an analytical cluster given sampled parameters of the halo.
+        In Toycluster we have two haloes: halo[0] and halo[1].
+
+        Toycluster runtime output is piped to runToycluster.log.
+        This output is then parsed by `Toycluster2RuntimeOutputParser' class
+        and saved in the `NumericalCluster' instance `simulation' class
+        variable `toyclusterlog'.
+
+        toyclusterlog has a 2D dict halosetup, where
+        halosetup[0][...] gives the specific halo properties of halo0
+    """
+
+    # Caution: parms[0] is number density! Caution: use unitsless numbers!
+    rho0 = simulation.toyclusterlog.halosetup[i]['rho0gas_cgs']
+    ne0 = convert.rho_to_ne(rho0.value_in(units.g/units.cm**3),
+                            simulation.toyclusterlog.systemat['z'])
+    rc = simulation.toyclusterlog.halosetup[i]['rc']
+    R200 = simulation.toyclusterlog.halosetup[i]['R200']
+    Mass_in_DM = simulation.toyclusterlog.halosetup[i]['Mass_in_DM']
+    a = simulation.toyclusterlog.halosetup[i]['a_hernquist']
+
+    # print "rho0          :", rho0
+    # print "ne0           :", ne0
+    # print "rc            :", rc
+    # print "R200          :", R200
+    # print "Mass_in_DM    :", Mass_in_DM
+    # print "a             :", a
+
+    parms = (ne0, rc.value_in(units.kpc),
+             R200.value_in(units.kpc))
+    dm_parms = (Mass_in_DM, a)
+
+    return AnalyticalCluster(parms, dm_parms,
+        z=simulation.toyclusterlog.systemat['z'])
+
 
 def simple_plot(observed_cluster, yparm="density"):
     """ Possible properties to plot on y-axis are:

@@ -2,7 +2,7 @@
 File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Thu Jun 16, 2016 02:07 pm
+Last modified: Fri Jun 17, 2016 07:43 pm
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -362,7 +362,8 @@ class Toycluster2RuntimeOutputParser(object):
         self.parse_systemat()
         self.parse_halosetup()
         self.parse_systemsetup()
-        if 0 < self.systemsetup['Mass_Ratio'] < 1:
+        # if the mass ratio is not 0.0
+        if not (-2**-14 < self.systemsetup['Mass_Ratio'] < 2**-14):
             self.parse_kinematics()
         # self.parse_halo0_sampling()
 
@@ -493,7 +494,8 @@ class Toycluster2RuntimeOutputParser(object):
         tmp += self.str_halosetup()
         tmp += self.str_systemsetup()
         tmp += self.str_grav_softening()
-        if 0 < self.systemsetup['Mass_Ratio'] < 1:
+        # if the mass ratio is not 0.0
+        if not (-2**-14 < self.systemsetup['Mass_Ratio'] < 2**-14):
             tmp += self.str_kinematics()
         return tmp
 
