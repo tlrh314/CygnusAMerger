@@ -15,7 +15,7 @@ OutputListFilename output_list.txt
 
 % CPU time -limit
 
-TimeLimitCPU      25200 %428400 % = 119 hours: 5 days minus 1 hour. Lisa max: 5 days.
+TimeLimitCPU      428400 % = 119 hours: 5 days minus 1 hour. Lisa max: 5 days.
 ResubmitOn        0
 ResubmitCommand   my-scriptfile
 
@@ -47,7 +47,7 @@ BoxSize                  18965  % kpc
 TimeBetSnapshot          0.1  % in code units of time (Gyr)
 TimeOfFirstSnapshot      0.0
 
-CpuTimeBetRestartFile    18000  % here in seconds
+CpuTimeBetRestartFile    21600 % here in seconds (21600 = 6 hours)
 TimeBetStatistics        0.05
 
 NumFilesPerSnapshot       1
@@ -108,15 +108,15 @@ GravityConstantInternal  0
 MinGasHsmlFractional 0.25
 
 % TODO: obtain softening from runToycluster.log?
-SofteningGas       10
-SofteningHalo      10
+SofteningGas       2
+SofteningHalo      2
 SofteningDisk      180.0
 SofteningBulge     500.0
 SofteningStars     0
 SofteningBndry     0
 
-SofteningGasMaxPhys       10
-SofteningHaloMaxPhys      10
+SofteningGasMaxPhys       2
+SofteningHaloMaxPhys      2
 SofteningDiskMaxPhys      30.0
 SofteningBulgeMaxPhys     150.0
 SofteningStarsMaxPhys     0

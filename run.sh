@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-#PBS -lnodes=4:ppn=16:cores16
-#PBS -lwalltime=03:00:00
+#PBS -lnodes=8:ppn=16:cores16
+#PBS -lwalltime=05:00:00
 
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Fri Jun 17, 2016 02:41 pm
+# Last modified: Fri Jun 17, 2016 08:15 PM
 #
 # Description: run simulation pipeline
 
@@ -139,6 +139,7 @@ Cheers,\n${SYSTYPE}"
     fi
 }
 
+
 setup_system() {
     # Better safe than sorry *_*... TODO: turn this off for production run?
     alias rm='rm -vi'
@@ -150,18 +151,28 @@ setup_system() {
         # TODO: check how multiple threas/nodes works on Lisa?
         # TODO: is the PBS situation the scheduler that also sets nodes/threads?
         # THREADS=$(grep -c ^processor /proc/cpuinfo)
-        THREADS=64  # set based on the nr of nodes requested
+        THREADS=128  # set based on the nr of nodes requested
         NICE=0  # default is 0
         BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
-        TIMESTAMP="20160519T1749"  # qsub no parse options..
+        TIMESTAMP="20160617T1544"  # qsub no parse options..
         MAIL=true
         # TODO: I think home should not be used, instead use scratch??
         module load c/intel
         module load fftw2/sp/intel
         module load fftw2/dp/intel
         module load openmpi/intel
+
+        # Send mail once jobs starts.. it could queue god knows how long
+        msg="Dear Timo,\n\n\
+Gadget-2 run started for ${TIMESTAMP} with PBS JobID = ${PBS_JOBID}.\n\n\
+The job runs at @ ${SYSTYPE}.\n\n\
+Cheers,\n${SYSTYPE}"
+
+        SUBJECT="Job @ ${SYSTYPE} has started :-)!"
+    
+        (echo -e $msg | mail $USER -s "${SUBJECT}") 
     elif [ "${SYSTYPE}" == "taurus" ]; then
-        THREADS=16
+        THREADS=8
         NICE=19
         BASEDIR="/scratch/timo"
     elif [ "$(uname -s)" == "Darwin" ]; then
@@ -785,13 +796,16 @@ run_psmac2_for_given_module() {
 # Main
 # Uncomment if options are required
 # if [ $# = 0 ]; then _usage && exit 2; fi
-parse_options $@
+
+if [[ ! "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+    parse_options $@
+fi
 
 echo -e "\nStart of program at $(date)\n"
 
 setup_system
 setup_toycluster
-#setup_gadget
+setup_gadget
 # echo "Press enter to continue" && read enterKey
 #setup_psmac2
 
