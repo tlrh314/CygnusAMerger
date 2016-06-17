@@ -5,12 +5,10 @@ OPT     += -DNFWC_DUFFY08    # alternate fit to concentr. param
 
 #OPT     += -DPARABOLA       # merge in a parabula
 OPT    += -DCOMET            # merge like a comet, ball+tail (recommended)
-
-OPT     += -DZERO_ENERGY_ORBIT_FRACTION=0.0 # fraction of zero energy orbit in vel
-
-# OPT     += -DGIVEPARAMS        # more merger parameters in .par file
+OPT     += -DGIVEPARAMS        # more merger parameters in .par file
 
 OPT      += -DGADGET2
+#OPT      += -DGADGET2_KERNEL
 
 #OPT     += -DDOUBLE_BETA_COOL_CORES
 
@@ -51,10 +49,12 @@ GSL_LIBS = $(LDFLAGS)
 endif
 
 ifeq ($(SYSTYPE),MBP)
-CC       = gcc-5
+CC       = gcc-6
 OPTIMIZE = -Wall -O2
 GSL_INCL =  -I/usr/local/Cellar/gsl/1.16/include
+#GSL_INCL = -I/usr/local/AMUSE/prerequisites-10.0/include
 GSL_LIBS =  -L/usr/local/Cellar/gsl/1.16/lib
+#GSL_LIBS = -L/usr/local/AMUSE/prerequisites-10.0/lib -lgsl -lgslcblas
 endif
 
 

@@ -2,7 +2,7 @@
 File: cluster.py
 Author: Timo L. R. Halbesma <timohalbesma@gmail.com>
 Date created: Tue May 17, 2016 01:59 pm
-Last modified: Tue Jun 07, 2016 09:10 pm
+Last modified: Fri Jun 17, 2016 03:21 pm
 
 
 """
@@ -209,11 +209,15 @@ class NumericalCluster(object):
         gas.vx = vxgas | units.kms
         gas.vy = vygas | units.kms
         gas.vz = vzgas | units.kms
-        gas.rho = (rhogas * 1e10 * ic_data.hubbleParam**(2) | (units.MSun / units.kpc**3))\
-            .as_quantity_in(units.g/units.cm**3)
-        # gas.rhom = (rhomgas * 1e10 * ic_data.hubbleParam**(2) | (units.MSun / units.kpc**3))\
-        #    .as_quantity_in(units.g/units.cm**3)
         gas.h = ic_data.hsml
+
+        # Bug in Toycluster's unit.c line 35: "* p2(0.7)"
+        # Removed in commit e88b863319e969f4a15765baad447de9e3571d7e
+        #gas.rho = (rhogas * 1e10 * ic_data.hubbleParam**(2) | (units.MSun / units.kpc**3))\
+        #    .as_quantity_in(units.g/units.cm**3)
+
+        gas.rho = (rhogas * 1e10  | (units.MSun / units.kpc**3))\
+            .as_quantity_in(units.g/units.cm**3)
 
         dm = datamodel.Particles(ic_data.Ndm)
         dm.x = xdm | units.kpc

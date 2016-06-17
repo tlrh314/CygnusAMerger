@@ -5,7 +5,7 @@
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
-# Last modified: Tue Jun 07, 2016 08:37 pm
+# Last modified: Fri Jun 17, 2016 02:41 pm
 #
 # Description: run simulation pipeline
 
@@ -791,9 +791,9 @@ echo -e "\nStart of program at $(date)\n"
 
 setup_system
 setup_toycluster
-setup_gadget
+#setup_gadget
 # echo "Press enter to continue" && read enterKey
-setup_psmac2
+#setup_psmac2
 
 # TODO: if directories do not exist the parameter is empty and echoing it makes no sense...
 

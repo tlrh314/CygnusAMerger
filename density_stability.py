@@ -56,7 +56,7 @@ def plot_individual_cluster_density(numerical, analytical):
     amuse_plot.xlabel(r"$r$")
     amuse_plot.ylabel(r"$\rho$")
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
-    #pyplot.gca().set_ylim(ymin=1e-30, ymax=9e-24)
+    pyplot.gca().set_ylim(ymin=1e-30, ymax=9e-24)
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
 
@@ -110,9 +110,8 @@ def plot_individual_cluster_mass(numerical, analytical):
 if __name__ == "__main__":
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160607T2042"
+    myRun = "20160607T2118"
     snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*".format(myRun)),  key=os.path.getmtime)
-    snaps = ["hank"]
 
     for i, snap in enumerate(snaps):
         fname = snap.split('/')[-1]
@@ -120,11 +119,11 @@ if __name__ == "__main__":
 
         numerical = NumericalCluster(
             icdir="../runs/{0}/ICs/".format(myRun),
-            #snapdir="../runs/{0}/snaps/".format(myRun),
-            snapdir="../runs/{0}/ICs/".format(myRun),
+            snapdir="../runs/{0}/snaps/".format(myRun),
+            #snapdir="../runs/{0}/ICs/".format(myRun),
             logfile="runToycluster.log",
-            #icfile="snapshot_"+snapnr)
-            icfile="IC_single_0")
+            icfile="snapshot_"+snapnr)
+            #icfile="IC_single_0")
 
         # Caution: parms[0] is number density! Caution: use unitsless numbers!
         ne0 = convert.rho_to_ne(numerical.rho0gas.value_in(units.g/units.cm**3),
@@ -191,6 +190,6 @@ if __name__ == "__main__":
         pyplot.savefig("out/{0}-mass-".format(myRun)+snapnr+".png")
         pyplot.close()
 
-        break
+        # break
 
         print "Done checking snapshot:", snap

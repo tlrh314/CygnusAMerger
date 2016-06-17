@@ -2,7 +2,7 @@
 File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Fri Jun 03, 2016 10:51 am
+Last modified: Thu Jun 16, 2016 02:07 pm
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -420,11 +420,12 @@ class Toycluster2RuntimeOutputParser(object):
             self.halosetup[n]['a_hernquist'] = unit_str_to_quantity(lines[i+11].split("=")[-1].strip())
             self.halosetup[n]['rho0gas_cgs'] = unit_str_to_quantity(self.split(lines[i+12]))
             self.halosetup[n]['rho0gas_gadget'] = (lines[i+13].split("=")[-1].strip()).split(" ")[0]
-            if lines[i+14].split("=")[-1].strip() == "2/3": self.halosetup[n]['beta'] = 2./3
-            self.halosetup[n]['rc'] = unit_str_to_quantity(lines[i+15].split("=")[-1].strip())
-            self.halosetup[n]['R500'] = unit_str_to_quantity(lines[i+16].split("=")[-1].strip())
-            self.halosetup[n]['bf_200'] = float(lines[i+17].split("=")[-1].strip())
-            self.halosetup[n]['bf_500'] = float(lines[i+18].split("=")[-1].strip())
+            self.halosetup[n]['ne0gas'] = (lines[i+14].split("=")[-1].strip()).split(" ")[0]
+            if lines[i+15].split("=")[-1].strip() == "2/3": self.halosetup[n]['beta'] = 2./3
+            self.halosetup[n]['rc'] = unit_str_to_quantity(lines[i+16].split("=")[-1].strip())
+            self.halosetup[n]['R500'] = unit_str_to_quantity(lines[i+17].split("=")[-1].strip())
+            self.halosetup[n]['bf_200'] = float(lines[i+18].split("=")[-1].strip())
+            self.halosetup[n]['bf_500'] = float(lines[i+19].split("=")[-1].strip())
 
     def parse_systemsetup(self):
         """ Parse block that contains the system setup parameters. """
@@ -534,6 +535,7 @@ class Toycluster2RuntimeOutputParser(object):
             tmp += "    a_hernquist       = " + str(self.halosetup[n]['a_hernquist']) + "\n"
             tmp += "    rho0_gas          = " + str(self.halosetup[n]['rho0gas_cgs']) + "\n"
             tmp += "    rho0_gas          = " + str(self.halosetup[n]['rho0gas_gadget']) + "\n"
+            tmp += "    ne0_gas           = " + str(self.halosetup[n]['ne0gas']) + "\n"
             tmp += "    beta              = " + str(self.halosetup[n]['beta']) + "\n"
             tmp += "    rc                = " + str(self.halosetup[n]['rc']) + "\n"
             tmp += "    R500              = " + str(self.halosetup[n]['R500']) + "\n"
@@ -627,7 +629,6 @@ if __name__ == '__main__':
     for key, value in parms.items():
         print key, "=", value
     print 80*'-'
-    import sys; sys.exit(0)
 
     print 80*'-'
     print "Parsing Toycluster Parameter file"

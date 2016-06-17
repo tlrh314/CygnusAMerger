@@ -221,7 +221,7 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
         label += "\n\t"+r"$n_{{e,0,cc}}$ = {0:.2f}".format(analytical.ne0_cc.number) if not mass_density else "\n\t"+r"$\rho_{{0,cc}}$ = {0:.2f}".format(analytical.rho0_cc.number)
         label += "\n\t"+r"$r_{{c,cc}}$ = {0:.2f}".format(analytical.rc_cc.number)
     amuse_plot.plot(analytical.radius, analytical_density,
-            c=fit_colour, lw=4, label=label)  #, drawstyle="steps-mid")
+            c=fit_colour, lw=1, label=label)  #, drawstyle="steps-mid")
 
     if numerical:
         pyplot.scatter(numerical.gas.r.value_in(units.kpc),
@@ -236,7 +236,7 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
 
     # Plot Residuals
     pyplot.sca(ax_r)
-    residual_density = observed_density - analytical_density
+    residual_density = (observed_density - analytical_density)/observed_density
     pyplot.errorbar(observed.radius+observed.binsize/2, residual_density,
             yerr=observed_density_std, c=fit_colour, drawstyle="steps-mid")
     ax_r.axhline(y=0, lw=2, ls="dashed", c="white")
@@ -248,17 +248,15 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
     ax_r.set_xlim(min(observed.radius)-0.3, max(observed.radius)+2000)
 
     if observed.name == "cygA" and not mass_density:
-        ax_r.set_ylim(-0.03, 0.06)
+        ax_r.set_ylim(-0.3, 0.3)
     if observed.name == "cygB" and not mass_density:
-        ax_r.set_ylim(-0.0005, 0.002)
+        ax_r.set_ylim(-0.3, 0.3)
 
     # TODO: set residuals limit for mass density and avoid overlap...
     if observed.name == "cygA" and mass_density:
-        # ax_r.set_ylim(-0.03, 0.06)
-        pass
+        ax_r.set_ylim(-0.3, 0.3)
     if observed.name == "cygB" and mass_density:
-        # ax_r.set_ylim(-0.0005, 0.002)
-        pass
+        ax_r.set_ylim(-0.3, 0.3)
 
     # Fix for overlapping y-axis markers
     from matplotlib.ticker import MaxNLocator
@@ -392,10 +390,10 @@ def get_mass_profile(observed, result):
     # pyplot.show()
 
 
-def write_parms_to_textfile(parms):
+def write_parms_to_textfile(filename, parms):
     """ Write Toycluster parms (dict) to plain text file """
 
-    with open("ToyclusterTrial.par", "w") as f:
+    with open(filename, "w") as f:
         str=""
         for k, v in parms.iteritems():
             str += "{0} {1}\n".format(k, v)
@@ -433,11 +431,11 @@ def plot_toycluster_rho0(observed, analytical):
 
     chandra_rho0 = analytical.rho0.value_in(units.g/units.cm**3)
     toycluster_rho0 = []
-    mass = range(1000000000, 100000000000, 1000000000)
+    mass = range(100, 1000000)
     N = len(mass)
     for i, m in enumerate(mass):
         parms['Mtotal'] = m
-        write_parms_to_textfile(parms)
+        write_parms_to_textfile("ToyclusterTrial.par", parms)
         os.system("./NoParticles.sh")
         tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
         toycluster_rho0.append((tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3))
@@ -483,17 +481,23 @@ def get_cluster_mass_from_toycluster(observed, analytical, verbose=True):
         ('UnitLength_in_cm', "3.085678e+21"),
         ('UnitMass_in_g', "1.989e+43"),
         ('UnitVelocity_in_cm_per_s', 100000),
-        # ('c_nfw_0', 3.0),
-        # ('v_com_0', 0.0),
-        # ('rc_0', 28.06),
-        # ('c_nfw_1', 3.0),
-        # ('v_com_1', -1100),
-        # ('rc_1', 276.26)
+        ('c_nfw_0', 3.0),
+        ('v_com_0', 0.0),
+        ('rc_0', 0.0),
+        ('c_nfw_1', 3.0),
+        ('v_com_1', 0),
+        ('rc_1', 0.0)
     })
+
+    parms['rc_0'] = analytical.rc.value_in(units.kpc)
+
     if observed.name == "cygA":
         parms['Cuspy'] = 1
+        parms['Output_file'] = "CygA_trial"
     elif observed.name == "cygB":
         parms['Cuspy'] = 0
+        parms['Output_file'] = "CygB_trial"
+        # parms['c_nfw_0'] = 4
 
     # Bisection the mass. Here: initial guess 1e15. NB: code units = 1e10 MSun
     lower = 100         # 1e12
@@ -508,7 +512,7 @@ def get_cluster_mass_from_toycluster(observed, analytical, verbose=True):
     while upper-lower > epsilon:
         current = (lower+upper)/2.
         parms['Mtotal'] = current
-        write_parms_to_textfile(parms)
+        write_parms_to_textfile("ToyclusterTrial.par", parms)
         os.system("./NoParticles.sh")
         tc = Toycluster2RuntimeOutputParser("NoParticles.txt")
         toycluster_rho0 = (tc.halosetup[0]['rho0gas_cgs']).value_in(units.g/units.cm**3)
@@ -525,13 +529,19 @@ def get_cluster_mass_from_toycluster(observed, analytical, verbose=True):
         print "c_nfw      :", tc.halosetup[0]['c_nfw']
         print
 
-        if toycluster_rho0/chandra_rho0 < 1-0.2:
+        if toycluster_rho0 > chandra_rho0:
             upper = current
-        if toycluster_rho0/chandra_rho0 > 1-0.2:
+        if toycluster_rho0 < chandra_rho0:
             lower = current
 
         # raw_input("Press enter to continue")
 
+    return tc
+    os.system("./YesParticles.sh")
+    if observed.name == "cygA":
+        os.system("mv YesParticles.txt RunToyClusterCygA.log")
+    elif observed.name == "cygB":
+        os.system("mv YesParticles.txt RunToyClusterCygB.log")
     return tc
 
 
@@ -573,6 +583,22 @@ if __name__ == "__main__":
             cygB_analytical.rho0.value_in(units.g/units.cm**3))
         print 80*"-"
 
+    get_total_mass = False
+    if get_total_mass:
+        print "Obtaining total mass and mass ratio"
+        print 80*"-"
+        print cygA_analytical.rc.value_in(units.kpc)
+        print cygA_analytical.rho0.value_in(units.g/units.cm**3)
+
+        rhocrit200 = 200*cygA_observed.cc.rho_crit()
+
+        bf = 0.17
+
+        # TODO
+
+        print 80*"-"
+
+
     fit_toycluster = False
     if fit_toycluster:
         print "Fitting Toycluster calculated rho_0, rc to Chandra data"
@@ -598,7 +624,7 @@ if __name__ == "__main__":
 
         print 80*"-"
 
-    plot_fit = False
+    plot_fit = True
     if plot_fit:
         # Number density
         # plot_fit_results(cygA_observed, cygA_analytical,
@@ -607,22 +633,24 @@ if __name__ == "__main__":
         #                  numerical=None, mass_density=False)
 
         # Mass density, including numerical best-fit model
-        cygA_numerical = NumericalCluster(
-            icdir="./",
-            snapdir="./",
-            logfile="RunToyClusterCygA.log",
-            icfile="CygA_trial")
-        cygB_numerical = NumericalCluster(
-            icdir="./",
-            snapdir="./",
-            logfile="RunToyClusterCygB.log",
-            icfile="CygB_trial")
+        # cygA_numerical = NumericalCluster(
+        #     icdir="./",
+        #     snapdir="./",
+        #     logfile="RunToyClusterCygA.log",
+        #     icfile="CygA_trial")
+        # cygB_numerical = NumericalCluster(
+        #     icdir="./",
+        #     snapdir="./",
+        #     logfile="RunToyClusterCygB.log",
+        #     icfile="CygB_trial")
 
         # Works, but residuals need some attention...
         plot_fit_results(cygA_observed, cygA_analytical,
-                         cygA_numerical, mass_density=True)
+                         mass_density=True)
+        pyplot.show()
         plot_fit_results(cygB_observed, cygB_analytical,
-                         cygB_numerical, mass_density=True)
+                         mass_density=True)
+        pyplot.show()
 
     obtain_mass = False
     if obtain_mass:
@@ -672,7 +700,7 @@ if __name__ == "__main__":
         print 80*"-"
         import sys; sys.exit(0)
 
-    mass_analytical = True
+    mass_analytical = False
     if mass_analytical:
         print "Obtaining cluster mass from analytical density profile"
         print 80*"-"
