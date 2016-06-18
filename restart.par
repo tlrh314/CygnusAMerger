@@ -1,6 +1,7 @@
 %  Relevant files
 
-InitCondFile       snapshot_024 
+% TO ADJUST FOR RESTARTING
+InitCondFile       snapshot_011
 OutputDir          ./
 
 EnergyFile         energy_run2.txt
@@ -15,7 +16,8 @@ OutputListFilename output_list_run2.txt
 
 % CPU time -limit
 
-TimeLimitCPU      428400 % = 119 hours: 5 days minus 1 hour. Lisa max: 5 days.
+% TO ADJUST FOR RESTARTING
+TimeLimitCPU      104,400% = 29 hours: 5 days minus 1 hour. Lisa max: 5 days.
 ResubmitOn        0
 ResubmitCommand   my-scriptfile
 
@@ -33,18 +35,20 @@ PeriodicBoundariesOn     1
 
 %  Caracteristics of run
 
-TimeBegin                1.2
+% TO ADJUST FOR RESTARTING
+TimeBegin                1.1
 TimeMax                  5.0  % in units of Gyr
 
 Omega0                   0.3
 OmegaLambda              0.7
 OmegaBaryon              0.0
 HubbleParam              0.7
-BoxSize 7566 % kpc
+BoxSize 7196 % kpc
 
 % Output frequency
 
-TimeBetSnapshot          0.05  % in code units of time (Gyr)
+% TO ADJUST FOR RESTARTING
+TimeBetSnapshot          0.1  % in code units of time (Gyr)
 TimeOfFirstSnapshot      0.0
 
 CpuTimeBetRestartFile    18000  % here in seconds
@@ -81,7 +85,7 @@ TreeDomainUpdateFrequency    0.1
 
 %  Further parameters of SPH
 
-DesNumNgb               64   % TODO: ask Julius why did I have 50 here?
+DesNumNgb               50
 MaxNumNgbDeviation      2
 ArtBulkViscConst        0.8
 InitGasTemp             0
@@ -90,9 +94,9 @@ MinGasTemp              0
 
 % Memory allocation
 
-PartAllocFactor        2.5
+PartAllocFactor        2
 TreeAllocFactor        0.8
-BufferSize             200          % in MByte
+BufferSize             100          % in MByte
 
 
 % System of units
@@ -108,15 +112,17 @@ GravityConstantInternal  0
 MinGasHsmlFractional 0.25
 
 % TODO: obtain softening from runToycluster.log?
-SofteningGas       10
-SofteningHalo      10
+% TO ADJUST FOR RESTARTING
+SofteningGas       2
+SofteningHalo      2
 SofteningDisk      180.0
 SofteningBulge     500.0
 SofteningStars     0
 SofteningBndry     0
 
-SofteningGasMaxPhys       10
-SofteningHaloMaxPhys      10
+% TO ADJUST FOR RESTARTING
+SofteningGasMaxPhys       2
+SofteningHaloMaxPhys      2
 SofteningDiskMaxPhys      30.0
 SofteningBulgeMaxPhys     150.0
 SofteningStarsMaxPhys     0
