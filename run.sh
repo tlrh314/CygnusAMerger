@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -lnodes=8:ppn=16:cores16
-#PBS -lwalltime=05:00:00
+#PBS -l walltime=01:23:00:00
 
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
