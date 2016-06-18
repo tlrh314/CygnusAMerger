@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -lnodes=8:ppn=16:cores16
-#PBS -lwalltime=30:00:00
+#PBS -l walltime=01:23:00:00
 
 send_mail() {
     if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
@@ -99,7 +99,11 @@ cd ${BASEDIR}/runs/${TIMESTAMP}/snaps
 # required settings!
 
 # If restart files are not present: restart from last snapshot and change Tbegin
-nice -n ${NICE} mpiexec.hydra -np $THREADS ./Gadget2 restart.par
+if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+    mpiexec ./Gadget2 restart.par
+elif [ "${SYSTYPE}" == "taurus" ]; then
+    nice -n ${NICE} mpiexec.hydra -np $THREADS ./Gadget2 restart.par
+fi
 
 if [ "$MAIL" = true ]; then
     send_mail
