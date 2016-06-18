@@ -806,7 +806,7 @@ setup_system
 setup_toycluster
 setup_gadget
 # echo "Press enter to continue" && read enterKey
-#setup_psmac2
+setup_psmac2
 
 # TODO: if directories do not exist the parameter is empty and echoing it makes no sense...
 
@@ -892,11 +892,11 @@ case "${EFFECT}" in
         echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Thermal, DT/T"
         run_psmac2_for_given_module "sz-thermal-dt-over-t" "7" "1"
 
-        echo "Running P-Smac2 for Dark Matter density."
+        #echo "Running P-Smac2 for Dark Matter density."
         #run_psmac2_for_given_module "dm-density" "10" "0"
 
-        echo "Running P-Smac2 for Dark Matter Annihilation."
-        run_psmac2_for_given_module "dm-annihilation" "11" "0"
+        #echo "Running P-Smac2 for Dark Matter Annihilation."
+        #run_psmac2_for_given_module "dm-annihilation" "11" "0"
 esac
 
 if [ "$MAIL" = true ]; then
