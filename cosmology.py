@@ -7,7 +7,7 @@ Copyright for the original (online) calculator 1999-2016 Edward L. Wright.
 If you use this calculator while preparing a paper, please cite Wright (2006, PASP, 118, 1711).
 
 Some additions/alterations were made by TLRH
-Last modified: Mon Jun 06, 2016 10:31 am
+Last modified: Sat Jun 18, 2016 10:51 pm
 
 """
 #!/usr/bin/env python

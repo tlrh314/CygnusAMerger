@@ -118,7 +118,9 @@ def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.], double=False):
 
     # Fit to data
     if observed.name == "cygA":
-        if len(parm) == 3:
+        if len(parm) == 2:
+            bounds = [(None, None), (5, 50)]
+        elif len(parm) == 3:
             bounds = [(None, None), (None, None), (800, 1400)]
         elif len(parm) == 5:
             bounds = [(None, None), (None, None), (800, 1400), (None, None), (None, None)]
@@ -151,8 +153,19 @@ def obtain_mles(observed, result):
     ch = scipy.stats.chi2(dof)
     pval = 1.0 - ch.cdf(ml_func)
 
+    if len(ml_vals) == 2:
+        model = 0
+    elif len(ml_vals) == 3:
+        model = 1
+    elif len(ml_vals) == 5:
+        model = 2
+
+    modelnames = {0: "beta-model",
+                  1: "cut-off beta-model",
+                  2: "cut-off double beta-model"}
+
     print observed.name
-    print "Results for the '{0}' model:".format("Cut-off beta")
+    print "Results for the '{0}' model:".format(modelnames[model])
     print "  Using scipy.optimize.minimize to minimize chi^2 yields:"
     print "    n_e,0       = {0:.3f}".format(ml_vals[0])
     print "    r_c         = {0:.3f}".format(ml_vals[1])
@@ -238,7 +251,7 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
     pyplot.sca(ax_r)
     residual_density = (observed_density - analytical_density)/observed_density
     pyplot.errorbar(observed.radius+observed.binsize/2, residual_density,
-            yerr=observed_density_std, c=fit_colour, drawstyle="steps-mid")
+            yerr=observed_density_std/observed_density, c=fit_colour, drawstyle="steps-mid")
     ax_r.axhline(y=0, lw=2, ls="dashed", c="white")
 
     ax_r.set_xscale("log")
@@ -247,16 +260,8 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
     ax.set_xlim(min(observed.radius)-0.3, max(observed.radius)+2000)
     ax_r.set_xlim(min(observed.radius)-0.3, max(observed.radius)+2000)
 
-    if observed.name == "cygA" and not mass_density:
-        ax_r.set_ylim(-0.3, 0.3)
-    if observed.name == "cygB" and not mass_density:
-        ax_r.set_ylim(-0.3, 0.3)
-
-    # TODO: set residuals limit for mass density and avoid overlap...
-    if observed.name == "cygA" and mass_density:
-        ax_r.set_ylim(-0.3, 0.3)
-    if observed.name == "cygB" and mass_density:
-        ax_r.set_ylim(-0.3, 0.3)
+    # Show 50% deviations from the data
+    ax_r.set_ylim(-0.5, 0.5)
 
     # Fix for overlapping y-axis markers
     from matplotlib.ticker import MaxNLocator
@@ -566,6 +571,7 @@ if __name__ == "__main__":
             cygA_observed.density= cygA_observed.density[4:]
             cygA_observed.density_std = cygA_observed.density_std[4:]
         cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.135, 27, 1.])
+        cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
         cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[1., 1., 1.])
         cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.002, 200, 700])
         cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.002, 1.])

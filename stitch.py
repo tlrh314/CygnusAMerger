@@ -146,7 +146,7 @@ def make_video(rundir, chosen, projection):
                     horizontalalignment="right", verticalalignment="bottom")
 
         # pyplot.suptitle("T = {0:05.2f} Myr".format(0.05*n),
-        pyplot.suptitle("T = {0:04.2f} Myr".format(TimeBetSnapshot*n),
+        pyplot.suptitle("T = {0:04.2f} Gyr".format(TimeBetSnapshot*n),
             color="white", size=30)
         pyplot.tight_layout()
         pyplot.savefig(rundir+"out/snapshot{0}_{1:03d}.png".format(projection, n))

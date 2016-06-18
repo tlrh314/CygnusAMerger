@@ -608,7 +608,7 @@ class SampledBox(object):
     particles in the datamodel :-)... """
 
     def __init__(self, timestamp):
-        debug = False
+        debug = True
 
         """ First read IC output where two clusters live in the box.
         NB simulation to make distinction between `numerical' (has 1 cluster),
@@ -698,6 +698,8 @@ class SampledBox(object):
             pyplot.figure(figsize=(12, 12))
             amuse_plot.hist(halo1gas.x, bins=int(numpy.sqrt(len(halo1gas.x))))
             pyplot.show()
+
+        import sys; sys.exit(0)
 
         # recalculate r because now it is calculated with uncentered x, y values
         print "Recalculating halo radii."
