@@ -72,9 +72,13 @@ def helix_tables(module, flag, inv=False, values=None):
     return cx
 
 
-def make_video(rundir, chosen):
+def make_video(rundir, chosen, projection):
     """ Make a video of four physical properties: the chosen options """
-    projection = "_projection-z"
+
+    if not (os.path.isdir(rundir+"out") or os.path.exists(rundir+"out")):
+        os.mkdir(rundir+"out")
+
+    projection = "_projection-{0}".format(projection)
 
     # For time counter
     gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
@@ -145,7 +149,7 @@ def make_video(rundir, chosen):
         pyplot.suptitle("T = {0:04.2f} Myr".format(TimeBetSnapshot*n),
             color="white", size=30)
         pyplot.tight_layout()
-        pyplot.savefig("out/snapshot_{0:03d}.png".format(n))
+        pyplot.savefig(rundir+"out/snapshot{0}_{1:03d}.png".format(projection, n))
         pyplot.close()
         # import sys; sys.exit(0)
 
@@ -166,7 +170,9 @@ if __name__ == "__main__":
                8: "xray-surface-brightness",
                }
 
-    chosen = (options[2], options[7], options[8], options[4])
-    rundir = "../runs/20160603T0103/"
-    make_video(rundir, chosen)
-    os.system("./make_movie.sh")
+    timestamp = "20160617T1535"
+    projection = "z"
+    chosen = (options[0], options[7], options[8], options[4])
+    rundir = "../runs/{0}/".format(timestamp)
+    make_video(rundir, chosen, projection)
+    os.system("./make_movie.sh {0} {1}".format(timestamp, projection))
