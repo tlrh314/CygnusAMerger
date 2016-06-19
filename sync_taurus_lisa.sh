@@ -3,7 +3,6 @@
 # File: sync_taurus_lisa.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Sat Apr 23, 2016 11:09 PM
-# Last modified:
 
 set -e
 
@@ -59,5 +58,3 @@ else
     echo "Unknown system: ${SYSTYPE}. Exiting"
     exit 1
 fi
-
-

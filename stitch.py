@@ -11,6 +11,8 @@ from astropy.io import fits
 import cubehelix
 
 from ioparser import parse_gadget_parms
+from ioparser import parse_toycluster_parms
+from macro import print_progressbar
 
 def helix_tables(module, flag, inv=False, values=None):
     """ Port of P-Smac2/lib/idl/helix_tables.pro of P-Smac colormaps.
@@ -84,6 +86,12 @@ def make_video(rundir, chosen, projection):
     gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
     TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
 
+    toyclusterparms = parse_toycluster_parms(rundir+"ICs/toycluster.par")
+    particles = toyclusterparms['Ntotal']
+
+    if particles > 2e6:
+        print "Strap in, this could take a while :-) ..."
+
     headers = []
     data = []
     cmap = []
@@ -153,6 +161,8 @@ def make_video(rundir, chosen, projection):
         pyplot.close()
         # import sys; sys.exit(0)
 
+        print_progressbar(n, number_of_snapshots)
+
 
 if __name__ == "__main__":
     """ Generate movie with four tiles. Physical property to be displayed
@@ -170,9 +180,9 @@ if __name__ == "__main__":
                8: "xray-surface-brightness",
                }
 
-    timestamp = "20160617T1535"
+    timestamp = "20160617T1544"
     projection = "z"
-    chosen = (options[0], options[7], options[8], options[4])
+    chosen = (options[0], options[7], options[8], options[4])  # 0784
     rundir = "../runs/{0}/".format(timestamp)
     make_video(rundir, chosen, projection)
     os.system("./make_movie.sh {0} {1}".format(timestamp, projection))
