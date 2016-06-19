@@ -414,9 +414,9 @@ class AnalyticalCluster(object):
             self.rho0_cc = self.ne0_cc * globals.mu * (globals.m_p | units.g)
             self.rc_cc = rc / rc_fac
 
-        modelnames = {0: r"$\beta$-model",
-                      1: r"cut-off $\beta$-model",
-                      2: r"cut-off double $\beta$-model"}
+        modelnames = {0: r"$\beta (2/3)$-model",
+                      1: r"cut-off $\beta (2/3)$-model",
+                      2: r"cut-off double $\beta (2/3)$-model"}
         self.modelname = modelnames[self.model]
 
         if dm_parms:

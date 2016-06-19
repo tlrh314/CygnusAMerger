@@ -7,7 +7,7 @@ from scipy import stats
 from collections import OrderedDict
 
 import matplotlib
-matplotlib.rcParams.update({'font.size': 22})
+matplotlib.rcParams.update({'font.size': 33})
 matplotlib.rc('text', usetex=True)
 from matplotlib import pyplot
 
@@ -167,11 +167,11 @@ def obtain_mles(observed, result):
     print observed.name
     print "Results for the '{0}' model:".format(modelnames[model])
     print "  Using scipy.optimize.minimize to minimize chi^2 yields:"
-    print "    n_e,0       = {0:.3f}".format(ml_vals[0])
-    print "    r_c         = {0:.3f}".format(ml_vals[1])
+    print "    n_e,0       = {0:.5f}".format(ml_vals[0])
+    print "    r_c         = {0:.5f}".format(ml_vals[1])
     if len(ml_vals) == 3:
-        print "    r_cut       = {0:.3f}".format(ml_vals[2])
-    print "    chisq/dof   = {0:.3f}".format(ml_func/dof)
+        print "    r_cut       = {0:.5f}".format(ml_vals[2])
+    print "    chisq/dof   = {0:.5f}".format(ml_func/dof)
     print "    p-value     = {0:.5f}".format(pval)
 
     ml_vals, ml_covar = scipy.optimize.curve_fit(
@@ -186,15 +186,15 @@ def obtain_mles(observed, result):
 
     err = numpy.sqrt(numpy.diag(ml_covar))
     print "  Using scipy.optimize.curve_fit to obtain confidence intervals yields:"
-    print "    n_e,0       = {0:.3f} +/- {1:.3f}".format(ml_vals[0], err[0])
-    print "    r_c         = {0:.3f} +/- {1:.3f}".format(ml_vals[1], err[1])
+    print "    n_e,0       = {0:.5f} +/- {1:.5f}".format(ml_vals[0], err[0])
+    print "    r_c         = {0:.5f} +/- {1:.5f}".format(ml_vals[1], err[1])
     if len(ml_vals) == 3:
-        print "    r_cut       = {0:.3f} +/- {1:.3f}".format(ml_vals[2], err[2])
+        print "    r_cut       = {0:.5f} +/- {1:.5f}".format(ml_vals[2], err[2])
     print
 
 
 def plot_fit_results(observed, analytical, numerical=None, mass_density=False, save=False):
-    poster_style = True
+    poster_style = False
     if poster_style:
         pyplot.style.use(["dark_background"])
         data_colour = (255./255, 64./255, 255./255)
@@ -220,19 +220,19 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
 
     # Plot data
     pyplot.sca(ax)
-    pyplot.title(observed.name)
+    # pyplot.title(observed.name)
     pyplot.errorbar(observed.radius+observed.binsize/2, observed_density, xerr=observed.binsize/2,
             yerr=observed_density_std, marker='o', ms=6, ls='', c=data_colour,
-            label="800 ks Chandra\n(De Vries, 2016)",)
+            label="800 ks Chandra\n(Wise+ 2016, in prep)",)
 
     label = analytical.modelname+"\n\t"
-    label +=  r"$n_{{e,0}} \,$ = {0:.2e}".format(analytical.ne0.number) if not mass_density else r"$\rho_{{0}} \,$ = {0:.2e}".format(analytical.rho0.number)
-    label += "\n\t"+ r"$r_c \,$ = {0:.2f}".format(analytical.rc.number)
+    label +=  r"$n_{{e,0}} \,$ = {0:.2e} cm$^{{-3}}$".format(analytical.ne0.number) if not mass_density else r"$\rho_{{0}} \,$ = {0:.2e} g cm$^{{-3}}$".format(analytical.rho0.number)
+    label += "\n\t"+ r"$r_c \,$ = {0:.2f} kpc".format(analytical.rc.number)
     if analytical.rcut is not None:
-        label += "\n\t"+r"$r_{{\rm cut}}$ = {0:.2f}".format(analytical.rcut.number)
+        label += "\n\t"+r"$r_{{\rm cut}}$ = {0:.2f} kpc".format(analytical.rcut.number)
     if analytical.rho0_cc is not None:
-        label += "\n\t"+r"$n_{{e,0,cc}}$ = {0:.2f}".format(analytical.ne0_cc.number) if not mass_density else "\n\t"+r"$\rho_{{0,cc}}$ = {0:.2f}".format(analytical.rho0_cc.number)
-        label += "\n\t"+r"$r_{{c,cc}}$ = {0:.2f}".format(analytical.rc_cc.number)
+        label += "\n\t"+r"$n_{{e,0,cc}}$ = {0:.2f} cm$^{{-3}}$".format(analytical.ne0_cc.number) if not mass_density else "\n\t"+r"$\rho_{{0,cc}}$ = {0:.2f} kpc".format(analytical.rho0_cc.number)
+        label += "\n\t"+r"$r_{{c,cc}}$ = {0:.2f} kpc".format(analytical.rc_cc.number)
     amuse_plot.plot(analytical.radius, analytical_density,
             c=fit_colour, lw=1, label=label)  #, drawstyle="steps-mid")
 
@@ -243,16 +243,19 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel(r"$r$ [kpc]")
-    ax.set_ylabel(r"$n_e$ [cm$^{-3}$]")
-    ax.legend(loc=3, prop={'size':20})
+    if mass_density:
+        ax.set_ylabel(r"$\rho_{{\rm gas}}(r)$ (g cm$^{-3}$)")
+        ax.set_ylim(min(observed_density)/1.5, max(observed_density)*1.3)
+    else:
+        ax.set_ylabel(r"$n_e (r)$ (cm$^{-3}$)")
+    ax.legend(loc=3, prop={'size':30})
 
     # Plot Residuals
     pyplot.sca(ax_r)
     residual_density = (observed_density - analytical_density)/observed_density
     pyplot.errorbar(observed.radius+observed.binsize/2, residual_density,
             yerr=observed_density_std/observed_density, c=fit_colour, drawstyle="steps-mid")
-    ax_r.axhline(y=0, lw=2, ls="dashed", c="white")
+    ax_r.axhline(y=0, lw=2, ls="dashed", c=fit_colour)
 
     ax_r.set_xscale("log")
     # ax_r.set_yscale("log")
@@ -269,8 +272,16 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
     nbins = len(ax_r.get_yticklabels())
     ax_r.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
 
+    ax_r.set_xlabel(r"$r$ (kpc)")
+    ax_r.set_ylabel("Residuals")
+
+    ax.axvline(x=analytical.rc.value_in(units.kpc),
+               lw=2, ls="dashed", c=fit_colour)
+    ax_r.axvline(x=analytical.rc.value_in(units.kpc),
+                 lw=2, ls="dashed", c=fit_colour)
+
     if save:
-        pyplot.savefig("out/density_betamodel_fit_{0}.png".format(observed.name), dpi=600)
+        pyplot.savefig("out/density_betamodel_fit_{0}.png".format(observed.name), dpi=300)
     # pyplot.show()
 
 
@@ -337,7 +348,7 @@ def get_cluster_mass_analytical(observed, result):
     pyplot.axvline((r200_analytical | units.cm).value_in(units.kpc), ls="dashed", c=data_colour)
     amuse_plot.ylabel(r"$M(<r)$")
     amuse_plot.xlabel(r"$r$")
-    pyplot.savefig("out/m200_analytical_{0}.png".format(observed.name), dpi=600)
+    pyplot.savefig("out/m200_analytical_{0}.png".format(observed.name), dpi=300)
 
 
 def cummulative_mass_profile(r, r_c, rho_0):
@@ -563,13 +574,17 @@ if __name__ == "__main__":
     if fit:
         print "Obtaining parameters from observed density profiles"
         print 80*"-"
-        discard_firstbins = False
+        # Due to pile up in inner region (?). Also inside kernel: cannot model
+        # in a stable way
+        discard_firstbins = True
         if discard_firstbins:
-            cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.135, 27, 1.])
             cygA_observed.radius = cygA_observed.radius[4:]
             cygA_observed.binsize = cygA_observed.binsize[4:]
             cygA_observed.density= cygA_observed.density[4:]
             cygA_observed.density_std = cygA_observed.density_std[4:]
+            cygA_observed.number_density = cygA_observed.number_density[4:]
+            cygA_observed.number_density_std = cygA_observed.number_density_std[4:]
+
         cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.135, 27, 1.])
         cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
         cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[1., 1., 1.])
@@ -630,7 +645,7 @@ if __name__ == "__main__":
 
         print 80*"-"
 
-    plot_fit = True
+    plot_fit = False
     if plot_fit:
         # Number density
         # plot_fit_results(cygA_observed, cygA_analytical,
@@ -652,10 +667,10 @@ if __name__ == "__main__":
 
         # Works, but residuals need some attention...
         plot_fit_results(cygA_observed, cygA_analytical,
-                         mass_density=True)
+                         mass_density=True, save=True)
         pyplot.show()
         plot_fit_results(cygB_observed, cygB_analytical,
-                         mass_density=True)
+                         mass_density=True, save=True)
         pyplot.show()
 
     obtain_mass = False
