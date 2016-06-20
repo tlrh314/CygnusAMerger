@@ -1,3 +1,18 @@
+"""
+File: get_mass.py
+Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
+Date created: Mon May 16, 2016 05:23 pm
+Last modified: Sun Jun 19, 2016 05:03 pm
+
+Script to obtain M200 for CygA, CygB, thus xM (mass ratio),
+and cNFW for cygA and cygB using reverse of Toycluster setup.c.
+Code based on Julius Donnert's 20160617 cyg.pro script.
+
+Script is designed to stand alone from the rest of my code base.
+Only depends on Numpy, but could easily be rewritten to use plain Python
+
+"""
+
 import numpy
 
 # from amuse.units import constants
@@ -125,12 +140,13 @@ def obtain_M200_bisection(rc, rho0, verbose=False):
     # bisection method
     epsilon = 0.01
     while upper/lower > 1+epsilon:
+        # bisection
         r200 = (lower+upper)/2.
 
-        bf = 0.17  # Mission critical assumption that bf = 0.17 at r200!
+        bf = 0.17  # Mission critical assumption that bf = 0.17 at r200! Planelles+ 2013
 
         Mgas200 = M_gas_below_r(r200, rho0, rc)
-        Mdm200 = Mgas200 * (1/bf - 1)  # TODO: check this step
+        Mdm200 = Mgas200 * (1/bf - 1)
 
         M200 = Mgas200 + Mdm200
 
@@ -140,7 +156,8 @@ def obtain_M200_bisection(rc, rho0, verbose=False):
 
         Mdm = Mdm200 / M_dm_below_r(r200, 1, a)
 
-        # Now r200/rhocrit should of course equal 200. If not? Try different r200
+        """ Now rho_average(r200)/rhocrit should equal 200.
+                If not? Try different r200"""
         rho200_over_rhocrit = ( M200 / (4./3 * numpy.pi * p3(r200))) / rho_crit()
         if verbose:
             print "Lower                  = {0:3.1f}".format(lower * cm2kpc)
@@ -150,11 +167,13 @@ def obtain_M200_bisection(rc, rho0, verbose=False):
             print "Ratio                  = {0:.1f}".format(rho200_over_rhocrit/200)
             print
 
+        # bisection
         if rho200_over_rhocrit < 200:
             upper = r200
         if rho200_over_rhocrit > 200:
             lower = r200
 
+    # r200, thus M200 found
     print "r200                   = {0:3.1f}".format(r200 * cm2kpc)
     print "rho_avg(r200)/rho_crit = {0:.1f}".format(rho200_over_rhocrit)
     print "bf200                  = {0:1.4f}".format(Mgas200/(Mdm200+Mgas200))
