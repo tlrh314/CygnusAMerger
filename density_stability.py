@@ -11,6 +11,7 @@ import amuse.plot as amuse_plot
 
 from ioparser import Gadget2BinaryF77UnformattedType2Parser
 from ioparser import Toycluster2RuntimeOutputParser
+from ioparser import parse_gadget_parms
 from cluster import NumericalCluster
 from cluster import AnalyticalCluster
 import convert
@@ -108,22 +109,31 @@ def plot_individual_cluster_mass(numerical, analytical):
 
 
 if __name__ == "__main__":
+    IC_only = False
+
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160617T1535"
-    snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*".format(myRun)),  key=os.path.getmtime)
+    myRun = "20160620T1152"
+    if IC_only:
+        # TODO: there is something different in the Toycluster rho
+        # than in the Gadget output :(
+        icdir = "../runs/{0}/ICs/".format(myRun)
+        snapdir = "../runs/{0}/ICs/".format(myRun)
+        snaps = ["../runs/{0}/ICs/IC_single_0".format(myRun)]
+    else:
+        icdir = "../runs/{0}/ICs/".format(myRun)
+        snapdir = "../runs/{0}/snaps/".format(myRun)
+        snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*".format(myRun)),  key=os.path.getmtime)
 
     for i, snap in enumerate(snaps):
         fname = snap.split('/')[-1]
         snapnr = fname.split('_')[-1]
 
         numerical = NumericalCluster(
-            icdir="../runs/{0}/ICs/".format(myRun),
-            snapdir="../runs/{0}/snaps/".format(myRun),
-            #snapdir="../runs/{0}/ICs/".format(myRun),
+            icdir=icdir,
+            snapdir=snapdir,
             logfile="runToycluster.log",
-            icfile="snapshot_"+snapnr)
-            #icfile="IC_single_0")
+            icfile="IC_single_0" if IC_only else "snapshot_"+snapnr)
 
         """ TODO: can use cluster.py setup_analytical_cluster
                   to obtain AnalyticalCluster from NumericalCluster"""
@@ -184,11 +194,19 @@ if __name__ == "__main__":
         numerical.set_dm_density()
 
         plot_individual_cluster_density(numerical, analytical)
-        pyplot.title("Time = {0:1.2f} Gyr".format(i*0.25))
+
+        if IC_only:
+            TimeBetSnapshot = 0
+        else:
+            # For time counter
+            gadgetparms = parse_gadget_parms(snapdir+"gadget2.par")
+            TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
+
+        pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot))
         pyplot.savefig("out/{0}-density-".format(myRun)+snapnr+".png")
         pyplot.close()
         plot_individual_cluster_mass(numerical, analytical)
-        pyplot.title("Time = {0:1.2f} Gyr".format(i*0.25))
+        pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot))
         pyplot.savefig("out/{0}-mass-".format(myRun)+snapnr+".png")
         pyplot.close()
 
