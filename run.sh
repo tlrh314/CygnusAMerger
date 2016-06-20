@@ -45,6 +45,7 @@ Options:
   -l   --loglevel       set loglevel to 'ERROR', 'WARNING', 'INFO', 'DEBUG'
                         TODO: to implement loglevel (do I want this?)
   -m   --mail           send email when code execution is completed
+  -o   --onlyic         only run Toycluster, not Gadget2, not P-Smac2
   -r   --restart        resume Gadget-2 simulation (TODO: to implement!)
   -t   --timestamp      provide a timestamp/'simulation ID'. Do not run
                         new simulation but set paths for this specific simulation.
@@ -65,7 +66,7 @@ parse_options() {
     declare -A longoptspec
     longoptspec=( [loglevel]=1 [timestamp]=1 [effect]=1 )
 
-    optspec=":e:hlmrt:-:"
+    optspec=":e:hlmort:-:"
     while getopts "$optspec" opt; do
     while true; do
         case "${opt}" in
@@ -86,6 +87,7 @@ parse_options() {
                 continue
                 ;;
             e|effect)
+                RUNSMAC=true
                 EFFECT="${OPTARG}"
                 echo "EFFECT          = ${EFFECT}"
                 ;;
@@ -102,6 +104,10 @@ parse_options() {
             m|mail)
                 MAIL=true
                 echo "MAIL            = true"
+                ;;
+            o|onlyic)
+                ONLY_TOYCLUSTER=true
+                echo "ONLY_TOYCLUSTER = true"
                 ;;
             r|restart)
                 echo "This function is not implemented"
@@ -804,9 +810,14 @@ echo -e "\nStart of program at $(date)\n"
 
 setup_system
 setup_toycluster
-setup_gadget
-# echo "Press enter to continue" && read enterKey
-setup_psmac2
+
+if [ ! "$ONLY_TOYCLUSTER" = true ]; then
+    setup_gadget
+fi
+
+if [ "$RUNSMAC" = true ]; then
+    setup_psmac2
+fi
 
 # TODO: if directories do not exist the parameter is empty and echoing it makes no sense...
 
