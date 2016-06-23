@@ -387,7 +387,7 @@ class AnalyticalCluster(object):
         # TODO: implement without need for dm_parms
 
         if radius is None:
-            self.radius = VectorQuantity.arange(units.kpc(1), units.kpc(4e4), units.parsec(100))
+            self.radius = VectorQuantity.arange(units.kpc(1), units.kpc(1e5), units.parsec(100))
         else:
             if type(radius) == numpy.ndarray:
                 self.radius = radius | units.kpc

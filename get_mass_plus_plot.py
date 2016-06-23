@@ -22,6 +22,7 @@ pyplot.rcParams.update({"font.size": 22})
 
 from cluster import ObservedCluster
 from cluster import AnalyticalCluster
+from macro import print_progressbar
 
 
 # from amuse.units import constants
@@ -401,6 +402,9 @@ def make_plot(cygA, cygB, mode=""):
         Currently, options are:
         "ratio"       : create mass ratio plot as a function of radius
         "rhomassboth" : 2-panel subplot. left rho; right mass. A&B in same panel
+        "massboth"    : 2-panel mass subplot. Left CygA, right CygB
+        "rhoboth"     : 2-panel denistysubplot. Left CygA, right CygB
+        "masssameplot": mass of both CygA and CygB in the same plot
         "rhosingle"   : plot Chandra gas and fit with residuals and DM bestfit
         "bfsingle"    : Baryon fraction as a function of radius (single cluster)
 
@@ -519,6 +523,80 @@ def make_plot(cygA, cygB, mode=""):
         pyplot.tight_layout()
         pyplot.savefig("out/cygA_cygNW_massAndDensity.png", dpi=300)
 
+    if mode == "massboth":
+        print "Generating two-panel mass plot. CygA left, CygB right."
+        fig, (ax0, ax1) = pyplot.subplots(1, 2, sharex=True, sharey=True, figsize=(16, 8))
+
+        pyplot.sca(ax0)
+        pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="total", c="k")
+        pyplot.loglog(r, cygA_dm_mass, label="dm", c="k", ls="dotted")
+        pyplot.loglog(r, cygA_gas_mass, label="gas", c="k", ls="dashed")
+        ax0.axvline(cygA["r200"]*cm2kpc, c="k", ls="dotted")
+
+        pyplot.sca(ax1)
+        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="total", c="k")
+        pyplot.loglog(r, cygB_dm_mass, label="dm", c="k", ls="dotted")
+        pyplot.loglog(r, cygB_gas_mass, label="gas", c="k", ls="dashed")
+        ax1.axvline(cygB["r200"]*cm2kpc, c="k", ls="dotted")
+
+        for ax in [ax0, ax1]:
+            pyplot.sca(ax)
+            pyplot.xlabel(r"$r$ [kpc]")
+            pyplot.legend(loc=4)
+
+        ax0.set_ylabel(r"$M(<r)$ [$M_{\odot}$]")
+        pyplot.tight_layout()
+        pyplot.savefig("out/cygA_cygNW_mass.png", dpi=300)
+
+    if mode == "masssameplot":
+        print "Generating single plot with both CygA and CygB masses."
+        fig = pyplot.figure(figsize=(12, 9))
+
+        pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="CygA total", c="r")
+        # pyplot.loglog(r, cygA_dm_mass, label="dm", c="k", ls="dotted")
+        pyplot.loglog(r, cygA_gas_mass, label="CygA gas", c="r", ls="dashed")
+        pyplot.axvline(cygA["r200"]*cm2kpc, c="r", ls="dotted")
+
+        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygNW total", c="k")
+        # pyplot.loglog(r, cygB_dm_mass, label="dm", c="k", ls="dotted")
+        pyplot.loglog(r, cygB_gas_mass, label="CygNW gas", c="k", ls="dashed")
+        pyplot.axvline(cygB["r200"]*cm2kpc, c="k", ls="dashed")
+
+        # Smith et al. quote a mass at 500 kpc, assuming H0 = 50.
+        # So converting back to arcsec, and then assuming H0 = 70 to kpc
+        pyplot.axvline(500/1.527*1.091, c="red", ls="solid")
+
+        pyplot.xlim(5, 3000)
+        pyplot.ylim(1e10, 2e14)
+        pyplot.xlabel(r"$r$ [kpc]")
+        pyplot.legend(loc=2)
+
+        pyplot.ylabel(r"$M(<r)$ [$M_{\odot}$]")
+        pyplot.savefig("out/cygA_cygNW_mass_sameplot.png", dpi=300)
+
+    if mode == "rhoboth":
+        print "Generating two-panel denisty plot. CygA left, CygB right."
+        fig, (ax0, ax1) = pyplot.subplots(1, 2, sharex=True, sharey=True, figsize=(16, 8))
+
+        pyplot.sca(ax0)
+        pyplot.loglog(r, cygA_dm_rhom, label="dm", c="k", ls="dotted")
+        pyplot.loglog(r, cygA_gas_rhom, label="gas", c="k", ls="dashed")
+        ax0.axvline(cygA["r200"]*cm2kpc, c="k", ls="dotted")
+
+        pyplot.sca(ax1)
+        pyplot.loglog(r, cygB_dm_rhom, label="dm", c="k", ls="dotted")
+        pyplot.loglog(r, cygB_gas_rhom, label="gas", c="k", ls="dashed")
+        ax1.axvline(cygB["r200"]*cm2kpc, c="k", ls="dotted")
+
+        for ax in [ax0, ax1]:
+            pyplot.sca(ax)
+            pyplot.xlabel(r"$r$ [kpc]")
+            pyplot.legend(loc=3)
+
+        ax0.set_ylabel(r"$\rho$ [g/cm$^3$]")
+        pyplot.tight_layout()
+        pyplot.savefig("out/cygA_cygNW_density.png", dpi=300)
+
     if "single" in mode:
         print "Plotting single cluster!"
         # Find which cluster we are plotting
@@ -610,6 +688,89 @@ def make_plot(cygA, cygB, mode=""):
     print
 
 
+def is_solution_unique(rc, rho0, observedName):
+    observed = ObservedCluster(observedName)
+    gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc)
+    fig = plot_observed_cluster(observed, gas_rhom)
+    ax, ax_r = fig.axes
+    pyplot.sca(ax)
+    # pyplot.ion()
+
+    # Set axis limits
+    pyplot.axhline(200*rho_crit(), c="k")
+    if observed.name == "cygA":
+        ax_r.set_xlim(1, 3000)
+        ax.set_xlim(1, 3000)
+        ax.set_ylim(1e-29, 1e-22)
+    else:
+        ax_r.set_xlim(40, 5000)
+        ax.set_xlim(40, 5000)
+        ax.set_ylim(1e-29, 3e-25)
+
+    searchrange = numpy.arange(400, 1000, 1)
+    N = len(searchrange)
+    for n, r200 in enumerate(searchrange*kpc2cm):
+        # bisection
+        bf = 0.17  # Mission critical assumption that bf = 0.17 at r200! Planelles+ 2013
+
+        Mgas200 = M_gas_below_r(r200, rho0, rc)
+        Mdm200 = Mgas200 * (1/bf - 1)
+
+        M200 = Mgas200 + Mdm200
+
+        cNFW = concentration_parameter(M200)
+        rs = r200 / cNFW
+        a = hernquist_a(rs, cNFW)
+
+        Mdm = Mdm200 / M_dm_below_r(r200, 1, a)
+
+        """ Now rho_average(r200)/rhocrit should equal 200.
+                If not? Try different r200"""
+        rho200_over_rhocrit = ( M200 / (4./3 * numpy.pi * p3(r200))) / rho_crit()
+
+        pyplot.figure(fig.number)
+
+        dm_rhom = dm_density_hernquist(observed.radius*kpc2cm, Mdm, a)
+
+        dmrho_line = pyplot.plot(observed.radius, dm_rhom, c="k", ls="solid")
+        rho_avg_200 = M200 / (4./3 * numpy.pi * p3(r200))
+        avg_line = pyplot.axhline(y=rho_avg_200, c="r", ls="solid")
+
+        # Indicate bisection bounds
+        r200_line = pyplot.axvline(x=r200*cm2kpc, c="r", ls="solid")
+
+        # Plot textbox with bisection info
+        bisection_info = "r200 : {0:.1f}\n".format(r200*cm2kpc) \
+            + r"$\frac{{\rho(r_{{200}})}}{{\rho_{{\rm crit}}}}$: {0:.1f}".format(rho200_over_rhocrit)
+
+        if observed.name == "cygA":
+            textX = 3
+            textY = 2e-29
+        else:
+            textX = 50
+            textY = 2e-29
+
+        info = pyplot.text(textX, textY, bisection_info, size=18,
+                           ha="left", va="bottom",
+                           bbox=dict(boxstyle="round",
+                                     ec=(1., 0.5, 0.5),
+                                     fc=(1., 0.8, 0.8),
+                                     )
+                          )
+        if 199.9 < rho200_over_rhocrit < 200.1:
+            print "Solution found:", r200
+        # pyplot.draw()
+        # pyplot.pause(0.001)
+    # convert -delay 100 -loop 0 out/uniqueness-check_cygA*.png out/uniqueness_cygA.gif
+        pyplot.savefig("out/uniqueness-check_{1}_{0:03d}.png".format(n, observed.name))
+        r200_line.remove()
+        avg_line.remove()
+        dmrho_line.pop().remove()
+        info.remove()
+
+        print_progressbar(n, N)
+
+
 if __name__ == "__main__":
     # If visualise is True we create plots of the bisection method
     visualise=False
@@ -631,6 +792,8 @@ if __name__ == "__main__":
     cygA_rc =  27.60070 * kpc2cm
     cygA_ne0 = 0.13447 # 1/cm**3
     cygA_rho0 = ne_to_rho(cygA_ne0)
+
+    # is_solution_unique(cygA_rc, cygA_rho0, observedName="cygA")
 
     # convert -delay 100 -loop 0 out/findmass_cygA_*.png out/bisection_cygA.gif
     cygA = obtain_M200_bisection(cygA_rc, cygA_rho0, verbose=False,
@@ -663,6 +826,9 @@ if __name__ == "__main__":
     cygB_ne0 = 1.9397e-03  # 1/cm**3
     cygB_rho0 = ne_to_rho(cygB_ne0)
 
+    is_solution_unique(cygB_rc, cygB_rho0, observedName="cygB")
+    import sys; sys.exit(0)
+
     cygB = obtain_M200_bisection(cygB_rc, cygB_rho0, verbose=False,
                                  visualise=visualise, observedName="cygB")
 
@@ -686,12 +852,15 @@ if __name__ == "__main__":
 
     # Plot density+mass profiles (gas + dm in same plot); density left, mass right
     # make_plot(cygA, cygB, mode="rhomassboth")
+    #make_plot(cygA, cygB, mode="massboth")
+    #make_plot(cygA, cygB, mode="rhoboth")
+    make_plot(cygA, cygB, mode="masssameplot")
 
     # make_plot(cygA, None, mode="rhosingle")
     # make_plot(None, cygB, mode="rhosingle")
 
     # Plot mass ratio
-    make_plot(cygA, cygB, mode="ratio")
+    # make_plot(cygA, cygB, mode="ratio")
 
     # Plot baryon fraction
     # make_plot(cygA, None, mode="bfsingle")

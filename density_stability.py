@@ -80,7 +80,6 @@ def plot_individual_cluster_mass(numerical, analytical):
                    (41./255, 239./255, 239./255)]
     fit_colour = "white"
 
-
     amuse_plot.scatter(numerical.gas_radii, numerical.M_gas_below_r,
         c=data_colour[0], edgecolor="face", s=20, label="Gas")
 
@@ -113,7 +112,7 @@ if __name__ == "__main__":
 
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160620T1152"
+    myRun = "20160623T0725"
     if IC_only:
         # TODO: there is something different in the Toycluster rho
         # than in the Gadget output :(
@@ -124,10 +123,31 @@ if __name__ == "__main__":
         icdir = "../runs/{0}/ICs/".format(myRun)
         snapdir = "../runs/{0}/snaps/".format(myRun)
         snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*".format(myRun)),  key=os.path.getmtime)
+        print snaps
+
+    outdir="../runs/{0}/out/".format(myRun)
+    if not (os.path.isdir(outdir) or os.path.exists(outdir)):
+        os.mkdir(outdir)
 
     for i, snap in enumerate(snaps):
         fname = snap.split('/')[-1]
         snapnr = fname.split('_')[-1]
+
+        if IC_only:
+            TimeBetSnapshot = 0
+            snapnr += "00-ICOnly"
+        else:
+            # For time counter
+            gadgetparms = parse_gadget_parms(snapdir+"gadget2.par")
+            TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
+
+        mass_filename = outdir+"{0}-mass-{1}.png".format(myRun, snapnr)
+        density_filename = outdir+"{0}-density-{1}.png".format(myRun, snapnr)
+
+        if (os.path.isfile(mass_filename) and os.path.exists(mass_filename)
+                and os.path.isfile(density_filename) and os.path.exists(density_filename)):
+            print "Plots exist. Skipping", snap
+            continue
 
         numerical = NumericalCluster(
             icdir=icdir,
@@ -147,67 +167,20 @@ if __name__ == "__main__":
 
         analytical = AnalyticalCluster(parms, dm_parms, z=numerical.z)
 
-        fast_dm_density_computation = False
-        if fast_dm_density_computation:
-            # magenta, dark blue, orange, green, light blue (?)
-            data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
-                           (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
-                           (41./255, 239./255, 239./255)]
-            print numerical.dm
-            radii = numpy.arange(1, 10000, 100)
-            particles = numpy.zeros(len(radii))
-            dr = radii[1] - radii[0]
-            print dr
-            for i, r in enumerate(radii):
-                particles[i] = ((numpy.where(numerical.dm.r.value_in(units.kpc) < r)[0]).size)
 
-                print i, r, particles[i]
-
-            dparticle = numpy.zeros(len(particles))
-            for i in range(1, len(particles)):
-                dparticle[i-1] = particles[i] - particles[i-1]
-
-            print dparticle
-
-            pyplot.figure(figsize=(12,9))
-            volume = 4 * numpy.pi * radii**2 * dr
-            density = dparticle/(numerical.raw_data.Ndm*volume*numerical.M_dm.number)
-            density = density
-            volume2 = 4./3 * numpy.pi * radii**3
-            density2 = particles/(numerical.raw_data.Ndm*volume2*numerical.M_dm.number)
-            # TODO: why 0.17? Is this density gas + dm??
-            pyplot.scatter(radii, 0.17*density, c=data_colour[0], edgecolor="face", label="numerical")
-            pyplot.scatter(radii, 0.17*density2, c=data_colour[2], edgecolor="face", label="numerical cubed")
-            amuse_plot.plot(analytical.radius, analytical.dm_density(), label="analytical")
-            # amuse_plot.plot(analytical.radius, analytical.gas_density(), label="gas")
-            pyplot.gca().set_xscale("log")
-            pyplot.gca().set_yscale("log")
-            pyplot.xlim(5, 1e5)
-            pyplot.ylim(1e-30, 1e-21)
-            pyplot.legend(loc=3)
-            pyplot.show()
-
-            import sys; sys.exit(0)
-
-        numerical.get_gas_mass_via_density()
+        numerical.get_gas_mass_via_density(DESNNGB=295 if IC_only else 50)
         numerical.get_dm_mass_via_number_density()
         numerical.set_dm_density()
 
         plot_individual_cluster_density(numerical, analytical)
 
-        if IC_only:
-            TimeBetSnapshot = 0
-        else:
-            # For time counter
-            gadgetparms = parse_gadget_parms(snapdir+"gadget2.par")
-            TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
-
         pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot))
-        pyplot.savefig("out/{0}-density-".format(myRun)+snapnr+".png")
+        pyplot.savefig(density_filename)
         pyplot.close()
+
         plot_individual_cluster_mass(numerical, analytical)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot))
-        pyplot.savefig("out/{0}-mass-".format(myRun)+snapnr+".png")
+        pyplot.savefig(mass_filename)
         pyplot.close()
 
         # break
