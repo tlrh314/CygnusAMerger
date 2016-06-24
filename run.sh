@@ -177,7 +177,7 @@ Cheers,\n${SYSTYPE}"
     
         (echo -e $msg | mail $USER -s "${SUBJECT}") 
     elif [ "${SYSTYPE}" == "taurus" ]; then
-        THREADS=8
+        THREADS=4
         NICE=19
         BASEDIR="/scratch/timo"
     elif [ "$(uname -s)" == "Darwin" ]; then
@@ -691,7 +691,8 @@ set_psmac_parameterfile_snapshot_path() {
 
 run_psmac2_for_given_module() {
     check_psmac2_generic_runtime_files
-    for PROJECTION in x y z; do
+    #for PROJECTION in x y z; do  # TODO: obtain projection from CLI
+    for PROJECTION in z; do
         SMAC_PREFIX="${1}_projection-${PROJECTION}"
         EFFECT_MODULE="${2}"
         EFFECT_FLAG="${3}"
