@@ -244,10 +244,10 @@ def plot_fit_results(observed, analytical, numerical=None, mass_density=False, s
     ax.set_xscale("log")
     ax.set_yscale("log")
     if mass_density:
-        ax.set_ylabel(r"$\rho_{{\rm gas}}(r)$ (g cm$^{-3}$)")
+        ax.set_ylabel(r"$\rho_{{\rm gas}}(r)$ [g cm$^{-3}$]")
         ax.set_ylim(min(observed_density)/1.5, max(observed_density)*1.3)
     else:
-        ax.set_ylabel(r"$n_e (r)$ (cm$^{-3}$)")
+        ax.set_ylabel(r"$n_e (r)$ [cm$^{-3}$]")
     ax.legend(loc=3, prop={'size':30})
 
     # Plot Residuals

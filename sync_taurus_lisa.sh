@@ -40,6 +40,9 @@ elif [ "${SYSTYPE}" == "*.lisa.surfsara.nl" ]; then
 elif [ "$(uname -s)" == "Darwin" ]; then
     echo "Running at MBP"
 
+    # Regenerate ctags
+    ctags *.py
+
     MSCPROJDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/"
     RUNDIR="${MSCPROJDIR}Code/runs/"
 
@@ -47,13 +50,13 @@ elif [ "$(uname -s)" == "Darwin" ]; then
     echo "TAURUSDIR = ${TAURUSDIR}"
     echo "RUNDIR    = ${RUNDIR}"
     rsync -auHxz --progress taurus:"${TAURUSDIR}" "${RUNDIR}"
-    # rsync -auHxz --progress "${RUNDIR}" taurus:"${TAURUSDIR}"
+    rsync -auHxz --progress "${RUNDIR}" taurus:"${TAURUSDIR}"
 
     ZOLTANDIR="/media/WD30EFRX/Backups/Masterproject/"
     echo "Backing up to ZoltaN"
     echo "MSCPROJDIR = ${MSCPROJDIR}"
     echo "ZOLTANDIR  = ${ZOLTANDIR}"
-    rsync -auHxz --progress "${MSCPROJDIR}" ZoltaN:"${ZOLTANDIR}"
+    rsync -auHxz --progress --exclude="Code/bigruns" "${MSCPROJDIR}" ZoltaN:"${ZOLTANDIR}"
 else
     echo "Unknown system: ${SYSTYPE}. Exiting"
     exit 1
