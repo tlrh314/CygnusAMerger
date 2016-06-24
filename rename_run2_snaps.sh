@@ -39,13 +39,19 @@ setup_system() {
 
 setup_system
 
-cd "${BASEDIR}/runs/20160526T1354/snaps"
+TIMESTAMP="20160617T1544"
 
-j=25
+cd "${BASEDIR}/runs/${TIMESTAMP}/snaps"
+
+# Set the snapshot number to continue with 
+# e.g. snapshot_011 is the last run1 snapshot, then j=12
+j=12
 
 # TODO: this magic works for leading 0's lol
 # for i in 00{1..9} 0{10..99} {100..102}; do
-for i in {0..77}; do
+# Set the number of snapshots produced by the restarted run
+# e.g. is snapshot_run2_032 is the last snapshot, then use "for i in {0..32}"
+for i in {0..32}; do
     if [[ ${#i} -lt 2 ]]; then
         snapnr="0${i}"
     else
@@ -61,6 +67,8 @@ for i in {0..77}; do
     fi
     j=$((j+1))
 
+    # Use echo to check what is about to happen :-)..
     echo "snapshot_run2_0${snapnr}" "snapshot_${snapnr_new}"
+    # TODO: hmm mv was not verbose in the last run...
     #mv "snapshot_run2_0${snapnr}" "snapshot_${snapnr_new}"
 done

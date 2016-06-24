@@ -35,8 +35,6 @@ setup_system() {
         THREADS=128  # set based on the nr of nodes requested
         NICE=0  # default is 0
         BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
-        % TO ADJUST FOR RESTARTING
-        TIMESTAMP="20160617T1544"  # qsub no parse options..
         MAIL=true
         # TODO: I think home should not be used, instead use scratch??
         module load c/intel
@@ -54,7 +52,7 @@ Cheers,\n${SYSTYPE}"
     
         (echo -e $msg | mail $USER -s "${SUBJECT}") 
     elif [ "${SYSTYPE}" == "taurus" ]; then
-        THREADS=4
+        THREADS=8
         NICE=19
         BASEDIR="/scratch/timo"
     elif [ "${SYSTYPE}" == "Darwin" ]; then
@@ -87,8 +85,11 @@ Cheers,\n${SYSTYPE}"
 }
 
 
+# TO ADJUST FOR RESTARTING
+TIMESTAMP="20160617T1535"  # qsub no parse options..
 setup_system
 
+cp restart.par ${BASEDIR}/runs/${TIMESTAMP}/snaps
 cd ${BASEDIR}/runs/${TIMESTAMP}/snaps
 
 # If restart files are present: only change parameterfile entries with a * in users-guide
