@@ -30,7 +30,7 @@ LISADIR="/home/timoh/runs/"
 # On Taurus
 if [ "${SYSTYPE}" == "taurus" ]; then
     NICE=19
-    nice -n $NICE rsync -auHxz --progress "${TAURUSDIR}" lisa:"${LISADIR}"
+    #nice -n $NICE rsync -auHxz --progress "${TAURUSDIR}" lisa:"${LISADIR}"
     nice -n $NICE rsync -auHxz --progress lisa:"${LISADIR}" "${TAURUSDIR}"
 elif [ "${SYSTYPE}" == "*.lisa.surfsara.nl" ]; then
     # On Lisa

@@ -1,7 +1,7 @@
 %  Relevant files
 
 % TO ADJUST FOR RESTARTING
-InitCondFile       snapshot_011
+InitCondFile       snapshot_039
 OutputDir          ./
 
 EnergyFile         energy_run2.txt
@@ -17,7 +17,7 @@ OutputListFilename output_list_run2.txt
 % CPU time -limit
 
 % TO ADJUST FOR RESTARTING
-TimeLimitCPU      104,400% = 29 hours: 5 days minus 1 hour. Lisa max: 5 days.
+TimeLimitCPU      104400% = 29 hours: 5 days minus 1 hour. Lisa max: 5 days.
 ResubmitOn        0
 ResubmitCommand   my-scriptfile
 
@@ -36,8 +36,8 @@ PeriodicBoundariesOn     1
 %  Caracteristics of run
 
 % TO ADJUST FOR RESTARTING
-TimeBegin                1.1
-TimeMax                  5.0  % in units of Gyr
+TimeBegin                3.9
+TimeMax                  7.5  % in units of Gyr
 
 Omega0                   0.3
 OmegaLambda              0.7
@@ -113,16 +113,16 @@ MinGasHsmlFractional 0.25
 
 % TODO: obtain softening from runToycluster.log?
 % TO ADJUST FOR RESTARTING
-SofteningGas       2
-SofteningHalo      2
+SofteningGas       10
+SofteningHalo      10
 SofteningDisk      180.0
 SofteningBulge     500.0
 SofteningStars     0
 SofteningBndry     0
 
 % TO ADJUST FOR RESTARTING
-SofteningGasMaxPhys       2
-SofteningHaloMaxPhys      2
+SofteningGasMaxPhys       10
+SofteningHaloMaxPhys      10
 SofteningDiskMaxPhys      30.0
 SofteningBulgeMaxPhys     150.0
 SofteningStarsMaxPhys     0
