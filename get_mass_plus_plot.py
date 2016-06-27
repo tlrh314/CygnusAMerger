@@ -567,7 +567,7 @@ def make_plot(cygA, cygB, mode=""):
         pyplot.axvline(500/1.527*1.091, c="red", ls="solid")
 
         pyplot.xlim(5, 3000)
-        pyplot.ylim(1e10, 2e14)
+        pyplot.ylim(1e10, 5e14)
         pyplot.xlabel(r"$r$ [kpc]")
         pyplot.legend(loc=2)
 
@@ -774,23 +774,37 @@ def is_solution_unique(rc, rho0, observedName):
 if __name__ == "__main__":
     # If visualise is True we create plots of the bisection method
     visualise=False
+    oldICs=False
 
     print "CygnusA"
     # obtained from beta (2/3) model to Chandra data
 
-    # cygA
-    # Results for the 'beta-model' model:
-    #   Using scipy.optimize.minimize to minimize chi^2 yields:
-    #     n_e,0       = 0.13447
-    #     r_c         = 27.60071
-    #     chisq/dof   = 1.04803
-    #     p-value     = 0.30721
-    #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
-    #     n_e,0       = 0.13447 +/- 0.00560
-    #     r_c         = 27.60070 +/- 0.69421
-
-    cygA_rc =  27.60070 * kpc2cm
-    cygA_ne0 = 0.13447 # 1/cm**3
+    if oldICs:
+        # cygA
+        # Results for the 'beta-model' model:
+        #   Using scipy.optimize.minimize to minimize chi^2 yields:
+        #     n_e,0       = 0.13447
+        #     r_c         = 27.60071
+        #     chisq/dof   = 1.04803
+        #     p-value     = 0.30721
+        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
+        #     n_e,0       = 0.13447 +/- 0.00560
+        #     r_c         = 27.60070 +/- 0.69421
+        cygA_rc =  27.60070 * kpc2cm
+        cygA_ne0 = 0.13447 # 1/cm**3
+    else:
+        # cygA
+        # Results for the 'beta-model' model:
+        #   Using scipy.optimize.minimize to minimize chi^2 yields:
+        #     n_e,0       = 0.14186
+        #     r_c         = 35.32623
+        #     chisq/dof   = 1.49169
+        #     p-value     = 0.00001
+        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
+        #     n_e,0       = 0.14186 +/- 0.00630
+        #     r_c         = 35.32623 +/- 0.99998
+        cygA_rc =  35.32623 * kpc2cm
+        cygA_ne0 = 0.14186  # 1/cm**3
     cygA_rho0 = ne_to_rho(cygA_ne0)
 
     # is_solution_unique(cygA_rc, cygA_rho0, observedName="cygA")
@@ -800,8 +814,13 @@ if __name__ == "__main__":
                                  visualise=visualise, observedName="cygA")
 
     # One sigma values for error propagation
-    cygA_rc_sigma =  0.69421 * kpc2cm
-    cygA_ne0_sigma = 0.00560 # 1/cm**3
+    if oldICs:
+        cygA_rc_sigma =  0.69421 * kpc2cm
+        cygA_ne0_sigma = 0.00560 # 1/cm**3
+    else:
+        cygA_rc_sigma = 0.99998 * kpc2cm
+        cygA_ne0_sigma =  0.00630  # 1/cm**3
+
     cygA_rho0_sigma = ne_to_rho(cygA_ne0_sigma)
     cygA["rc_sigma"] = cygA_rc_sigma
     cygA["ne0_sigma"] = cygA_ne0_sigma
@@ -810,31 +829,52 @@ if __name__ == "__main__":
     print_inferred_values(cygA)
 
     print "CygnusB"
-    # obtained from beta (2/3) model to Chandra data
-    # cygB
-    # Results for the 'beta-model' model:
-    #   Using scipy.optimize.minimize to minimize chi^2 yields:
-    #     n_e,0       = 0.00194
-    #     r_c         = 290.90903
-    #     chisq/dof   = 0.38336
-    #     p-value     = 0.99714
-    #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
-    #     n_e,0       = 0.00194 +/- 0.00014
-    #     r_c         = 290.90665 +/- 15.30907
 
-    cygB_rc = 290.90903 * kpc2cm
-    cygB_ne0 = 1.9397e-03  # 1/cm**3
+    if oldICs:
+        # obtained from beta (2/3) model to Chandra data
+        # cygB
+        # Results for the 'beta-model' model:
+        #   Using scipy.optimize.minimize to minimize chi^2 yields:
+        #     n_e,0       = 0.00194
+        #     r_c         = 290.90903
+        #     chisq/dof   = 0.38336
+        #     p-value     = 0.99714
+        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
+        #     n_e,0       = 0.00194 +/- 0.00014
+        #     r_c         = 290.90665 +/- 15.30907
+        cygB_rc = 290.90903 * kpc2cm
+        cygB_ne0 = 1.9397e-03  # 1/cm**3
+    else:
+        # cygB
+        # Results for the 'beta-model' model:
+        #   Using scipy.optimize.minimize to minimize chi^2 yields:
+        #     n_e,0       = 0.00189
+        #     r_c         = 382.50459
+        #     chisq/dof   = 0.48434
+        #     p-value     = 0.98382
+        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
+        #     n_e,0       = 0.00189 +/- 0.00013
+        #     r_c         = 382.50079 +/- 22.14346
+        cygB_rc = 382.50079 * kpc2cm
+        cygB_ne0 = 0.00189
+
     cygB_rho0 = ne_to_rho(cygB_ne0)
 
-    is_solution_unique(cygB_rc, cygB_rho0, observedName="cygB")
-    import sys; sys.exit(0)
+    #is_solution_unique(cygB_rc, cygB_rho0, observedName="cygB")
+    #import sys; sys.exit(0)
 
     cygB = obtain_M200_bisection(cygB_rc, cygB_rho0, verbose=False,
                                  visualise=visualise, observedName="cygB")
 
     # One sigma values for error propagation
-    cygB_rc_sigma = 15.30907 * kpc2cm
-    cygB_ne0_sigma = 0.00014  # 1/cm**3
+    if oldICs:
+        cygB_rc_sigma = 15.30907 * kpc2cm
+        cygB_ne0_sigma = 0.00014  # 1/cm**3
+    else:
+        cygB_rc_sigma = 22.14346 * kpc2cm
+        cygB_ne0_sigma = 0.00013  # 1/cm**3
+
+
     cygB_rho0_sigma = ne_to_rho(cygB_ne0_sigma)
     cygB["rc_sigma" ] = cygB_rc_sigma
     cygB["ne0_sigma"] = cygB_ne0_sigma
@@ -852,18 +892,18 @@ if __name__ == "__main__":
 
     # Plot density+mass profiles (gas + dm in same plot); density left, mass right
     # make_plot(cygA, cygB, mode="rhomassboth")
-    #make_plot(cygA, cygB, mode="massboth")
-    #make_plot(cygA, cygB, mode="rhoboth")
+    make_plot(cygA, cygB, mode="massboth")
+    make_plot(cygA, cygB, mode="rhoboth")
     make_plot(cygA, cygB, mode="masssameplot")
 
-    # make_plot(cygA, None, mode="rhosingle")
-    # make_plot(None, cygB, mode="rhosingle")
+    make_plot(cygA, None, mode="rhosingle")
+    make_plot(None, cygB, mode="rhosingle")
 
     # Plot mass ratio
-    # make_plot(cygA, cygB, mode="ratio")
+    make_plot(cygA, cygB, mode="ratio")
 
     # Plot baryon fraction
-    # make_plot(cygA, None, mode="bfsingle")
-    # make_plot(None, cygB, mode="bfsingle")
+    make_plot(cygA, None, mode="bfsingle")
+    make_plot(None, cygB, mode="bfsingle")
 
     pyplot.show()

@@ -1,5 +1,7 @@
 import numpy
 import pandas
+import matplotlib
+matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
 
 from amuse.units import units
@@ -18,14 +20,25 @@ import convert
 
 class ObservedCluster(object):
     """ Observed Cygnus A-Cygnus B situation """
-    def __init__(self, name):
+    def __init__(self, name, oldICs=False):
         """ Generate cluster instance with volume, pressure, density,
             Compton Y for bins with given inner and outer radii.
-            Data obtained by M. N. de Vries from 800 ksec Chandra data """
+
+            Data obtained by M. N. de Vries from 800 ksec Chandra data
+
+            @param oldICs: True --> data prior to background (thus rho)
+
+            TODO: run with 900 ksec including pointing at CygB :-)! """
 
         self.name = name
-        density_file = "data/{0}_1T_fixnH_pressureprofile.dat".format(name)
-        radius_file = "data/{0}_sn100_sbprofile.dat".format(name)
+        self.oldICs = oldICs
+
+        if self.oldICs:
+            density_file = "data/{0}_1T_fixnH_pressureprofile_OLD.dat".format(name)
+            radius_file = "data/{0}_sn100_sbprofile.dat".format(name)
+        else:
+            density_file = "data/{0}_1T_fixnH_pressureprofile.dat".format(name)
+            radius_file = "data/{0}_sn100_sbprofile.dat".format(name)
 
         if self.name == "cygA":
             z = 0.0562
@@ -69,6 +82,7 @@ class ObservedCluster(object):
         # print raw.keys()
 
         self.bin_number = raw[" Bin number "].as_matrix()
+        # TODO: old datafile also has column Analytical bin volume. What this?
         self.bin_volume = raw[" Bin volume (cm^3) "].as_matrix()
         self.number_density = raw["   Density (cm^-3) "].as_matrix()
         self.number_density_std = raw["     Sigma density "].as_matrix()
@@ -215,6 +229,7 @@ class NumericalCluster(object):
         gas.vy = vygas | units.kms
         gas.vz = vzgas | units.kms
         gas.h = ic_data.hsml
+        gas.u = ic_data.u
 
         # Bug in Toycluster's unit.c line 35: "* p2(0.7)"
         # Removed in commit e88b863319e969f4a15765baad447de9e3571d7e
@@ -239,7 +254,7 @@ class NumericalCluster(object):
         """ Kernel weigthed sph density beautifully fits analytical solution <3
             DM has no density, so we obtain it trough counting particles.
 
-            @param DESNNGB: 50 for Gadget-2, 295 for toycluster """
+            @param DESNNGB: 50 for Gadget-2 B-spline, 295 for toycluster WC6"""
 
         gas_i = numpy.argsort(self.gas.r.value_in(units.kpc))
         gas_r = self.gas.r[gas_i].value_in(units.kpc)
@@ -803,12 +818,6 @@ def simple_plot(observed_cluster, yparm="density"):
         x-axis is computer from inner_radius and/or outer_radius
     """
 
-    density_as_mass_density = False
-    if density_as_mass_density and yparm == "density":
-        density = globals.m_p * globals.mu * observed_cluster.density
-    else:
-        density = observed_cluster.density
-
     pyplot.figure(figsize=(12, 9))
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
@@ -824,14 +833,42 @@ def simple_plot(observed_cluster, yparm="density"):
     # pyplot.legend()
 
 
+def compare_old_and_new_data(old, new, yparm="density"):
+    pyplot.figure(figsize=(12, 9))
+    pyplot.gca().set_xscale("log")
+    pyplot.gca().set_yscale("log")
+
+    if yparm not in ["bin_volume", "compton_y"]:
+        pyplot.errorbar(old.radius, getattr(old, yparm),
+            yerr=getattr(old, yparm+"_std"), label="old")
+        pyplot.errorbar(new.radius, getattr(new, yparm),
+            yerr=getattr(new, yparm+"_std"), label="new")
+    else:
+        pyplot.plot(old.radius, getattr(old, yparm), label="old")
+        pyplot.plot(new.radius, getattr(new, yparm), label="new")
+
+    pyplot.xlabel("Radius")
+    pyplot.ylabel(yparm)
+    pyplot.legend()
+
 
 if __name__ == "__main__":
     print "Reading Observed Cluster"
     print 80*'-'
-    cygA_observed = ObservedCluster("cygA")
-    cygB_observed = ObservedCluster("cygB")
+    cygA_observed_800ksecOLD = ObservedCluster("cygA", oldICs=True)
+    cygB_observed_800ksecOLD = ObservedCluster("cygB", oldICs=True)
 
-    debug = True
+    cygA_observed_800ksec = ObservedCluster("cygA")
+    cygB_observed_800ksec = ObservedCluster("cygB")
+
+    compare_old_and_new_data(cygA_observed_800ksecOLD, cygA_observed_800ksec)
+    compare_old_and_new_data(cygB_observed_800ksecOLD, cygB_observed_800ksec)
+
+    pyplot.show()
+    # TODO: Plot difference between 800 and 900 ksec observation
+    import sys; sys.exit(0)
+
+    debug = False
     if debug:
         print "Debug information after parsing Martijn's Chandra observation data"
         print 80*"-"
@@ -849,11 +886,12 @@ if __name__ == "__main__":
     print "Reading Toycluster Run without WVT relax"
     print 80*'-'
     numerical_cluster = NumericalCluster(
-        icdir="../runs/no_wvt_relax/ICs/",
-        snapdir="../runs/no_wvt_relax/ICs/",
+        icdir="../runs/20160623T1755/ICs/",
+        snapdir="../runs/20160623T1755/ICs/",
         logfile="runToycluster.log",
         icfile="IC_single_0")
-    numerical_cluster.perform_sanity_checks()
+    # numerical_cluster.perform_sanity_checks()
+    print numerical_cluster.gas.u
     print 80*'-'
 
     pyplot.show()

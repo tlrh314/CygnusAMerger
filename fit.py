@@ -7,6 +7,7 @@ from scipy import stats
 from collections import OrderedDict
 
 import matplotlib
+matplotlib.use("Qt4Agg")
 matplotlib.rcParams.update({'font.size': 33})
 matplotlib.rc('text', usetex=True)
 from matplotlib import pyplot
@@ -564,8 +565,8 @@ def get_cluster_mass_from_toycluster(observed, analytical, verbose=True):
 if __name__ == "__main__":
     print "Reading Chandra Observed Density Profiles"
     print 80*"-"
-    cygA_observed = ObservedCluster("cygA")
-    cygB_observed = ObservedCluster("cygB")
+    cygA_observed = ObservedCluster("cygA", oldICs=False)
+    cygB_observed = ObservedCluster("cygB", oldICs=False)
     print cygA_observed
     print cygB_observed
     print 80*"-"
@@ -645,7 +646,7 @@ if __name__ == "__main__":
 
         print 80*"-"
 
-    plot_fit = False
+    plot_fit = True
     if plot_fit:
         # Number density
         # plot_fit_results(cygA_observed, cygA_analytical,

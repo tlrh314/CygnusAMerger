@@ -1,4 +1,5 @@
 import matplotlib
+matplotlib.use("Qt4Agg")
 matplotlib.rcParams.update({'font.size': 22})
 matplotlib.rc('text', usetex=True)
 from matplotlib import pyplot
