@@ -24,21 +24,21 @@ class ObservedCluster(object):
         """ Generate cluster instance with volume, pressure, density,
             Compton Y for bins with given inner and outer radii.
 
-            Data obtained by M. N. de Vries from 800 ksec Chandra data
+            Data obtained by M. N. de Vries from 900 ksec Chandra data
 
-            @param oldICs: True --> data prior to background (thus rho)
+            @param oldICs: True -> old (800 ksec) data, else latest (900 ksec)
+        """
 
-            TODO: run with 900 ksec including pointing at CygB :-)! """
 
         self.name = name
         self.oldICs = oldICs
 
         if self.oldICs:
-            density_file = "data/{0}_1T_fixnH_pressureprofile_OLD.dat".format(name)
-            radius_file = "data/{0}_sn100_sbprofile.dat".format(name)
+            density_file = "data/{0}_1T_fixnH_pressureprofile_800ksec.dat".format(name)
+            radius_file = "data/{0}_sn100_sbprofile_800ksec.dat".format(name)
         else:
-            density_file = "data/{0}_1T_fixnH_pressureprofile.dat".format(name)
-            radius_file = "data/{0}_sn100_sbprofile.dat".format(name)
+            density_file = "data/{0}_1T_pressureprofile_900ksec.dat".format(name)
+            radius_file = "data/{0}_sb_sn100_900ksec.dat".format(name)
 
         if self.name == "cygA":
             z = 0.0562
@@ -79,6 +79,7 @@ class ObservedCluster(object):
     def parse_data(self, density_file, radius_file):
         # Read Martijn Data
         raw = pandas.read_csv(density_file, delimiter="|")
+
         # print raw.keys()
 
         self.bin_number = raw[" Bin number "].as_matrix()
@@ -92,30 +93,44 @@ class ObservedCluster(object):
         self.pressure_std = raw["    Sigma Pressure "].as_matrix()
         self.compton_y = raw[" Compton Y parameter "].as_matrix()
 
-        raw_sn100 = pandas.read_csv(radius_file, delimiter="|")
-        # print raw_sn100.keys()
+        raw_sn100 = pandas.read_csv(radius_file,
+            delimiter="|" if self.oldICs else None,
+            delim_whitespace=None if self.oldICs else True,
+            header=0 if self.oldICs else 18)
 
-        self.inner_radius = raw_sn100[" Inner radius (arcsec) "].as_matrix()
-        self.outer_radius = raw_sn100[" Outer radius (arcsec) "].as_matrix()
+        if self.oldICs:
+            self.inner_radius = \
+                raw_sn100[" Inner radius (arcsec) "].as_matrix()
+            self.outer_radius = \
+                raw_sn100[" Outer radius (arcsec) "].as_matrix()
 
-        if " Source SB (counts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygA
-            self.source_sb = raw_sn100[" Source SB (counts/cm^2/arcsec^2/s) "].as_matrix()
-        elif " SB (cnts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygB
-            self.source_sb = raw_sn100[" SB (cnts/cm^2/arcsec^2/s) "].as_matrix()
+            if " Source SB (counts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygA
+                self.source_sb = raw_sn100[" Source SB (counts/cm^2/arcsec^2/s) "].as_matrix()
+            elif " SB (cnts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygB
+                self.source_sb = raw_sn100[" SB (cnts/cm^2/arcsec^2/s) "].as_matrix()
 
-        self.source_sb_std = raw_sn100["   Sigma source SB "].as_matrix()
+            self.source_sb_std = raw_sn100["   Sigma source SB "].as_matrix()
 
-        if " Background SB(counts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygA
-            self.background_sb = raw_sn100[" Background SB(counts/cm^2/arcsec^2/s) "].as_matrix()
-        elif " Bkg SB(cnts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygB
-            self.background_sb = raw_sn100[" Bkg SB(cnts/cm^2/arcsec^2/s) "].as_matrix()
+            if " Background SB(counts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygA
+                self.background_sb = raw_sn100[" Background SB(counts/cm^2/arcsec^2/s) "].as_matrix()
+            elif " Bkg SB(cnts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygB
+                self.background_sb = raw_sn100[" Bkg SB(cnts/cm^2/arcsec^2/s) "].as_matrix()
 
-        if " Sigma Background SB " in raw_sn100.keys():
-            self.background_sb_std = raw_sn100[" Sigma Background SB "].as_matrix()
-        elif "      Sigma Bkg SB " in raw_sn100.keys():
-            self.background_sb_std = raw_sn100["      Sigma Bkg SB "].as_matrix()
+            if " Sigma Background SB " in raw_sn100.keys():
+                self.background_sb_std = raw_sn100[" Sigma Background SB "].as_matrix()
+            elif "      Sigma Bkg SB " in raw_sn100.keys():
+                self.background_sb_std = raw_sn100["      Sigma Bkg SB "].as_matrix()
 
-        self.bin_number_sn100 = raw_sn100[" Bin number "].as_matrix()
+            self.bin_number_sn100 = raw_sn100[" Bin number "].as_matrix()
+
+        else:
+            self.inner_radius = raw_sn100["Radius1"].as_matrix()
+            self.outer_radius = raw_sn100["Radius2"].as_matrix()
+            self.source_sb = raw_sn100["SB"].as_matrix()
+            self.source_sb_std = raw_sn100["SBError"].as_matrix()
+            self.background_sb = raw_sn100["BGRD"].as_matrix()
+            self.background_sb_std = raw_sn100["BGError"].as_matrix()
+            self.bin_number_sn100 = range(len(raw_sn100))
 
         if not numpy.array_equal(self.bin_number, self.bin_number_sn100):
 # Yeah, I know way too generic to raise, but w/e dont wanna define ReadingTwoDataFilesIsProneToMakeMistakesExeption *_*
@@ -271,13 +286,16 @@ class NumericalCluster(object):
         self.gas_radii = gas_r | units.kpc
         self.M_gas_below_r = gas_mass.cumsum() | units.MSun
 
-    def get_dm_mass_via_number_density(self):
+    def get_dm_mass_via_number_density(self, log_binning=False):
         """ Count particles <r (= number density). Obtain DM mass from it """
 
         # TODO: find out if this method can also be used for sph mass
         # should we take into account the kernel, and if so how?
 
         print "Counting particles for which radii < r to obtain M(<r)"
+
+        if log_binning:
+            pass
 
         radii = numpy.arange(0, 1e4, 10)
         N = len(radii)
@@ -395,7 +413,7 @@ class NumericalCluster(object):
 
 class AnalyticalCluster(object):
     """ Set up an analytical cluster based on the Chandra observed density """
-    def __init__(self, parms, dm_parms=None, radius=None, z=0):
+    def __init__(self, parms, dm_parms=None, radius=None, z=0, free_beta=False):
         """ parms = ne0, rc, [rcut], [ne0_fac, rc_fac]
             dm_parms = M_DM, a  """
 
@@ -418,9 +436,13 @@ class AnalyticalCluster(object):
         self.ne0_cc = None
         self.rho0_cc = None
         self.rc_cc = None
-        if len(parms) == 3:
+        self.free_beta = free_beta
+        if len(parms) == 3 and not free_beta:
             self.model = 1
             self.rcut = parms[2] | units.kpc
+        if len(parms) == 3 and free_beta:
+            self.model = 3
+            self.beta = parms[2]
         if len(parms) == 5:
             self.model = 2
             ne0_fac = parms[3]
@@ -431,7 +453,8 @@ class AnalyticalCluster(object):
 
         modelnames = {0: r"$\beta (2/3)$-model",
                       1: r"cut-off $\beta (2/3)$-model",
-                      2: r"cut-off double $\beta (2/3)$-model"}
+                      2: r"cut-off double $\beta (2/3)$-model",
+                      3: r"free $\beta$-model"}
         self.modelname = modelnames[self.model]
 
         if dm_parms:
@@ -444,17 +467,20 @@ class AnalyticalCluster(object):
         """ For details of beta-model see Cavaliere & Fusco-Femiano (1978).
 
             model    name                   reference
-            0        beta-model             Donnert 2014)
+            0        beta-model             Donnert (2014)
             1        cut-off beta           Donnert et al. (2016, in prep)
             2        cut-off double beta    Donnert et al. (2016, in prep)
+            3        beta-model             Donnert (2014), beta free param
         """
 
         if r is None:
             r = self.radius
 
         beta = 2./3  # Mastropietro & Burkert (2008)
+        if self.free_beta:
+            beta = self.beta
         rho_gas = self.rho0 * (1 + p2(r/self.rc))**(-3*beta/2.)  # model >= 0
-        if self.model >= 1:
+        if self.model >= 1 and not self.free_beta:
             rho_gas /= (1 + p3(r/self.rcut) * (r/self.rcut))
         if self.model == 2:
             rho_gas += self.rho0_cc / (1 + p2(r/rc_cc)) / (1 + p3(r/rcut) * (r/rcut))
@@ -539,16 +565,46 @@ class AnalyticalCluster(object):
         rho_average = (self.dm_cummulative_mass(r) / (4./3*numpy.pi*r**3))
         return rho_average.as_quantity_in(units.g/units.cm**3)
 
-    def gas_temperature(self, r):
+    def F1(self, r=None):
+        """ Helper function for temperature calculation """
+        if not r:
+            r = self.radius
+
+        rc2 = self.rc*self.rc
+        a2 = self.a*self.a
+        a = self.a
+        rc = self.rc
+
+        result = (a2-rc2)*numpy.arctan(r/rc) - rc*(a2+rc2)/(a+r) \
+                + a*rc * numpy.log( (a+r)*(a+r) / (rc2 + r*r) )
+        result *= rc / p2(a2 + rc2)
+        return result
+
+    def F2(self, r=None):
+        """ Helper function for temperature calculation """
+        if not r:
+            r = self.radius
+
+        rc = self.rc
+
+        return p2(arctan(r/rc)) / (2*rc) + atan(r/rc)/r
+
+    def gas_temperature(self, r=None):
+        if not r:
+            r = self.radius
+
         F_1 = numpy.pi**2/(8*self.rc) - numpy.arctan(r/self.rc)**2/(2*self.rc) -\
             numpy.arctan(r/self.rc)/r
 
-        # TODO: use mu from convert.py?
-        # T_r_gas = constants.G*self.mu*constants.proton_mass/constants.kB *\
-        #    (1 + r**2/self.rc**2) * (4*numpy.pi*self.rc**3*self.rho0gas*F_1)
+        T_r_gas = constants.G*convert.umu*constants.proton_mass/constants.kB *\
+            (1 + r**2/self.rc**2) * (4*numpy.pi*self.rc**3*self.rho0*F_1)
         return T_r_gas.as_quantity_in(units.K)
 
-    def dm_temperature(self, r):
+    def dm_temperature(self, r=None):
+        """ TODO: what is DM temperature? """
+        if not r:
+            r = self.radius
+
         F_0 = self.rc/(self.a**2 + self.rc**2)**2 * (numpy.pi/2*(self.a**2 - self.rc**2) +\
             self.r_c*(self.a**2 + self.rc**2)/(self.a + r) - (self.a**2 - self.rc**2)*\
             numpy.arctan(r/self.rc) - self.rc*self.a*numpy.log((self.a + r)**2/(r**2 + self.rc**2)))
@@ -557,7 +613,10 @@ class AnalyticalCluster(object):
         #    (self.M_dm*F_0)
         return T_r_dm.as_quantity_in(units.K)
 
-    def temperature(self, r):
+    def temperature(self, r=None):
+        if not r:
+            r = self.radius
+
         return (self.gas_temperature(r) + self.dm_temperature(r)).as_quantity_in(units.K)
 
     def characteristic_temperature_analytically(self):
@@ -849,38 +908,67 @@ def compare_old_and_new_data(old, new, yparm="density"):
 
     pyplot.xlabel("Radius")
     pyplot.ylabel(yparm)
+    pyplot.title(new.name)
     pyplot.legend()
 
 
 if __name__ == "__main__":
     print "Reading Observed Cluster"
     print 80*'-'
-    cygA_observed_800ksecOLD = ObservedCluster("cygA", oldICs=True)
-    cygB_observed_800ksecOLD = ObservedCluster("cygB", oldICs=True)
 
-    cygA_observed_800ksec = ObservedCluster("cygA")
-    cygB_observed_800ksec = ObservedCluster("cygB")
+    cygA_observed_800ksec = ObservedCluster("cygA", oldICs=True)
+    cygA_observed_900ksec = ObservedCluster("cygA")
 
-    compare_old_and_new_data(cygA_observed_800ksecOLD, cygA_observed_800ksec)
-    compare_old_and_new_data(cygB_observed_800ksecOLD, cygB_observed_800ksec)
+    cygB_observed_800ksec = ObservedCluster("cygB", oldICs=True)
+    cygB_observed_900ksec = ObservedCluster("cygB")
+    print "Done reading ObservedCluster"
+    print 80*'-'
 
-    pyplot.show()
-    # TODO: Plot difference between 800 and 900 ksec observation
-    import sys; sys.exit(0)
-
-    debug = False
+    debug = True
     if debug:
+        print "Printing attributes of old- and new ICs"
+        print 80*'-'
+        for attr in dir(cygA_observed_800ksec):
+            if not attr.startswith("__"):
+                print "Comparing", attr
+                old = getattr(cygA_observed_800ksec, attr)
+                new = getattr(cygA_observed_900ksec, attr)
+                if type(old) == numpy.ndarray:
+                    print "old head\n", old[0:10]
+                    print "new head\n", new[0:10]
+                    print "old tail\n", old[-9:]
+                    print "new tail\n", new[-9:]
+                else:
+                    print "old\n", old, "\nnew\n", new
+                # raw_input("Press enter to continue\n")
+                print "\n"
+
+        # print cygA_observed_800ksec
+        # print cygA_observed_900ksec
+        print 80*'-'
+        print "Generating plots for comparison of attributes"
+        print 80*'-'
+        for property in ["bin_volume", "density", "number_density", "pressure",
+                "compton_y", "source_sb", "background_sb"]:
+            compare_old_and_new_data(cygA_observed_800ksec,
+                cygA_observed_900ksec, yparm=property)
+            compare_old_and_new_data(cygB_observed_800ksec,
+                cygB_observed_900ksec, yparm=property)
+        print "Done generating plots for comparison of attributes"
+        print 80*'-'
+
+    if debug and False:
         print "Debug information after parsing Martijn's Chandra observation data"
         print 80*"-"
-        print cygA_observed
-        print cygB_observed
+        print cygA_observed_900ksec
+        print cygB_observed_900ksec
         print
 
         for property in ["bin_volume", "density", "number_density", "pressure",
                 "compton_y", "source_sb", "background_sb"]:
             print "Plotting property:", property
-            simple_plot(cygA_observed, property)
-            simple_plot(cygB_observed, property)
+            simple_plot(cygA_observed_900ksec, property)
+            simple_plot(cygB_observed_900ksec, property)
         print 80*"-"
 
     print "Reading Toycluster Run without WVT relax"

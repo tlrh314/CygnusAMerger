@@ -2,7 +2,6 @@
 File: analysis.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:28 pm
-Last modified: Tue May 17, 2016 04:37 pm
 
 Check if initial conditions file was parsed correctly, and check
 the stability of the pas in the dark matter halo.
@@ -10,6 +9,8 @@ the stability of the pas in the dark matter halo.
 
 import numpy
 # Bigger fontsize is better *_*
+import matplotlib
+matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
 pyplot.rcParams.update({"font.size": 18})
 # pyplot.rcParams.update({"text.usetex": True})

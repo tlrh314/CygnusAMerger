@@ -2,12 +2,14 @@
 File: analytical.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon May 16, 2016 05:23 pm
-Last modified: Mon May 16, 2016 06:05 pm
+Last modified: Fri Jun 24, 2016 02:35 pm
 
 Set up analytical cluster following Donnert (2014) and Donnert et al. (2016, in prep)
 """
 
 import numpy
+import matplotlib
+matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
 pyplot.rcParams.update({"font.size": 18})
 
