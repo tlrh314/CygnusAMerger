@@ -8,7 +8,8 @@ OPT     += -DCOMET                 # merge like a comet, ball+tail (recommended)
 OPT     += -DGIVEPARAMS            # more merger parameters in .par file
 
 OPT     += -DGADGET2
-OPT     += -DSPH_CUBIC_SPLINE
+#OPT     += -DSPH_CUBIC_SPLINE
+OPT     += -DFREEBETA
 
 #OPT     += -DDOUBLE_BETA_COOL_CORES
 

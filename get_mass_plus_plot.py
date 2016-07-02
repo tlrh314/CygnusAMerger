@@ -12,6 +12,7 @@ Only depends on Numpy, but could easily be rewritten to use plain Python
 """
 
 import numpy
+from scipy import special
 import pandas
 import matplotlib
 # Anaconda python gives annoying "setCanCycle: is deprecated" when using Tk
@@ -110,7 +111,7 @@ def M_dm_below_r(r, Mdm, a):
     return M_dm_below_r
 
 
-def gas_density_beta(r, rho0, rc):
+def gas_density_beta(r, rho0, rc, beta=None):
     """ Beta-model for gas density profile (Cavaliere & Fusco-Femiano 1978)
     with a fixed value beta = 2/3 (Mastropietro & Burkert 2008)
 
@@ -122,16 +123,22 @@ def gas_density_beta(r, rho0, rc):
                      from observations"
     """
 
-    beta = 2./3
+    if not beta:
+        beta = 2./3
     rho_gas_beta = rho0 * (1 + p2(r)/p2(rc))**(-3*beta/2.)
     return rho_gas_beta
 
 
-def M_gas_below_r(r, rho0, rc):
+def M_gas_below_r(r, rho0, rc, beta=None):
     """ M(<r) for Hydrostatic Equilibrium, Spherical Symmetry
     Beta-Model where beta is fixed to 2/3 """
 
-    M_gas_below_r = 4*numpy.pi*p3(rc)*rho0 * (r/rc - numpy.arctan(r/rc))
+    if not beta:
+        M_gas_below_r = 4*numpy.pi*p3(rc)*rho0 * (r/rc - numpy.arctan(r/rc))
+    else:
+        # well, isn't she lovely... scipy built-in Gauss Hypergeometric function
+        M_gas_below_r = special.hyp2f1(1.5, 1.5*beta, 2.5, -p2(r/rc))
+        M_gas_below_r *= 4*numpy.pi*rho0*p3(r)/3
     return M_gas_below_r
 
 
@@ -198,7 +205,7 @@ def plot_observed_cluster(observed, analytical_density):
     return fig
 
 
-def obtain_M200_bisection(rc, rho0, verbose=False,
+def obtain_M200_bisection(rc, rho0, beta, verbose=False,
                           visualise=False, observedName=None):
     """ We follow the Toycluster (Donnert 2014) setup.c method in reverse.
     If we assume a value for r200 and we assume the baryon fraction at r200
@@ -207,7 +214,7 @@ def obtain_M200_bisection(rc, rho0, verbose=False,
 
     if visualise:
         observed = ObservedCluster(observedName)
-        gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc)
+        gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc, beta)
         n=0
 
     # Find r200 such that rho200 / rho_crit == 200
@@ -225,7 +232,7 @@ def obtain_M200_bisection(rc, rho0, verbose=False,
 
         bf = 0.17  # Mission critical assumption that bf = 0.17 at r200! Planelles+ 2013
 
-        Mgas200 = M_gas_below_r(r200, rho0, rc)
+        Mgas200 = M_gas_below_r(r200, rho0, rc, beta)
         Mdm200 = Mgas200 * (1/bf - 1)
 
         M200 = Mgas200 + Mdm200
@@ -297,7 +304,7 @@ def obtain_M200_bisection(rc, rho0, verbose=False,
                 ax.set_ylim(1e-29, 3e-25)
 
 
-            # pyplot.show()
+            #pyplot.show()
             pyplot.savefig("out/findmass_{1}_{0:03d}.png".format(n, observed.name))
             pyplot.close()
             n+=1
@@ -315,6 +322,7 @@ def obtain_M200_bisection(rc, rho0, verbose=False,
     halo["rho200_over_rhocrit"] = rho200_over_rhocrit
     halo["rho0"] = rho0
     halo["rc"] = rc
+    halo["beta"] = beta
     halo["Mgas200"] = Mgas200
     halo["Mdm200"] = Mdm200
     halo["M200"] = M200
@@ -341,11 +349,11 @@ def propagate_errors(halo, to_print=True):
     """
 
     plus = obtain_M200_bisection(halo["rc"]+halo["rc_sigma"],
-        halo["rho0"]+halo["rho0_sigma"], verbose=False,
-        visualise=False, observedName="cygA")
+        halo["rho0"]+halo["rho0_sigma"], halo["beta"]+halo["beta_sigma"],
+        verbose=False, visualise=False, observedName="cygA")
     min = obtain_M200_bisection(halo["rc"]-halo["rc_sigma"],
-        halo["rho0"]-halo["rho0_sigma"], verbose=False,
-        visualise=False, observedName="cygA")
+        halo["rho0"]-halo["rho0_sigma"], halo["beta"]-halo["beta_sigma"],
+        verbose=False, visualise=False, observedName="cygA")
 
     if to_print:
         plus = pandas.Series(plus)
@@ -374,7 +382,7 @@ def print_inferred_values(halo):
     print "{0:<20}   {1:<10} {2:<10} {3:<10}".format("quantity", "value", "+1sigma", "-1sigma")
     print "{0:<20} = {1:<10.3f} {2:<10.3f} {3:<10.3f}".format(
         "bf", bf_200, bf_200_plus-bf_200, bf_200_min-bf_200_min)
-    for p in ["r200", "rho200_over_rhocrit", "rho0", "rc", "Mgas200",
+    for p in ["r200", "rho200_over_rhocrit", "rho0", "rc", "beta", "Mgas200",
               "Mdm200", "M200", "cNFW", "rs", "a", "Mdm"]:
         if p in masses:
             print "{0:<20} = {1:<10.3e} {2:<10.3e} {3:<10.3e}".format(
@@ -415,13 +423,15 @@ def make_plot(cygA, cygB, mode=""):
     # Get gas and dark matter density and mass profiles
     # Density in g/cm**3, mass in MSun, radius in kpc. So units require care
     if cygA:
-        cygA_gas_rhom = gas_density_beta(r, cygA["rho0"], cygA["rc"]*cm2kpc)
-        cygA_gas_mass = M_gas_below_r(r, cygA["rho0"]*g2msun/p3(cm2kpc), cygA["rc"]*cm2kpc)
+        cygA_gas_rhom = gas_density_beta(r, cygA["rho0"], cygA["rc"]*cm2kpc, cygA["beta"])
+        cygA_gas_mass = M_gas_below_r(r, cygA["rho0"]*g2msun/p3(cm2kpc),
+                cygA["rc"]*cm2kpc, cygA["beta"])
         cygA_dm_rhom = dm_density_hernquist(r*kpc2cm, cygA["Mdm"], cygA["a"])
         cygA_dm_mass = M_dm_below_r(r, cygA["Mdm"]*g2msun, cygA["a"]*cm2kpc)
     if cygB:
-        cygB_gas_rhom = gas_density_beta(r, cygB["rho0"], cygB["rc"]*cm2kpc)
-        cygB_gas_mass = M_gas_below_r(r, cygB["rho0"]*g2msun/p3(cm2kpc), cygB["rc"]*cm2kpc)
+        cygB_gas_rhom = gas_density_beta(r, cygB["rho0"], cygB["rc"]*cm2kpc, cygB["beta"])
+        cygB_gas_mass = M_gas_below_r(r, cygB["rho0"]*g2msun/p3(cm2kpc),
+                cygB["rc"]*cm2kpc, cygB["beta"])
 
         cygB_dm_rhom = dm_density_hernquist(r*kpc2cm, cygB["Mdm"], cygB["a"])
         cygB_dm_mass = M_dm_below_r(r, cygB["Mdm"]*g2msun, cygB["a"]*cm2kpc)
@@ -431,21 +441,21 @@ def make_plot(cygA, cygB, mode=""):
         cygA_plus, cygA_min = propagate_errors(cygA, to_print=False)
         cygB_plus, cygB_min = propagate_errors(cygB, to_print=False)
 
-        cygA_gas_plus_sigma = M_gas_below_r(
-            r, cygA_plus["rho0"]*g2msun/p3(cm2kpc), cygA_plus["rc"]*cm2kpc)
+        cygA_gas_plus_sigma = M_gas_below_r(r, cygA_plus["rho0"]*g2msun/p3(cm2kpc),
+                cygA_plus["rc"]*cm2kpc, cygA_plus["beta"])
         cygA_dm_plus_sigma = M_dm_below_r(
             r, cygA_plus["Mdm"]*g2msun, cygA_plus["a"]*cm2kpc)
-        cygB_gas_plus_sigma = M_gas_below_r(
-            r, cygB_plus["rho0"]*g2msun/p3(cm2kpc), cygB_plus["rc"]*cm2kpc)
+        cygB_gas_plus_sigma = M_gas_below_r(r, cygB_plus["rho0"]*g2msun/p3(cm2kpc),
+                cygB_plus["rc"]*cm2kpc, cygB_plus["beta"])
         cygB_dm_plus_sigma = M_dm_below_r(
             r, cygB_plus["Mdm"]*g2msun, cygB_plus["a"]*cm2kpc)
 
-        cygA_gas_min_sigma = M_gas_below_r(
-            r, cygA_min["rho0"]*g2msun/p3(cm2kpc), cygA_min["rc"]*cm2kpc)
+        cygA_gas_min_sigma = M_gas_below_r(r, cygA_min["rho0"]*g2msun/p3(cm2kpc),
+                cygA_min["rc"]*cm2kpc, cygA_min["beta"])
         cygA_dm_min_sigma = M_dm_below_r(
             r, cygA_min["Mdm"]*g2msun, cygA_min["a"]*cm2kpc)
-        cygB_gas_min_sigma = M_gas_below_r(
-            r, cygB_min["rho0"]*g2msun/p3(cm2kpc), cygB_min["rc"]*cm2kpc)
+        cygB_gas_min_sigma = M_gas_below_r(r, cygB_min["rho0"]*g2msun/p3(cm2kpc),
+                cygB_min["rc"]*cm2kpc, cygB_min["beta"])
         cygB_dm_min_sigma = M_dm_below_r(
             r, cygB_min["Mdm"]*g2msun, cygB_min["a"]*cm2kpc)
 
@@ -626,7 +636,8 @@ def make_plot(cygA, cygB, mode=""):
         # Careful here! In order to fit the residuals, the radius needs
         # to be discrete. We use ObservedCluster radius
         observed = ObservedCluster(observedName)
-        gas_rhom_discrete = gas_density_beta(observed.radius, parms["rho0"], parms["rc"]*cm2kpc)
+        gas_rhom_discrete = gas_density_beta(observed.radius, parms["rho0"],
+                parms["rc"]*cm2kpc, parms["beta"])
         fig = plot_observed_cluster(observed, gas_rhom_discrete)
 
         # Plot the analytical models: "continuous" radii and function values
@@ -688,9 +699,9 @@ def make_plot(cygA, cygB, mode=""):
     print
 
 
-def is_solution_unique(rc, rho0, observedName):
+def is_solution_unique(rc, rho0, beta, observedName):
     observed = ObservedCluster(observedName)
-    gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc)
+    gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc, beta)
     fig = plot_observed_cluster(observed, gas_rhom)
     ax, ax_r = fig.axes
     pyplot.sca(ax)
@@ -713,7 +724,7 @@ def is_solution_unique(rc, rho0, observedName):
         # bisection
         bf = 0.17  # Mission critical assumption that bf = 0.17 at r200! Planelles+ 2013
 
-        Mgas200 = M_gas_below_r(r200, rho0, rc)
+        Mgas200 = M_gas_below_r(r200, rho0, rc, beta)
         Mdm200 = Mgas200 * (1/bf - 1)
 
         M200 = Mgas200 + Mdm200
@@ -803,14 +814,15 @@ if __name__ == "__main__":
         #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
         #     n_e,0       = 0.14186 +/- 0.00630
         #     r_c         = 35.32623 +/- 0.99998
-        cygA_rc =  35.32623 * kpc2cm
-        cygA_ne0 = 0.14186  # 1/cm**3
+        cygA_rc =  26.14052 * kpc2cm
+        cygA_ne0 = 0.09115  # 1/cm**3
+        cygA_beta = 0.53869
     cygA_rho0 = ne_to_rho(cygA_ne0)
 
     # is_solution_unique(cygA_rc, cygA_rho0, observedName="cygA")
 
     # convert -delay 100 -loop 0 out/findmass_cygA_*.png out/bisection_cygA.gif
-    cygA = obtain_M200_bisection(cygA_rc, cygA_rho0, verbose=False,
+    cygA = obtain_M200_bisection(cygA_rc, cygA_rho0, cygA_beta, verbose=False,
                                  visualise=visualise, observedName="cygA")
 
     # One sigma values for error propagation
@@ -818,13 +830,15 @@ if __name__ == "__main__":
         cygA_rc_sigma =  0.69421 * kpc2cm
         cygA_ne0_sigma = 0.00560 # 1/cm**3
     else:
-        cygA_rc_sigma = 0.99998 * kpc2cm
-        cygA_ne0_sigma =  0.00630  # 1/cm**3
+        cygA_rc_sigma = 1.25792 * kpc2cm
+        cygA_ne0_sigma = 0.00422  # 1/cm**3
+        cygA_beta_sigma = 0.00663
 
     cygA_rho0_sigma = ne_to_rho(cygA_ne0_sigma)
     cygA["rc_sigma"] = cygA_rc_sigma
     cygA["ne0_sigma"] = cygA_ne0_sigma
     cygA["rho0_sigma"] = cygA_rho0_sigma
+    cygA["beta_sigma"] = cygA_beta_sigma
 
     print_inferred_values(cygA)
 
@@ -855,15 +869,16 @@ if __name__ == "__main__":
         #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
         #     n_e,0       = 0.00189 +/- 0.00013
         #     r_c         = 382.50079 +/- 22.14346
-        cygB_rc = 382.50079 * kpc2cm
-        cygB_ne0 = 0.00189
+        cygB_rc = 374.74655 * kpc2cm
+        cygB_ne0 = 0.00228
+        cygB_beta = 0.79031
 
     cygB_rho0 = ne_to_rho(cygB_ne0)
 
     #is_solution_unique(cygB_rc, cygB_rho0, observedName="cygB")
     #import sys; sys.exit(0)
 
-    cygB = obtain_M200_bisection(cygB_rc, cygB_rho0, verbose=False,
+    cygB = obtain_M200_bisection(cygB_rc, cygB_rho0, cygB_beta, verbose=False,
                                  visualise=visualise, observedName="cygB")
 
     # One sigma values for error propagation
@@ -871,14 +886,16 @@ if __name__ == "__main__":
         cygB_rc_sigma = 15.30907 * kpc2cm
         cygB_ne0_sigma = 0.00014  # 1/cm**3
     else:
-        cygB_rc_sigma = 22.14346 * kpc2cm
-        cygB_ne0_sigma = 0.00013  # 1/cm**3
+        cygB_rc_sigma = 44.31513 * kpc2cm
+        cygB_ne0_sigma = 0.00015  # 1/cm**3
+        cygB_beta_sigma = 0.07233
 
 
     cygB_rho0_sigma = ne_to_rho(cygB_ne0_sigma)
     cygB["rc_sigma" ] = cygB_rc_sigma
     cygB["ne0_sigma"] = cygB_ne0_sigma
     cygB["rho0_sigma"] = cygB_rho0_sigma
+    cygB["beta_sigma"] = cygB_beta_sigma
 
     print_inferred_values(cygB)
 
@@ -889,6 +906,7 @@ if __name__ == "__main__":
     print "M_CygB/M_CygA        = {0:1.4f}".format(cygB["M200"]/cygA["M200"])
     print "Mtotal               = {0:1.4e} MSun".format((cygA["M200"] + cygB["M200"]) * g2msun)
     print
+    import sys; sys.exit(0)
 
     # Plot density+mass profiles (gas + dm in same plot); density left, mass right
     # make_plot(cygA, cygB, mode="rhomassboth")

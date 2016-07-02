@@ -2,7 +2,7 @@
 File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Fri Jun 17, 2016 07:43 pm
+Last modified: Thu Jun 30, 2016 10:47 pm
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -422,7 +422,7 @@ class Toycluster2RuntimeOutputParser(object):
             self.halosetup[n]['rho0gas_cgs'] = unit_str_to_quantity(self.split(lines[i+12]))
             self.halosetup[n]['rho0gas_gadget'] = (lines[i+13].split("=")[-1].strip()).split(" ")[0]
             self.halosetup[n]['ne0gas'] = (lines[i+14].split("=")[-1].strip()).split(" ")[0]
-            if lines[i+15].split("=")[-1].strip() == "2/3": self.halosetup[n]['beta'] = 2./3
+            self.halosetup[n]['beta']  = lines[i+15].split("=")[-1].strip()
             self.halosetup[n]['rc'] = unit_str_to_quantity(lines[i+16].split("=")[-1].strip())
             self.halosetup[n]['R500'] = unit_str_to_quantity(lines[i+17].split("=")[-1].strip())
             self.halosetup[n]['bf_200'] = float(lines[i+18].split("=")[-1].strip())

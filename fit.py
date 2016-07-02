@@ -134,7 +134,7 @@ def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.],
     # Fit to data
     if observed.name == "cygA":
         if len(parm) == 2:
-            bounds = [(None, None), (5, 50)]
+            bounds = [(None, None), (5, 26.14)]
         elif len(parm) == 3 and not free_beta:
             bounds = [(None, None), (None, None), (800, 1800)]
         elif len(parm) == 3 and free_beta:
@@ -194,6 +194,8 @@ def obtain_mles(observed, result, free_beta=False):
         print "    r_cut       = {0:.5f}".format(ml_vals[2])
     if len(ml_vals) == 3 and free_beta:
         print "    beta        = {0:.5f}".format(ml_vals[2])
+    print "    chisq       = {0:.5f}".format(ml_func)
+    print "    dof         = {0:.5f}".format(dof)
     print "    chisq/dof   = {0:.5f}".format(ml_func/dof)
     print "    p-value     = {0:.5f}".format(pval)
 
@@ -621,37 +623,45 @@ if __name__ == "__main__":
             cygA_observed.density_std = cygA_observed.density_std[4:]
             cygA_observed.number_density = cygA_observed.number_density[4:]
             cygA_observed.number_density_std = cygA_observed.number_density_std[4:]
+        discard_lastbins = True
+        if discard_lastbins:
+            cygA_observed.radius = cygA_observed.radius[:-40]
+            cygA_observed.binsize = cygA_observed.binsize[:-40]
+            cygA_observed.density= cygA_observed.density[:-40]
+            cygA_observed.density_std = cygA_observed.density_std[:-40]
+            cygA_observed.number_density = cygA_observed.number_density[:-40]
+            cygA_observed.number_density_std = cygA_observed.number_density_std[:-40]
 
         # Cut-off single beta (2/3)
-        cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.135, 27, 1.])
+        # cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.135, 27, 1.])
         # Single beta (beta is fit parameter)
-        cygA_fit_free = fit_betamodel_to_chandra(cygA_observed,
-            parm=[0.1, 10, 0.67], free_beta=True)
+        # cygA_fit_free = fit_betamodel_to_chandra(cygA_observed,
+        #    parm=[0.1, 10, 0.67], free_beta=True)
         # Single beta (2/3): use this for numerical setup
         cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
 
         # Cut-off single beta (2/3)
-        cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 1.0, 1.0])
+        # cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 1.0, 1.0])
         # Single beta (beta is fit parameter)
-        cygB_fit_free = fit_betamodel_to_chandra(cygB_observed,
-            parm=[0.002, 390, 0.67], free_beta=True)
+        # cygB_fit_free = fit_betamodel_to_chandra(cygB_observed,
+        #     parm=[0.002, 390, 0.67], free_beta=True)
         # Single beta (2/3): use this for numerical setup
-        cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 1.0])
+        # cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 1.0])
 
         # Giving radius --> discrete (observed) radius; not 'continuous'
         cygA_analytical = AnalyticalCluster(cygA_fit["x"], None, cygA_observed.radius)
-        cygB_analytical = AnalyticalCluster(cygB_fit["x"], None, cygB_observed.radius)
+        # cygB_analytical = AnalyticalCluster(cygB_fit["x"], None, cygB_observed.radius)
 
-        cygA_analytical_free = AnalyticalCluster(cygA_fit_free["x"], None, cygA_observed.radius, free_beta=True)
-        cygB_analytical_free = AnalyticalCluster(cygB_fit_free["x"], None, cygB_observed.radius, free_beta=True)
+        # cygA_analytical_free = AnalyticalCluster(cygA_fit_free["x"], None, cygA_observed.radius, free_beta=True)
+        # cygB_analytical_free = AnalyticalCluster(cygB_fit_free["x"], None, cygB_observed.radius, free_beta=True)
         print "CygA n_e0  = {0:1.4e} 1/cm**3".format(
             cygA_analytical.ne0.value_in(1/units.cm**3))
         print "CygA rho_0 = {0:1.4e} g/cm**3".format(
             cygA_analytical.rho0.value_in(units.g/units.cm**3))
-        print "CygB n_e0  = {0:1.4e} 1/cm**3".format(
-            cygB_analytical.ne0.value_in(1/units.cm**3))
-        print "CygB rho_0 = {0:1.4e} g/cm**3".format(
-            cygB_analytical.rho0.value_in(units.g/units.cm**3))
+        # print "CygB n_e0  = {0:1.4e} 1/cm**3".format(
+        #     cygB_analytical.ne0.value_in(1/units.cm**3))
+        # print "CygB rho_0 = {0:1.4e} g/cm**3".format(
+        #     cygB_analytical.rho0.value_in(units.g/units.cm**3))
         print 80*"-"
 
     plot_fit = True
@@ -677,13 +687,13 @@ if __name__ == "__main__":
         # Works, but residuals need some attention...
         plot_fit_results(cygA_observed, cygA_analytical,
                          mass_density=True, save=True)
-        plot_fit_results(cygB_observed, cygB_analytical,
-                         mass_density=True, save=True)
+        # plot_fit_results(cygB_observed, cygB_analytical,
+        #                  mass_density=True, save=True)
 
-        plot_fit_results(cygA_observed, cygA_analytical_free,
-                         mass_density=True, save=True)
-        plot_fit_results(cygB_observed, cygB_analytical_free,
-                         mass_density=True, save=True)
+        # plot_fit_results(cygA_observed, cygA_analytical_free,
+        #                  mass_density=True, save=True)
+        # plot_fit_results(cygB_observed, cygB_analytical_free,
+        #                  mass_density=True, save=True)
 
     pyplot.show()
 
