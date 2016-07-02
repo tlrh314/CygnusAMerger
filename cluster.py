@@ -353,6 +353,31 @@ class NumericalCluster(object):
 
         self.rho_dm_below_r = self.M_dm * (self.dm_particles_in_shell/self.raw_data.Ndm) / (self.dm_volume | units.kpc**3)
 
+    def set_gas_temperature(self):
+        """ Thermodynamics in Gadget-2:
+            - Ideal gas, close to pure hydrogen.
+            - SPH is energy conserving, expansion is always adiabatic
+            - Eint = (gamma-1)^-1 N kB T; where gamma = 5/3
+            - PV = N kB T ==> P = rho kB/(mu m_p) T
+
+            - U = (gamma-1)^-1 kB/(mu m_p) T [erg/g]
+
+            Here we set the gas temperature from the internal energy
+            """
+
+        # T = (gamma-1)*(mu*m_p)/kB U
+        gamma = 5.0/3
+        kB = constants.kB.value_in(units.erg/units.K)
+        m_p = constants.proton_mass.value_in(units.g)
+        factor = (gamma-1)*convert.umu*m_p/kB
+        # NB internal energy u is in code units energy/mass
+        # unit.mass = 1e10 MSun = 1e10 * 1.9889e33 gram
+        # unit.velocity = km/sec = 1e5 cm/sec
+        # unit.energy = unit.mass*unit.velocity**2 = 1.9889e53 erg
+        # unit.energy/unit.mass = 1.9889e53/1.9889e43 = 1e10
+        # So code unit energy per unit mass yields a factor 1e10
+        self.gas.T = factor * self.gas.u * 1e10 | units.K
+
     def perform_sanity_checks(self):
 
         # Let's see what the radius of the gas and dm looks like
@@ -565,68 +590,85 @@ class AnalyticalCluster(object):
         rho_average = (self.dm_cummulative_mass(r) / (4./3*numpy.pi*r**3))
         return rho_average.as_quantity_in(units.g/units.cm**3)
 
-    def F1(self, r=None):
-        """ Helper function for temperature calculation """
+    def F0(self, r=None):
+        """ Helper function for temperature calculation -- dm part
+                Donnert (2014) equation 11 """
         if not r:
             r = self.radius
 
-        rc2 = self.rc*self.rc
-        a2 = self.a*self.a
+        rc2 = p2(self.rc)
+        a2 = p2(self.a)
         a = self.a
         rc = self.rc
 
-        result = (a2-rc2)*numpy.arctan(r/rc) - rc*(a2+rc2)/(a+r) \
-                + a*rc * numpy.log( (a+r)*(a+r) / (rc2 + r*r) )
-        result *= rc / p2(a2 + rc2)
+        result = rc / p2(a2 + rc2)
+        result *= (numpy.pi/2*(a2 - rc2) + rc*(a2 + rc2)/(a + r) \
+            - (a2 - rc2)*numpy.arctan(r/rc) -\
+            rc*a*numpy.log(p2(a + r)/(p2(r) + rc2)))
+
         return result
 
-    def F2(self, r=None):
-        """ Helper function for temperature calculation """
+    def F1(self, r=None):
+        """ Helper function for temperature calculation -- gas part
+                Donnert (2014) equation 12 """
         if not r:
             r = self.radius
 
         rc = self.rc
 
-        return p2(arctan(r/rc)) / (2*rc) + atan(r/rc)/r
-
-    def gas_temperature(self, r=None):
-        if not r:
-            r = self.radius
-
-        F_1 = numpy.pi**2/(8*self.rc) - numpy.arctan(r/self.rc)**2/(2*self.rc) -\
-            numpy.arctan(r/self.rc)/r
-
-        T_r_gas = constants.G*convert.umu*constants.proton_mass/constants.kB *\
-            (1 + r**2/self.rc**2) * (4*numpy.pi*self.rc**3*self.rho0*F_1)
-        return T_r_gas.as_quantity_in(units.K)
+        return p2(numpy.pi)/(8*rc) - p2(numpy.arctan(r/rc))/(2*rc) -\
+            numpy.arctan(r/rc)/r
 
     def dm_temperature(self, r=None):
-        """ TODO: what is DM temperature? """
+        """ Donnert (2014) equation 10 -- dm part: ...*[ M_DM F0(r) ]
+        TODO: what is DM temperature? """
         if not r:
             r = self.radius
 
-        F_0 = self.rc/(self.a**2 + self.rc**2)**2 * (numpy.pi/2*(self.a**2 - self.rc**2) +\
-            self.r_c*(self.a**2 + self.rc**2)/(self.a + r) - (self.a**2 - self.rc**2)*\
-            numpy.arctan(r/self.rc) - self.rc*self.a*numpy.log((self.a + r)**2/(r**2 + self.rc**2)))
-        # TODO: use mu from convert.py?
-        #T_r_dm = constants.G*self.mu*constants.proton_mass/constants.kB * (1 + r**2/self.rc**2) *\
-        #    (self.M_dm*F_0)
+        rc = self.rc
+        m_p = constants.proton_mass
+        kB = constants.kB
+
+        T_r_dm = constants.G*convert.umu*m_p/kB *\
+            (1 + p2(r/rc)) * (self.M_dm*self.F0(r))
         return T_r_dm.as_quantity_in(units.K)
 
-    def temperature(self, r=None):
+    def gas_temperature(self, r=None):
+        """ Donnert (2014) equation 10 -- gas part: ...*[ ...*F1(r) ] """
         if not r:
             r = self.radius
 
-        return (self.gas_temperature(r) + self.dm_temperature(r)).as_quantity_in(units.K)
+        rc = self.rc
+        m_p = constants.proton_mass
+        kB = constants.kB
 
-    def characteristic_temperature_analytically(self):
-        # Charecteristic temperature
-        # TODO: use mu from convert.py?
-        #T_c = 2*constants.G*self.mu*constants.proton_mass/constants.kB * \
-        #    (self.M_dm * self.rc**2/(self.a**2 + self.rc**2)**2 * (numpy.pi/(4*self.rc) * \
-        #    (self.a**2 - self.rc**2) + (self.a**2 + self.rc**2)/(self.a + self.rc) - \
-        #    self.a*numpy.log((self.a + self.rc)**2/(2*self.rc**2))) \
-        #    + numpy.pi**2*self.rc**2*self.rho_0*(3*numpy.pi/8 - 1))
+        T_r_gas = constants.G*convert.umu*m_p/kB *\
+            (1 + p2(r/rc)) * (4*numpy.pi*p3(rc)*self.rho0*self.F1(r))
+        return T_r_gas.as_quantity_in(units.K)
+
+    def temperature(self, r=None):
+        """ Donnert (2014) equation 10 -- gas + dm (full equation) """
+        if not r:
+            r = self.radius
+
+        return (self.gas_temperature(r) + \
+                self.dm_temperature(r)).as_quantity_in(units.K)
+
+    def characteristic_temperature(self):
+        """ Donnert (2014) equation 13 -- Tc = T(rc) """
+
+        rc2 = p2(self.rc)
+        a2 = p2(self.a)
+        a = self.a
+        rc = self.rc
+        m_p = constants.proton_mass
+        kB = constants.kB
+
+        T_c = 2*constants.G*convert.umu*m_p/kB * \
+            (self.M_dm * rc2/p2(a2 + rc2) * (numpy.pi/(4*rc) * \
+            (a2 - rc2) + (a2 + rc2)/(a + rc) - \
+            a*numpy.log(p2(a + rc)/(2*rc2))) \
+            + p2(numpy.pi)*rc2*self.rho0*(3*numpy.pi/8 - 1))
         return T_c.as_quantity_in(units.K)
 
     def gas_pressure(self, r):
@@ -978,7 +1020,7 @@ if __name__ == "__main__":
         snapdir="../runs/20160623T1755/ICs/",
         logfile="runToycluster.log",
         icfile="IC_single_0")
-    # numerical_cluster.perform_sanity_checks()
+    numerical_cluster.perform_sanity_checks()
     print numerical_cluster.gas.u
     print 80*'-'
 

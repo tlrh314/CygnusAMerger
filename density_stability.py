@@ -1,11 +1,14 @@
 import glob
 import os
 import numpy
+import matplotlib
+matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
 pyplot.rcParams.update({"font.size": 22})
 # pyplot.rcParams.update({"text.usetex": True})
 
 from amuse.units import units
+from amuse.units import constants
 from amuse.units.quantities import VectorQuantity
 import amuse.plot as amuse_plot
 
@@ -29,9 +32,8 @@ def plot_individual_cluster_density(numerical, analytical):
 
 
     # Gas RHO and RHOm from Toycluster living in AMUSE datamodel
-    amuse_plot.scatter(numerical.gas.r,
-        numerical.gas.rho,
-        c=data_colour[0], edgecolor="face", s=20, label=r"Gas")
+    amuse_plot.scatter(numerical.gas.r, numerical.gas.rho,
+        c=data_colour[0], edgecolor="face", s=1, label=r"Gas")
 
     # amuse_plot.scatter(numerical.gas.r,
     #    numerical.gas.rhom,
@@ -39,25 +41,25 @@ def plot_individual_cluster_density(numerical, analytical):
 
     # DM density obtained from mass profile (through number density)
     amuse_plot.scatter(numerical.dm_radii, numerical.rho_dm_below_r,
-       c=data_colour[2], edgecolor="face", s=20, label=r"DM")
+       c=data_colour[2], edgecolor="face", s=1, label=r"DM")
 
     # Analytical solutions.
 
     # Plot analytical cut-off beta model (Donnert 2014) for the gas density
-    amuse_plot.plot(analytical.radius, analytical.gas_density(), c=fit_colour, lw=2, ls="dotted",
+    amuse_plot.plot(analytical.radius, analytical.gas_density(), c=fit_colour, lw=1, ls="dotted",
         label=analytical.modelname+"\n"+\
             r"$\rho_0$ = {0:.3e} g/cm$^3$; $rc = ${1:.2f} kpc"\
             .format(analytical.rho0.number, analytical.rc.number))
 
     # Plot analytical Hernquist model for the DM density
-    amuse_plot.plot(analytical.radius, analytical.dm_density(), c=fit_colour, lw=2, ls="solid",
+    amuse_plot.plot(analytical.radius, analytical.dm_density(), c=fit_colour, lw=1, ls="solid",
         label=r"Analytical, Hernquist-model" "\n" r"$M_{{\rm dm}}= ${0:.2e} MSun; $a = $ {1} kpc".format(
         analytical.M_dm.number, analytical.a.number))
 
     amuse_plot.xlabel(r"$r$")
     amuse_plot.ylabel(r"$\rho$")
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
-    pyplot.gca().set_ylim(ymin=1e-30, ymax=9e-24)
+    pyplot.gca().set_ylim(ymin=1e-32, ymax=9e-24)
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
 
@@ -81,10 +83,10 @@ def plot_individual_cluster_mass(numerical, analytical):
     fit_colour = "white"
 
     amuse_plot.scatter(numerical.gas_radii, numerical.M_gas_below_r,
-        c=data_colour[0], edgecolor="face", s=20, label="Gas")
+        c=data_colour[0], edgecolor="face", s=1, label="Gas")
 
     amuse_plot.scatter(numerical.dm_radii, numerical.M_dm_below_r,
-        c=data_colour[2], edgecolor="face", s=20, label="DM")
+        c=data_colour[2], edgecolor="face", s=1, label="DM")
 
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
@@ -107,12 +109,48 @@ def plot_individual_cluster_mass(numerical, analytical):
     pyplot.legend(loc=4)
 
 
+def plot_individual_cluster_temperature(numerical, analytical):
+    pyplot.figure(figsize=(16, 12))
+    pyplot.style.use(["dark_background"])
+    # magenta, dark blue, orange, green, light blue (?)
+    data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                   (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                   (41./255, 239./255, 239./255)]
+    fit_colour = "white"
+
+    numerical.set_gas_temperature()
+    pyplot.scatter(numerical.gas.r.value_in(units.kpc),
+        numerical.gas.T.value_in(units.K),
+        c=data_colour[0], edgecolor="face", s=1, label="Gas")
+
+    # Analytical solutions. Sample radii and plug into analytical expression.
+
+    # Plot analytical temperature (Donnert 2014)
+    # NB the temperature is set by both gas and dark matter
+    # because it follows from hydrostatic equation, which contains M(<r),
+    # where M(<r) is the total gravitating mass delivered by gas+dm!
+    amuse_plot.plot(analytical.radius, analytical.temperature(),
+        ls="dotted", c=fit_colour, lw=2, label="Analytical")
+    pyplot.axhline(analytical.characteristic_temperature().value_in(units.K))
+    pyplot.axvline(analytical.rc.value_in(units.kpc))
+
+    pyplot.xlabel(r"$r$ [kpc]")
+    pyplot.ylabel(r"$T(r)$ [K]")
+
+    pyplot.gca().set_xscale("log")
+    pyplot.gca().set_yscale("log")
+    # pyplot.gca().set_xlim(xmin=1, xmax=1e4)
+    pyplot.legend(loc=4)
+
+
 if __name__ == "__main__":
-    IC_only = False
+    IC_only = True
+    save = False
+    replot = True
 
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160623T0725"
+    myRun = "20160701T1558"
     if IC_only:
         # TODO: there is something different in the Toycluster rho
         # than in the Gadget output :(
@@ -143,9 +181,12 @@ if __name__ == "__main__":
 
         mass_filename = outdir+"{0}-mass-{1}.png".format(myRun, snapnr)
         density_filename = outdir+"{0}-density-{1}.png".format(myRun, snapnr)
+        temperature_filename = outdir+"{0}-temperature-{1}.png".format(myRun, snapnr)
 
         if (os.path.isfile(mass_filename) and os.path.exists(mass_filename)
-                and os.path.isfile(density_filename) and os.path.exists(density_filename)):
+                and os.path.isfile(density_filename) \
+                and os.path.exists(density_filename)) \
+                and not replot:
             print "Plots exist. Skipping", snap
             continue
 
@@ -167,21 +208,30 @@ if __name__ == "__main__":
 
         analytical = AnalyticalCluster(parms, dm_parms, z=numerical.z)
 
-
-        numerical.get_gas_mass_via_density(DESNNGB=295 if IC_only else 50)
+        # 295 for WC6, 50 for Cubic Spline kernel
+        numerical.get_gas_mass_via_density(DESNNGB=50 if IC_only else 50)
         numerical.get_dm_mass_via_number_density()
         numerical.set_dm_density()
 
         plot_individual_cluster_density(numerical, analytical)
-
         pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot))
-        pyplot.savefig(density_filename)
-        pyplot.close()
+        if save:
+            pyplot.savefig(density_filename)
+            pyplot.close()
 
         plot_individual_cluster_mass(numerical, analytical)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot))
-        pyplot.savefig(mass_filename)
-        pyplot.close()
+        if save:
+            pyplot.savefig(mass_filename)
+            pyplot.close()
+
+        plot_individual_cluster_temperature(numerical, analytical)
+        pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot))
+        if save:
+            pyplot.savefig(temperature_filename)
+            pyplot.close()
+        else:
+            pyplot.show()
 
         # break
 
