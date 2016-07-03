@@ -1,13 +1,17 @@
 import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
-pyplot.rcParams.update({'font.size': 22})
+pyplot.rcParams.update({"font.size": 22})
+pyplot.rcParams.update({"xtick.major.size": 16})
+pyplot.rcParams.update({"xtick.minor.size": 8})
+pyplot.rcParams.update({"ytick.major.size": 16})
+pyplot.rcParams.update({"ytick.minor.size": 8})
 
 from cluster import ObservedCluster
 
 
 def plot_observation(cygA, cygB):
-    poster_style = False
+    poster_style = True
     if poster_style:
         pyplot.style.use(["dark_background"])
         # magenta, dark blue, orange, green, light blue (?)
@@ -18,9 +22,6 @@ def plot_observation(cygA, cygB):
     else:
         data_colour = ["g", "r", "b"]
         fit_colour = "k"
-
-    data_colour[2]
-
 
     fig = pyplot.figure(figsize=(12, 9))
 

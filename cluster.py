@@ -43,7 +43,7 @@ class ObservedCluster(object):
         if self.name == "cygA":
             z = 0.0562
         if self.name == "cygB":
-            z = 0.070
+            z = 0.0562
         self.cc = CosmologyCalculator(z)
 
         self.parse_data(density_file, radius_file)
@@ -476,10 +476,10 @@ class AnalyticalCluster(object):
             self.rho0_cc = self.ne0_cc * globals.mu * (globals.m_p | units.g)
             self.rc_cc = rc / rc_fac
 
-        modelnames = {0: r"$\beta (2/3)$-model",
-                      1: r"cut-off $\beta (2/3)$-model",
-                      2: r"cut-off double $\beta (2/3)$-model",
-                      3: r"free $\beta$-model"}
+        modelnames = {0: r"model: $\beta=2/3$",
+                      1: r"model: cut-off $\beta=2/3$",
+                      2: r"model: cut-off double $\beta (2/3)$",
+                      3: r"model: free $\beta$"}
         self.modelname = modelnames[self.model]
 
         if dm_parms:
@@ -966,7 +966,7 @@ if __name__ == "__main__":
     print "Done reading ObservedCluster"
     print 80*'-'
 
-    debug = True
+    debug = False
     if debug:
         print "Printing attributes of old- and new ICs"
         print 80*'-'

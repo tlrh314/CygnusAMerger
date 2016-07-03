@@ -6,9 +6,6 @@ Script to obtain M200 for CygA, CygB, thus xM (mass ratio),
 and cNFW for cygA and cygB using reverse of Toycluster setup.c.
 Code based on Julius Donnert's 20160617 cyg.pro script.
 
-Script is designed to stand alone from the rest of my code base.
-Only depends on Numpy, but could easily be rewritten to use plain Python
-
 """
 
 import numpy
@@ -20,9 +17,15 @@ import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
 pyplot.rcParams.update({"font.size": 22})
+pyplot.rcParams.update({"xtick.major.size": 12})
+pyplot.rcParams.update({"xtick.minor.size": 6})
+pyplot.rcParams.update({"ytick.major.size": 12})
+pyplot.rcParams.update({"ytick.minor.size": 6})
+
 
 from cluster import ObservedCluster
 from cluster import AnalyticalCluster
+from fit import fit_betamodel_to_chandra
 from macro import print_progressbar
 
 
@@ -205,15 +208,14 @@ def plot_observed_cluster(observed, analytical_density):
     return fig
 
 
-def obtain_M200_bisection(rc, rho0, beta, verbose=False,
-                          visualise=False, observedName=None):
+def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
+                          visualise=False, observed=None):
     """ We follow the Toycluster (Donnert 2014) setup.c method in reverse.
     If we assume a value for r200 and we assume the baryon fraction at r200
     is equal to 0.17 we are able to obtain a total mass M200 for which
     rho_average(r200) == 200 rho_crit."""
 
     if visualise:
-        observed = ObservedCluster(observedName)
         gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc, beta)
         n=0
 
@@ -321,6 +323,7 @@ def obtain_M200_bisection(rc, rho0, beta, verbose=False,
     halo["r200"] = r200
     halo["rho200_over_rhocrit"] = rho200_over_rhocrit
     halo["rho0"] = rho0
+    halo["ne0"] = rho_to_ne(rho0)
     halo["rc"] = rc
     halo["beta"] = beta
     halo["Mgas200"] = Mgas200
@@ -349,11 +352,13 @@ def propagate_errors(halo, to_print=True):
     """
 
     plus = obtain_M200_bisection(halo["rc"]+halo["rc_sigma"],
-        halo["rho0"]+halo["rho0_sigma"], halo["beta"]+halo["beta_sigma"],
-        verbose=False, visualise=False, observedName="cygA")
+        halo["rho0"]+halo["rho0_sigma"],
+        None if not halo["beta"] else halo["beta"]+halo["beta_sigma"],
+        verbose=False, visualise=False)
     min = obtain_M200_bisection(halo["rc"]-halo["rc_sigma"],
-        halo["rho0"]-halo["rho0_sigma"], halo["beta"]-halo["beta_sigma"],
-        verbose=False, visualise=False, observedName="cygA")
+        halo["rho0"]-halo["rho0_sigma"],
+        None if not halo["beta"] else halo["beta"]-halo["beta_sigma"],
+        verbose=False, visualise=False)
 
     if to_print:
         plus = pandas.Series(plus)
@@ -378,12 +383,11 @@ def print_inferred_values(halo):
     masses = ["Mgas200", "Mdm200", "M200", "Mdm"]
     radii = ["r200", "rc", "rs", "a"]
 
-    print
     print "{0:<20}   {1:<10} {2:<10} {3:<10}".format("quantity", "value", "+1sigma", "-1sigma")
     print "{0:<20} = {1:<10.3f} {2:<10.3f} {3:<10.3f}".format(
         "bf", bf_200, bf_200_plus-bf_200, bf_200_min-bf_200_min)
-    for p in ["r200", "rho200_over_rhocrit", "rho0", "rc", "beta", "Mgas200",
-              "Mdm200", "M200", "cNFW", "rs", "a", "Mdm"]:
+    for p in ["r200", "rho200_over_rhocrit", "rho0", "ne0", "rc", "beta",
+            "Mgas200", "Mdm200", "M200", "cNFW", "rs", "a", "Mdm"]:
         if p in masses:
             print "{0:<20} = {1:<10.3e} {2:<10.3e} {3:<10.3e}".format(
                 p, halo[p]*g2msun, plus[p]*g2msun, min[p]*g2msun)
@@ -393,13 +397,19 @@ def print_inferred_values(halo):
         elif p == "rho0":
             print "{0:<20} = {1:<10.3e} {2:<10.3e} {3:<10.3e}".format(
                 p, halo[p], plus[p], min[p])
+        elif p == "ne0":
+            print "{0:<20} = {1:<10.5f} {2:<10.5f} {3:<10.5f}".format(
+                p, halo[p], plus[p], min[p])
+        elif p == "beta" and not halo[p]:  # beta = 2/3
+            print "{0:<20} = {1:<10.3f} {2:<10.3f} {3:<10.3f}".format(
+                p, 2.0/3, 0, 0)
         else:
             print "{0:<20} = {1:<10.3f} {2:<10.3f} {3:<10.3f}".format(
                 p, halo[p], plus[p], min[p])
     print
 
 
-def make_plot(cygA, cygB, mode=""):
+def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
     """ Make plot of inferred profiles
 
     @param cyg*: dictionary with best-fit parameters (of gas and dm)
@@ -492,16 +502,18 @@ def make_plot(cygA, cygB, mode=""):
 
         pyplot.figure(figsize=(12, 9))
         pyplot.plot(r, ratio, c="b")
+        #pyplot.plot(r, ratio_min, c="k")
+        #pyplot.plot(r, ratio_plus, c="r")
         pyplot.fill_between(r, ratio_min, ratio_plus, facecolor="green", alpha=0.2)
-
         pyplot.gca().set_xscale("log")
-        pyplot.axvline(500, c="k", ls="dotted")
         pyplot.axvline(cygA["r200"]*cm2kpc, c="r")
         pyplot.xlabel(r"$r$ [kpc]")
-        pyplot.ylabel(r"Mass Ratio [Cyg$_{\rm A}$/Cyg$_{\rm NW}$]")
+        pyplot.ylabel(r"Mass Ratio [Cyg$_{\rm A}$/Cyg$_{\rm B}$]")
         pyplot.xlim(1, 4000)
-        pyplot.ylim(0.8, 1.3)
-        pyplot.savefig("out/cygA_cygNW_massRatio.png", dpi=300)
+        pyplot.ylim(numpy.min(ratio_plus)-0.3, numpy.max(ratio_min)+0.3)
+        pyplot.savefig("out/cygA_cygB_massRatio{0}{1}.png"\
+            .format("_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
 
     if mode == "rhomassboth":
         print "Generating ugly two-panel plot. Density left, mass right."
@@ -511,14 +523,14 @@ def make_plot(cygA, cygB, mode=""):
         pyplot.sca(ax0)
         pyplot.loglog(r, cygA_gas_rhom, label="cygA gas", c="r", ls="dotted")
         pyplot.loglog(r, cygA_dm_rhom, label="cygA dm", c="r")
-        pyplot.loglog(r, cygB_gas_rhom, label="cygNW gas", c="g", ls="dashed")
-        pyplot.loglog(r, cygB_dm_rhom, label="cygNW dm", c="g")
+        pyplot.loglog(r, cygB_gas_rhom, label="cygB gas", c="g", ls="dashed")
+        pyplot.loglog(r, cygB_dm_rhom, label="cygB dm", c="g")
 
         pyplot.sca(ax1)
         pyplot.loglog(r, cygA_gas_mass, label="cygA gas", c="r", ls="dotted")
         pyplot.loglog(r, cygA_dm_mass, label="cygA dm", c="r")
-        pyplot.loglog(r, cygB_gas_mass, label="cygNW gas", c="g", ls="dashed")
-        pyplot.loglog(r, cygB_dm_mass, label="cygNW dm", c="g")
+        pyplot.loglog(r, cygB_gas_mass, label="cygB gas", c="g", ls="dashed")
+        pyplot.loglog(r, cygB_dm_mass, label="cygB dm", c="g")
 
         for ax in [ax0, ax1]:
             pyplot.sca(ax)
@@ -528,10 +540,12 @@ def make_plot(cygA, cygB, mode=""):
         ax0.set_ylabel(r"$\rho$ [g/cm$^3$]")
         ax1.set_ylabel(r"$M(<r)$ [$M_{\odot}$]")
 
-        ax0.legend(loc=3)
-        ax1.legend(loc=4)
+        ax0.legend(loc=3, fontsize=12)
+        ax1.legend(loc=4, fontsize=12)
         pyplot.tight_layout()
-        pyplot.savefig("out/cygA_cygNW_massAndDensity.png", dpi=300)
+        pyplot.savefig("out/cygA_cygB_massAndDensity{0}{1}.png"\
+            .format("_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
 
     if mode == "massboth":
         print "Generating two-panel mass plot. CygA left, CygB right."
@@ -552,11 +566,13 @@ def make_plot(cygA, cygB, mode=""):
         for ax in [ax0, ax1]:
             pyplot.sca(ax)
             pyplot.xlabel(r"$r$ [kpc]")
-            pyplot.legend(loc=4)
+            pyplot.legend(loc=4, fontsize=12)
 
         ax0.set_ylabel(r"$M(<r)$ [$M_{\odot}$]")
         pyplot.tight_layout()
-        pyplot.savefig("out/cygA_cygNW_mass.png", dpi=300)
+        pyplot.savefig("out/cygA_cygB_mass{0}{1}.png"\
+            .format("_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
 
     if mode == "masssameplot":
         print "Generating single plot with both CygA and CygB masses."
@@ -567,9 +583,9 @@ def make_plot(cygA, cygB, mode=""):
         pyplot.loglog(r, cygA_gas_mass, label="CygA gas", c="r", ls="dashed")
         pyplot.axvline(cygA["r200"]*cm2kpc, c="r", ls="dotted")
 
-        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygNW total", c="k")
+        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygB total", c="k")
         # pyplot.loglog(r, cygB_dm_mass, label="dm", c="k", ls="dotted")
-        pyplot.loglog(r, cygB_gas_mass, label="CygNW gas", c="k", ls="dashed")
+        pyplot.loglog(r, cygB_gas_mass, label="CygB gas", c="k", ls="dashed")
         pyplot.axvline(cygB["r200"]*cm2kpc, c="k", ls="dashed")
 
         # Smith et al. quote a mass at 500 kpc, assuming H0 = 50.
@@ -579,10 +595,12 @@ def make_plot(cygA, cygB, mode=""):
         pyplot.xlim(5, 3000)
         pyplot.ylim(1e10, 5e14)
         pyplot.xlabel(r"$r$ [kpc]")
-        pyplot.legend(loc=2)
+        pyplot.legend(loc=2, fontsize=12)
 
         pyplot.ylabel(r"$M(<r)$ [$M_{\odot}$]")
-        pyplot.savefig("out/cygA_cygNW_mass_sameplot.png", dpi=300)
+        pyplot.savefig("out/cygA_cygB_mass_sameplot{0}{1}.png"\
+            .format("_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
 
     if mode == "rhoboth":
         print "Generating two-panel denisty plot. CygA left, CygB right."
@@ -601,11 +619,13 @@ def make_plot(cygA, cygB, mode=""):
         for ax in [ax0, ax1]:
             pyplot.sca(ax)
             pyplot.xlabel(r"$r$ [kpc]")
-            pyplot.legend(loc=3)
+            pyplot.legend(loc=3, fontsize=12)
 
         ax0.set_ylabel(r"$\rho$ [g/cm$^3$]")
         pyplot.tight_layout()
-        pyplot.savefig("out/cygA_cygNW_density.png", dpi=300)
+        pyplot.savefig("out/cygA_cygB_density{0}{1}.png"\
+            .format("_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
 
     if "single" in mode:
         print "Plotting single cluster!"
@@ -617,7 +637,7 @@ def make_plot(cygA, cygB, mode=""):
             dm_rhom  = cygA_dm_rhom
             dm_mass  = cygA_dm_mass
             parms = cygA
-            observedName = "cygA"
+            observed = cygA_observed
         elif cygB and not cygA:
             print "    sub cluster cygB selected"
             gas_rhom = cygB_gas_rhom
@@ -625,17 +645,13 @@ def make_plot(cygA, cygB, mode=""):
             dm_rhom  = cygB_dm_rhom
             dm_mass  = cygB_dm_mass
             parms = cygB
-            observedName = "cygB"
+            observed = cygB_observed
         else:
             print "Incorrect usage"
             return
 
     if mode == "rhosingle":
         print "Generating single cluster density plot"
-
-        # Careful here! In order to fit the residuals, the radius needs
-        # to be discrete. We use ObservedCluster radius
-        observed = ObservedCluster(observedName)
         gas_rhom_discrete = gas_density_beta(observed.radius, parms["rho0"],
                 parms["rc"]*cm2kpc, parms["beta"])
         fig = plot_observed_cluster(observed, gas_rhom_discrete)
@@ -663,7 +679,9 @@ def make_plot(cygA, cygB, mode=""):
             ax.set_xlim(40, 5000)
             ax.set_ylim(1e-29, 3e-25)
 
-        pyplot.savefig("out/density_profile_{0}.png".format(observed.name))
+        pyplot.savefig("out/density_profile_{0}{1}{2}.png"\
+            .format(observed.name, "_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec"))
 
     if mode == "bfsingle":
         print "Generating plot of the baryon fraction as a function of radius"
@@ -693,14 +711,15 @@ def make_plot(cygA, cygB, mode=""):
         pyplot.xlabel(r"$r$ [kpc]")
         pyplot.ylabel(r"$b_f$")
 
-        pyplot.legend(loc=2)
-        pyplot.savefig("out/baryon_fraction_{0}.png".format(observedName))
+        pyplot.legend(loc=2, fontsize=12)
+        pyplot.savefig("out/baryon_fraction_{0}{1}{2}.png"\
+            .format(observed.name, "_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec"))
 
     print
 
 
-def is_solution_unique(rc, rho0, beta, observedName):
-    observed = ObservedCluster(observedName)
+def is_solution_unique(rc, rho0, beta, observed):
     gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc, beta)
     fig = plot_observed_cluster(observed, gas_rhom)
     ax, ax_r = fig.axes
@@ -786,142 +805,138 @@ if __name__ == "__main__":
     # If visualise is True we create plots of the bisection method
     visualise=False
     oldICs=False
+    discard_firstbins = True
+    discard_lastbins = False
+    free_beta = False
 
-    print "CygnusA"
-    # obtained from beta (2/3) model to Chandra data
-
+    print "Reading Chandra observed density profiles..."
+    print 80*"-"
     if oldICs:
-        # cygA
-        # Results for the 'beta-model' model:
-        #   Using scipy.optimize.minimize to minimize chi^2 yields:
-        #     n_e,0       = 0.13447
-        #     r_c         = 27.60071
-        #     chisq/dof   = 1.04803
-        #     p-value     = 0.30721
-        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
-        #     n_e,0       = 0.13447 +/- 0.00560
-        #     r_c         = 27.60070 +/- 0.69421
-        cygA_rc =  27.60070 * kpc2cm
-        cygA_ne0 = 0.13447 # 1/cm**3
+        print "\nWARNING: Using old density profiles (799.5 ksec)."
+        raw_input("Are you sure you want to continue?\n")
+    cygA_observed = ObservedCluster("cygA", oldICs=oldICs)
+    cygB_observed = ObservedCluster("cygB", oldICs=oldICs)
+    print ".... done reading Chandra observed density profiles."
+    print 80*"-"
+
+    print "Obtaining central density and core radius."
+    print 80*"-"
+    # Due to pile up in inner region (?). Also inside kernel: cannot model
+    # in a stable way
+    if discard_firstbins:
+        print "WARNING: Discarding first three CygA bins."
+        cygA_observed.radius = cygA_observed.radius[4:]
+        cygA_observed.binsize = cygA_observed.binsize[4:]
+        cygA_observed.density= cygA_observed.density[4:]
+        cygA_observed.density_std = cygA_observed.density_std[4:]
+        cygA_observed.number_density = cygA_observed.number_density[4:]
+        cygA_observed.number_density_std = cygA_observed.number_density_std[4:]
+    if discard_lastbins:
+        print "WARNING: Discarding last CygA bins."
+        cygA_observed.radius = cygA_observed.radius[:-40]
+        cygA_observed.binsize = cygA_observed.binsize[:-40]
+        cygA_observed.density= cygA_observed.density[:-40]
+        cygA_observed.density_std = cygA_observed.density_std[:-40]
+        cygA_observed.number_density = cygA_observed.number_density[:-40]
+        cygA_observed.number_density_std = cygA_observed.number_density_std[:-40]
+
+    if free_beta:
+        print "INFO: Using free beta model.\n"
+        cygA_fit, cygA_ml_vals, cygA_ml_covar = \
+            fit_betamodel_to_chandra(cygA_observed,
+                parm=[0.1, 10, 0.67], free_beta=free_beta)
+        cygB_fit, cygB_ml_vals, cygB_ml_covar = \
+            fit_betamodel_to_chandra(cygB_observed,
+                parm=[0.001, 100, 0.79], free_beta=free_beta)
     else:
-        # cygA
-        # Results for the 'beta-model' model:
-        #   Using scipy.optimize.minimize to minimize chi^2 yields:
-        #     n_e,0       = 0.14186
-        #     r_c         = 35.32623
-        #     chisq/dof   = 1.49169
-        #     p-value     = 0.00001
-        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
-        #     n_e,0       = 0.14186 +/- 0.00630
-        #     r_c         = 35.32623 +/- 0.99998
-        cygA_rc =  26.14052 * kpc2cm
-        cygA_ne0 = 0.09115  # 1/cm**3
-        cygA_beta = 0.53869
-    cygA_rho0 = ne_to_rho(cygA_ne0)
+        print "INFO: Using beta=2/3 model.\n"
+        cygA_fit, cygA_ml_vals, cygA_ml_covar = \
+            fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
+        cygB_fit, cygB_ml_vals, cygB_ml_covar = \
+            fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 100])
+    print 80*"-"
 
-    # is_solution_unique(cygA_rc, cygA_rho0, observedName="cygA")
+    print "Obtaining dark matter density/mass profile, r200, cNFW, etc."
+    print 80*"-"
 
-    # convert -delay 100 -loop 0 out/findmass_cygA_*.png out/bisection_cygA.gif
+    cygA_ne0 = cygA_ml_vals[0]
+    cygA_rho0 = ne_to_rho(cygA_ne0)  # g/cm**3
+    cygA_rc = cygA_ml_vals[1] * kpc2cm
+    cygA_beta = None if not free_beta else cygA_ml_vals[2]
+
+# convert -delay 100 -loop 0 out/findmass_cygA_*.png out/bisection_cygA.gif
+    # is_solution_unique(cygA_rc, cygA_rho0, cygA_observed)
+
     cygA = obtain_M200_bisection(cygA_rc, cygA_rho0, cygA_beta, verbose=False,
-                                 visualise=visualise, observedName="cygA")
+                                 visualise=visualise, observed=cygA_observed)
 
-    # One sigma values for error propagation
-    if oldICs:
-        cygA_rc_sigma =  0.69421 * kpc2cm
-        cygA_ne0_sigma = 0.00560 # 1/cm**3
-    else:
-        cygA_rc_sigma = 1.25792 * kpc2cm
-        cygA_ne0_sigma = 0.00422  # 1/cm**3
-        cygA_beta_sigma = 0.00663
-
+    cygA_sigma = numpy.sqrt(numpy.diag(cygA_ml_covar))
+    cygA_ne0_sigma = cygA_sigma[0]
     cygA_rho0_sigma = ne_to_rho(cygA_ne0_sigma)
-    cygA["rc_sigma"] = cygA_rc_sigma
-    cygA["ne0_sigma"] = cygA_ne0_sigma
+    cygA_rc_sigma = cygA_sigma[1] * kpc2cm
+    cygA_beta_sigma = None if not free_beta else cygA_sigma[2]
+
     cygA["rho0_sigma"] = cygA_rho0_sigma
+    cygA["rc_sigma"] = cygA_rc_sigma
     cygA["beta_sigma"] = cygA_beta_sigma
 
+    print "CygA"
     print_inferred_values(cygA)
 
-    print "CygnusB"
+    print "CygB"
 
-    if oldICs:
-        # obtained from beta (2/3) model to Chandra data
-        # cygB
-        # Results for the 'beta-model' model:
-        #   Using scipy.optimize.minimize to minimize chi^2 yields:
-        #     n_e,0       = 0.00194
-        #     r_c         = 290.90903
-        #     chisq/dof   = 0.38336
-        #     p-value     = 0.99714
-        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
-        #     n_e,0       = 0.00194 +/- 0.00014
-        #     r_c         = 290.90665 +/- 15.30907
-        cygB_rc = 290.90903 * kpc2cm
-        cygB_ne0 = 1.9397e-03  # 1/cm**3
-    else:
-        # cygB
-        # Results for the 'beta-model' model:
-        #   Using scipy.optimize.minimize to minimize chi^2 yields:
-        #     n_e,0       = 0.00189
-        #     r_c         = 382.50459
-        #     chisq/dof   = 0.48434
-        #     p-value     = 0.98382
-        #   Using scipy.optimize.curve_fit to obtain confidence intervals yields:
-        #     n_e,0       = 0.00189 +/- 0.00013
-        #     r_c         = 382.50079 +/- 22.14346
-        cygB_rc = 374.74655 * kpc2cm
-        cygB_ne0 = 0.00228
-        cygB_beta = 0.79031
+    cygB_ne0 = cygB_ml_vals[0]
+    cygB_rho0 = ne_to_rho(cygB_ne0)  # g/cm**3
+    cygB_rc = cygB_ml_vals[1] * kpc2cm
+    cygB_beta = None if not free_beta else cygB_ml_vals[2]
 
-    cygB_rho0 = ne_to_rho(cygB_ne0)
-
-    #is_solution_unique(cygB_rc, cygB_rho0, observedName="cygB")
+    #is_solution_unique(cygB_rc, cygB_rho0, cygB_observed)
     #import sys; sys.exit(0)
 
     cygB = obtain_M200_bisection(cygB_rc, cygB_rho0, cygB_beta, verbose=False,
-                                 visualise=visualise, observedName="cygB")
+                                 visualise=visualise, observed=cygB_observed)
 
-    # One sigma values for error propagation
-    if oldICs:
-        cygB_rc_sigma = 15.30907 * kpc2cm
-        cygB_ne0_sigma = 0.00014  # 1/cm**3
-    else:
-        cygB_rc_sigma = 44.31513 * kpc2cm
-        cygB_ne0_sigma = 0.00015  # 1/cm**3
-        cygB_beta_sigma = 0.07233
-
-
+    cygB_sigma = numpy.sqrt(numpy.diag(cygB_ml_covar))
+    cygB_ne0_sigma = cygB_sigma[0]
     cygB_rho0_sigma = ne_to_rho(cygB_ne0_sigma)
-    cygB["rc_sigma" ] = cygB_rc_sigma
-    cygB["ne0_sigma"] = cygB_ne0_sigma
+    cygB_rc_sigma =  cygB_sigma[1] * kpc2cm
+    cygB_beta_sigma = None if not free_beta else cygB_sigma[2]
+
     cygB["rho0_sigma"] = cygB_rho0_sigma
+    cygB["rc_sigma"] = cygB_rc_sigma
     cygB["beta_sigma"] = cygB_beta_sigma
 
     print_inferred_values(cygB)
 
-    print "cygA M200            = {0:1.4e} MSun".format(cygA["M200"] * g2msun)
+    print "cygA_M200            = {0:1.4e} MSun".format(cygA["M200"] * g2msun)
     print "cygB_M200            = {0:1.4e} MSun".format(cygB["M200"] * g2msun)
     print
     print "M_CygA/M_CygB        = {0:1.4f}".format(cygA["M200"]/cygB["M200"])
     print "M_CygB/M_CygA        = {0:1.4f}".format(cygB["M200"]/cygA["M200"])
     print "Mtotal               = {0:1.4e} MSun".format((cygA["M200"] + cygB["M200"]) * g2msun)
     print
-    import sys; sys.exit(0)
+
+    print 80*"-"
+    print "Plotting the results..."
+    print 80*"-"
 
     # Plot density+mass profiles (gas + dm in same plot); density left, mass right
-    # make_plot(cygA, cygB, mode="rhomassboth")
     make_plot(cygA, cygB, mode="massboth")
     make_plot(cygA, cygB, mode="rhoboth")
     make_plot(cygA, cygB, mode="masssameplot")
 
-    make_plot(cygA, None, mode="rhosingle")
-    make_plot(None, cygB, mode="rhosingle")
+    make_plot(cygA, None, cygA_observed, None, mode="rhosingle")
+    make_plot(None, cygB, None, cygB_observed, mode="rhosingle")
 
     # Plot mass ratio
     make_plot(cygA, cygB, mode="ratio")
 
     # Plot baryon fraction
-    make_plot(cygA, None, mode="bfsingle")
-    make_plot(None, cygB, mode="bfsingle")
+    make_plot(cygA, None, cygA_observed, None, mode="bfsingle")
+    make_plot(None, cygB, None, cygB_observed, mode="bfsingle")
 
-    pyplot.show()
+    #pyplot.show()
+
+    print 80*"-"
+    print "End of pipeline."
+    print 80*"-"

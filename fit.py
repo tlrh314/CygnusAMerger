@@ -8,9 +8,13 @@ from collections import OrderedDict
 
 import matplotlib
 matplotlib.use("Qt4Agg")
-matplotlib.rcParams.update({'font.size': 33})
-matplotlib.rc('text', usetex=True)
+matplotlib.rc("text", usetex=True)
 from matplotlib import pyplot
+pyplot.rcParams.update({"font.size": 33})
+pyplot.rcParams.update({"xtick.major.size": 12})
+pyplot.rcParams.update({"xtick.minor.size": 6})
+pyplot.rcParams.update({"ytick.major.size": 12})
+pyplot.rcParams.update({"ytick.minor.size": 6})
 
 from amuse.units import units
 from amuse.units import constants
@@ -134,9 +138,9 @@ def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.],
     # Fit to data
     if observed.name == "cygA":
         if len(parm) == 2:
-            bounds = [(None, None), (5, 26.14)]
+            bounds = [(None, None), (5, 50)]
         elif len(parm) == 3 and not free_beta:
-            bounds = [(None, None), (None, None), (800, 1800)]
+            bounds = [(None, None), (None, None), (1700, 1900)]
         elif len(parm) == 3 and free_beta:
             bounds = [(None, None), (None, None), (0.0, 1.0)]
         elif len(parm) == 5:
@@ -145,20 +149,21 @@ def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.],
         if len(parm) == 2:
             bounds = [(None, None), (None, None)]
         if len(parm) == 3 and not free_beta:
-            bounds = [(None, None), (300, 400), (1500, 1700)]
+            bounds = [(None, None), (None, None), (1200, 1350)]
         if len(parm) == 3 and free_beta:
-            bounds = [(0.002, 0.003), (200, 600), (0.0, 1.0)]
+            bounds = [(0.002, 0.003), (None, None), (0.0, 1.0)]
         elif len(parm) == 5:
             bounds = [(None, None), (None, None), (800, 1800), (None, None), (None, None)]
 
     result = scipy.optimize.minimize(stat, parm,
-            args=(observed.radius, observed.number_density, observed.number_density_std, free_beta),
+            args=(observed.radius, observed.number_density,
+                  observed.number_density_std, free_beta),
             method='L-BFGS-B', bounds=bounds)
 
     # Obtain and print MLEs
-    obtain_mles(observed, result, free_beta=free_beta)
+    ml_vals, ml_covar = obtain_mles(observed, result, free_beta=free_beta)
 
-    return result
+    return result, ml_vals, ml_covar
 
 
 def obtain_mles(observed, result, free_beta=False):
@@ -225,16 +230,22 @@ def obtain_mles(observed, result, free_beta=False):
         print "    beta        = {0:.5f} +/- {1:.5f}".format(ml_vals[2], err[2])
     print
 
+    return ml_vals, ml_covar
+
 
 def plot_fit_results(observed, analytical, numerical=None,
                      mass_density=False, save=False):
     poster_style = False
     if poster_style:
         pyplot.style.use(["dark_background"])
-        data_colour = (255./255, 64./255, 255./255)
+        pyplot.rcParams.update({"font.weight": "bold"})
+        # magenta, dark blue, orange, green, light blue (?)
+        data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                       (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                       (41./255, 239./255, 239./255)]
         fit_colour = "white"
     else:
-        data_colour = "r"
+        data_colour = ["g", "r", "b"]
         fit_colour = "k"
 
     if mass_density:
@@ -255,10 +266,13 @@ def plot_fit_results(observed, analytical, numerical=None,
     # Plot data
     pyplot.sca(ax)
     # pyplot.title(observed.name)
-    pyplot.errorbar(observed.radius+observed.binsize/2, observed_density, xerr=observed.binsize/2,
-            yerr=observed_density_std, marker='o', ms=6, ls='', c=data_colour,
+    pyplot.errorbar(observed.radius+observed.binsize/2, observed_density,
+            xerr=observed.binsize/2, yerr=observed_density_std,
+            marker='o', ms=5 if poster_style else 3,
+            elinewidth=3 if poster_style else 1,
+            ls="", c=data_colour[0] if observed.name=="cygA" else data_colour[2],
             label="800" if observed.oldICs else "900"+\
-                " ks Chandra\n(Wise+ 2016, in prep)",)
+                  " ks Chandra\n(Wise+ 2016, in prep)",)
 
     label = analytical.modelname+"\n\t"
     label +=  r"$n_{{e,0}} \,$ = {0:.2e} cm$^{{-3}}$".format(analytical.ne0.number) if not mass_density else r"$\rho_{{0}} \,$ = {0:.2e} g cm$^{{-3}}$".format(analytical.rho0.number)
@@ -271,7 +285,7 @@ def plot_fit_results(observed, analytical, numerical=None,
         label += "\n\t"+r"$n_{{e,0,cc}}$ = {0:.2f} cm$^{{-3}}$".format(analytical.ne0_cc.number) if not mass_density else "\n\t"+r"$\rho_{{0,cc}}$ = {0:.2f} kpc".format(analytical.rho0_cc.number)
         label += "\n\t"+r"$r_{{c,cc}}$ = {0:.2f} kpc".format(analytical.rc_cc.number)
     amuse_plot.plot(analytical.radius, analytical_density,
-            c=fit_colour, lw=1, label=label)  #, drawstyle="steps-mid")
+            c=fit_colour, lw=3 if poster_style else 1, label=label)
 
     if numerical:
         pyplot.scatter(numerical.gas.r.value_in(units.kpc),
@@ -290,9 +304,11 @@ def plot_fit_results(observed, analytical, numerical=None,
     # Plot Residuals
     pyplot.sca(ax_r)
     residual_density = (observed_density - analytical_density)/observed_density
-    pyplot.errorbar(observed.radius+observed.binsize/2, residual_density,
-            yerr=observed_density_std/observed_density, c=fit_colour, drawstyle="steps-mid")
-    ax_r.axhline(y=0, lw=2, ls="dashed", c=fit_colour)
+    pyplot.errorbar(observed.radius+observed.binsize/2, 100*residual_density,
+            yerr=100*observed_density_std/observed_density, c=fit_colour,
+            lw=3 if poster_style else 1,
+            elinewidth=1 if poster_style else 1, drawstyle="steps-mid")
+    ax_r.axhline(y=0, lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
 
     ax_r.set_xscale("log")
     # ax_r.set_yscale("log")
@@ -301,7 +317,7 @@ def plot_fit_results(observed, analytical, numerical=None,
     ax_r.set_xlim(min(observed.radius)-0.3, max(observed.radius)+2000)
 
     # Show 50% deviations from the data
-    ax_r.set_ylim(-0.5, 0.5)
+    ax_r.set_ylim(-50, 50)
 
     # Fix for overlapping y-axis markers
     from matplotlib.ticker import MaxNLocator
@@ -309,18 +325,20 @@ def plot_fit_results(observed, analytical, numerical=None,
     nbins = len(ax_r.get_yticklabels())
     ax_r.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
 
-    ax_r.set_xlabel(r"$r$ (kpc)")
-    ax_r.set_ylabel("Residuals")
+    ax_r.set_xlabel(r"$r$ [kpc]")
+    ax_r.set_ylabel("Residuals [\%]")
 
     ax.axvline(x=analytical.rc.value_in(units.kpc),
-               lw=2, ls="dashed", c=fit_colour)
+               lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
     ax_r.axvline(x=analytical.rc.value_in(units.kpc),
-                 lw=2, ls="dashed", c=fit_colour)
+                 lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
 
     if save and not analytical.free_beta:
-        pyplot.savefig("out/density_betamodel_fit_{0}.png".format(observed.name), dpi=300)
+        pyplot.savefig("out/density_betamodel_fit_{0}{1}.png"\
+            .format(observed.name, "_dark" if poster_style else ""), dpi=300)
     if save and analytical.free_beta:
-        pyplot.savefig("out/density_free_betamodel_fit_{0}.png".format(observed.name), dpi=300)
+        pyplot.savefig("out/density_free_betamodel_fit_{0}{1}.png"\
+            .format(observed.name, "_dark" if poster_style else ""), dpi=300)
     # pyplot.show()
 
 
@@ -329,11 +347,14 @@ def get_cluster_mass_analytical(observed, result):
     poster_style = True
     if poster_style:
         pyplot.style.use(["dark_background"])
-        data_colour = (255./255, 64./255, 255./255)
+        # magenta, dark blue, orange, green, light blue (?)
+        data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                       (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                       (41./255, 239./255, 239./255)]
         fit_colour = "white"
     else:
-        data_colour = "g"
-        fit_colour = "b"
+        data_colour = ["g", "r", "b"]
+        fit_colour = "k"
 
     ml_vals = result["x"]
 
@@ -373,9 +394,9 @@ def get_cluster_mass_analytical(observed, result):
     amuse_plot.loglog((analytical_radius | units.cm).as_quantity_in(units.kpc),
         (analytical_density | units.g/units.cm**3), c=fit_colour, label="analytical")
     amuse_plot.loglog((analytical_radius | units.cm).as_quantity_in(units.kpc),
-        (rho_average | units.g/units.cm**3), c=data_colour, label="average")
-    pyplot.axhline(rhocrit200, ls="dashed", c=data_colour)
-    pyplot.axvline((r200_analytical | units.cm).value_in(units.kpc), ls="dashed", c=data_colour)
+        (rho_average | units.g/units.cm**3), c=data_colour[0], label="average")
+    pyplot.axhline(rhocrit200, ls="dashed", c=data_colour[0])
+    pyplot.axvline((r200_analytical | units.cm).value_in(units.kpc), ls="dashed", c=data_colour[0])
     amuse_plot.ylabel(r"$\rho_{\rm gas}(r)$")
     amuse_plot.xlabel(r"$r$")
     pyplot.legend(loc=2)
@@ -383,8 +404,8 @@ def get_cluster_mass_analytical(observed, result):
     pyplot.sca(ax2)
     amuse_plot.loglog((analytical_radius | units.cm).as_quantity_in(units.kpc),
         (analytical_mass | units.g).as_quantity_in(units.MSun), c=fit_colour)
-    pyplot.axhline((M200_analytical | units.g).value_in(units.MSun), ls="dashed", c=data_colour)
-    pyplot.axvline((r200_analytical | units.cm).value_in(units.kpc), ls="dashed", c=data_colour)
+    pyplot.axhline((M200_analytical | units.g).value_in(units.MSun), ls="dashed", c=data_colour[0])
+    pyplot.axvline((r200_analytical | units.cm).value_in(units.kpc), ls="dashed", c=data_colour[0])
     amuse_plot.ylabel(r"$M(<r)$")
     amuse_plot.xlabel(r"$r$")
     pyplot.savefig("out/m200_analytical_{0}.png".format(observed.name), dpi=300)
@@ -617,13 +638,14 @@ if __name__ == "__main__":
         # in a stable way
         discard_firstbins = True
         if discard_firstbins:
-            cygA_observed.radius = cygA_observed.radius[4:]
-            cygA_observed.binsize = cygA_observed.binsize[4:]
-            cygA_observed.density= cygA_observed.density[4:]
-            cygA_observed.density_std = cygA_observed.density_std[4:]
-            cygA_observed.number_density = cygA_observed.number_density[4:]
-            cygA_observed.number_density_std = cygA_observed.number_density_std[4:]
-        discard_lastbins = True
+            cygA_observed.radius = cygA_observed.radius[3:]
+            cygA_observed.binsize = cygA_observed.binsize[3:]
+            cygA_observed.density= cygA_observed.density[3:]
+            cygA_observed.density_std = cygA_observed.density_std[3:]
+            cygA_observed.number_density = cygA_observed.number_density[3:]
+            cygA_observed.number_density_std = cygA_observed.number_density_std[3:]
+
+        discard_lastbins = False
         if discard_lastbins:
             cygA_observed.radius = cygA_observed.radius[:-40]
             cygA_observed.binsize = cygA_observed.binsize[:-40]
@@ -633,35 +655,41 @@ if __name__ == "__main__":
             cygA_observed.number_density_std = cygA_observed.number_density_std[:-40]
 
         # Cut-off single beta (2/3)
-        # cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.135, 27, 1.])
+        cygA_fit, cygA_ml_vals, cygA_ml_covar = \
+            fit_betamodel_to_chandra(cygA_observed, parm=[0.135, 27, 1755])
         # Single beta (beta is fit parameter)
-        # cygA_fit_free = fit_betamodel_to_chandra(cygA_observed,
-        #    parm=[0.1, 10, 0.67], free_beta=True)
+        cygA_fit_free, cygA_free_ml_vals, cygA_free_ml_covar = \
+            fit_betamodel_to_chandra(cygA_observed,
+                parm=[0.1, 10, 0.67], free_beta=True)
         # Single beta (2/3): use this for numerical setup
-        cygA_fit = fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
+        cygA_fit, cygA_ml_vals, cygA_ml_covar = \
+            fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
 
         # Cut-off single beta (2/3)
-        # cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 1.0, 1.0])
+        cygB_fit, cygB_ml_vals, cygB_ml_covar = \
+            fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 264.65, 1313.82])
         # Single beta (beta is fit parameter)
-        # cygB_fit_free = fit_betamodel_to_chandra(cygB_observed,
-        #     parm=[0.002, 390, 0.67], free_beta=True)
+        cygB_fit_free, cygB_free_ml_vals, cygB_free_ml_covar = \
+            fit_betamodel_to_chandra(cygB_observed,
+                parm=[0.001, 100, 0.79], free_beta=True)
         # Single beta (2/3): use this for numerical setup
-        # cygB_fit = fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 1.0])
+        cygB_fit, cygB_ml_vals, cygB_ml_covar = \
+            fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 100])
 
         # Giving radius --> discrete (observed) radius; not 'continuous'
         cygA_analytical = AnalyticalCluster(cygA_fit["x"], None, cygA_observed.radius)
-        # cygB_analytical = AnalyticalCluster(cygB_fit["x"], None, cygB_observed.radius)
+        cygB_analytical = AnalyticalCluster(cygB_fit["x"], None, cygB_observed.radius)
 
-        # cygA_analytical_free = AnalyticalCluster(cygA_fit_free["x"], None, cygA_observed.radius, free_beta=True)
-        # cygB_analytical_free = AnalyticalCluster(cygB_fit_free["x"], None, cygB_observed.radius, free_beta=True)
+        cygA_analytical_free = AnalyticalCluster(cygA_fit_free["x"], None, cygA_observed.radius, free_beta=True)
+        cygB_analytical_free = AnalyticalCluster(cygB_fit_free["x"], None, cygB_observed.radius, free_beta=True)
         print "CygA n_e0  = {0:1.4e} 1/cm**3".format(
             cygA_analytical.ne0.value_in(1/units.cm**3))
         print "CygA rho_0 = {0:1.4e} g/cm**3".format(
             cygA_analytical.rho0.value_in(units.g/units.cm**3))
-        # print "CygB n_e0  = {0:1.4e} 1/cm**3".format(
-        #     cygB_analytical.ne0.value_in(1/units.cm**3))
-        # print "CygB rho_0 = {0:1.4e} g/cm**3".format(
-        #     cygB_analytical.rho0.value_in(units.g/units.cm**3))
+        print "CygB n_e0  = {0:1.4e} 1/cm**3".format(
+            cygB_analytical.ne0.value_in(1/units.cm**3))
+        print "CygB rho_0 = {0:1.4e} g/cm**3".format(
+            cygB_analytical.rho0.value_in(units.g/units.cm**3))
         print 80*"-"
 
     plot_fit = True
@@ -684,16 +712,15 @@ if __name__ == "__main__":
         #     logfile="RunToyClusterCygB.log",
         #     icfile="CygB_trial")
 
-        # Works, but residuals need some attention...
         plot_fit_results(cygA_observed, cygA_analytical,
                          mass_density=True, save=True)
-        # plot_fit_results(cygB_observed, cygB_analytical,
-        #                  mass_density=True, save=True)
+        plot_fit_results(cygB_observed, cygB_analytical,
+                         mass_density=True, save=True)
 
-        # plot_fit_results(cygA_observed, cygA_analytical_free,
-        #                  mass_density=True, save=True)
-        # plot_fit_results(cygB_observed, cygB_analytical_free,
-        #                  mass_density=True, save=True)
+        plot_fit_results(cygA_observed, cygA_analytical_free,
+                         mass_density=True, save=True)
+        plot_fit_results(cygB_observed, cygB_analytical_free,
+                         mass_density=True, save=True)
 
     pyplot.show()
 
