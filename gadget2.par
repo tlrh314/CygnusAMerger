@@ -15,7 +15,7 @@ OutputListFilename output_list.txt
 
 % CPU time -limit
 
-TimeLimitCPU      428400 % = 119 hours: 5 days minus 1 hour. Lisa max: 5 days.
+TimeLimitCPU      19800  % 428400 = 119 hours: 5 days minus 1 hour. Lisa max: 5 days.
 ResubmitOn        0
 ResubmitCommand   my-scriptfile
 

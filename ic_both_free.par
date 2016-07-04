@@ -1,13 +1,14 @@
 % % Toycluster Parameter File %%
+%
+% Parameter file for the free beta model, both haloes.
+%
 
 Output_file ./IC_single_0   % Base name 
 
 Ntotal      2000000  % Total Number of Particles in R200
-Mtotal      21905    % Total Mass in Code Units
-% CygA:     Mtot = 2.2373e+14 MSun
-% CygB:     Mtot = 2.1905e+14 MSun
+Mtotal      38799    % Total Mass in Code Units
 
-Mass_Ratio  0        % CygA/CygB=1.0214, but set =0 for single cluster
+Mass_Ratio  3.1104989935        % set =0 for single cluster
 
 ImpactParam 0
 ZeroEOrbitFrac 0.1
@@ -31,15 +32,17 @@ UnitVelocity_in_cm_per_s     1e5                %  1 km/sec
 %% -DGIVEPARAMS Options
 %% here some more merger parameters can be set by hand
 
-% cluster 0 is CygB
-c_nfw_0     3.768
+% cluster 0 is CygA
+c_nfw_0     3.662
 v_com_0     0
-rc_0        382.501  % From fit to Chandra data. Do I believe this?
+beta_0      0.538
+rc_0        26.016
 
-% cluster 1 is CygA
-c_nfw_1     3.760
+% cluster 1 is CygB
+c_nfw_1     4.089
 v_com_1     0
-rc_1        35.326   % From fit to Chandra data. Do I believe this?
+beta_1      0.790
+rc_1        305.78
 
 %% -DADD_THIRD_SUBHALO Options
 

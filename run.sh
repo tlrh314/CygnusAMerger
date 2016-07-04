@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#PBS -lnodes=8:ppn=16:cores16
-#PBS -l walltime=01:23:00:00
+#PBS -lnodes=1:ppn=16:cores16
+#PBS -l walltime=06:00:00
 
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
@@ -156,10 +156,10 @@ setup_system() {
         # TODO: check how multiple threas/nodes works on Lisa?
         # TODO: is the PBS situation the scheduler that also sets nodes/threads?
         # THREADS=$(grep -c ^processor /proc/cpuinfo)
-        THREADS=128  # set based on the nr of nodes requested
+        THREADS=16 # set based on the nr of nodes requested
         NICE=0  # default is 0
         BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
-        TIMESTAMP="20160617T1544"  # qsub no parse options..
+        #TIMESTAMP=""  # qsub no parse options..
         MAIL=true
         # TODO: I think home should not be used, instead use scratch??
         module load c/intel
@@ -214,7 +214,8 @@ setup_toycluster() {
 
     # If TIMESTAMP is not given we assume no initial conditions exist!
     if [ -z $TIMESTAMP ]; then
-        TIMESTAMP=$(date +"%Y%m%dT%H%M")
+        #TIMESTAMP=$(date +"%Y%m%dT%H%M")
+        TIMESTAMP="20160704T1335"
         echo "No timestamp  --> generating new ICs"
         echo "Timestamp       : ${TIMESTAMP}"
 
@@ -247,7 +248,7 @@ setup_toycluster() {
         TOYCLUSTERMAKEFILE="${ICOUTDIR}/Makefile_Toycluster"
         TOYCLUSTEREXECNAME=$(grep "EXEC =" "${TOYCLUSTERMAKEFILE}" | cut -d' ' -f3)
         TOYCLUSTEREXEC="${ICOUTDIR}/${TOYCLUSTEREXECNAME}"
-        TOYCLUSTERPARAMETERS="${ICOUTDIR}/toycluster.par"
+        TOYCLUSTERPARAMETERS="${ICOUTDIR}/{$MODEL_TO_USE}"
         TOYCLUSTERLOGFILE="${ICOUTDIR}/${TOYCLUSTERLOGFILENAME}"
         ICFILENAME=$(grep "Output_file" "${TOYCLUSTERPARAMETERS}" | cut -d' ' -f2)
         ICFILE="${ICOUTDIR}/${ICFILENAME:2}"
@@ -298,13 +299,13 @@ set_toycluster_runtime_files() {
     mv "${TOYCLUSTERDIR}/${TOYCLUSTEREXECNAME}" "${ICOUTDIR}"
     TOYCLUSTEREXEC="${ICOUTDIR}/${TOYCLUSTEREXECNAME}"
 
-    TOYCLUSTERPARAMETERS_GIT="${GITHUBDIR}/toycluster.par"
+    TOYCLUSTERPARAMETERS_GIT="${GITHUBDIR}/${MODEL_TO_USE}"
     if [ ! -f "${TOYCLUSTERPARAMETERS_GIT}" ]; then
         echo "Error: ${TOYCLUSTERPARAMETERS_GIT} does not exist!"
         exit 1
     fi
     cp "${TOYCLUSTERPARAMETERS_GIT}" "${ICOUTDIR}"
-    TOYCLUSTERPARAMETERS="${ICOUTDIR}/toycluster.par"
+    TOYCLUSTERPARAMETERS="${ICOUTDIR}/${MODEL_TO_USE}"
     TOYCLUSTERLOGFILE="${ICOUTDIR}/${TOYCLUSTERLOGFILENAME}"
 }
 
@@ -471,6 +472,15 @@ set_gadget_runtime_files() {
     echo "Setting BoxSize in Gadget parameter file to: ${BOXSIZE}"
     perl -pi -e 's/BoxSize.*/BoxSize '${BOXSIZE}' % kpc/g' "${GADGETPARAMETERS}"
     grep -n --color=auto "BoxSize" "${GADGETPARAMETERS}"
+    # echo "Press enter to continue..." && read enterKey
+
+    SOFTENING=$(grep "Grav. Softening ~ " "${TOYCLUSTERLOGFILE}" | cut -d'~' -f2 | cut -d' ' -f2)
+    echo "Setting Softening in Gadget parameter file to: ${SOFTENING}"
+    perl -pi -e 's/SofteningGas\W.*/SofteningGas       '${SOFTENING}'/g' "${GADGETPARAMETERS}"
+    perl -pi -e 's/SofteningHalo\W.*/SofteningHalo      '${SOFTENING}'/g' "${GADGETPARAMETERS}"
+    perl -pi -e 's/SofteningGasMaxPhys.*/SofteningGasMaxPhys       '${SOFTENING}'/g' "${GADGETPARAMETERS}"
+    perl -pi -e 's/SofteningHaloMaxPhys.*/SofteningHaloMaxPhys      '${SOFTENING}'/g' "${GADGETPARAMETERS}"
+    grep -n --color=auto "Softening" "${GADGETPARAMETERS}"
     # echo "Press enter to continue..." && read enterKey
 
     if [ ! -f "${ICFILE}" ]; then
@@ -808,6 +818,14 @@ if [[ ! "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
 fi
 
 echo -e "\nStart of program at $(date)\n"
+
+MODEL_TO_USE="ic_cyga_fixed.par"
+#MODEL_TO_USE="ic_cygb_fixed.par"
+#MODEL_TO_USE="ic_both_fixed.par"
+#Cannot run free beta model
+#MODEL_TO_USE="ic_cyga_free.par"
+#MODEL_TO_USE="ic_cygb_free.par"
+#MODEL_TO_USE="ic_both_free.par"
 
 setup_system
 setup_toycluster
