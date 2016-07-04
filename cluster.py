@@ -286,7 +286,7 @@ class NumericalCluster(object):
         self.gas_radii = gas_r | units.kpc
         self.M_gas_below_r = gas_mass.cumsum() | units.MSun
 
-    def get_dm_mass_via_number_density(self, log_binning=False):
+    def get_dm_mass_via_number_density(self, log_binning=True):
         """ Count particles <r (= number density). Obtain DM mass from it """
 
         # TODO: find out if this method can also be used for sph mass
@@ -295,13 +295,15 @@ class NumericalCluster(object):
         print "Counting particles for which radii < r to obtain M(<r)"
 
         if log_binning:
-            pass
-
-        radii = numpy.arange(0, 1e4, 10)
+            radii = numpy.power(10, numpy.linspace(numpy.log(1), numpy.log(1e5), 1001))
+            dr = radii[1:] - radii[:-1]
+            radii = radii[:-1]
+        else:
+            radii = numpy.arange(0, 1e5, 10)
+            dr = radii[1] - radii[0]  # Because evenly spaced
         N = len(radii)
 
         particles = numpy.zeros(N)
-        dr = radii[1] - radii[0]  # Because evenly spaced
         for i, r in enumerate(radii):
             particles[i] = ((numpy.where(self.dm.r.value_in(units.kpc) < r)[0]).size)
             if i==(N-1) or i%100 == 0:
@@ -476,10 +478,10 @@ class AnalyticalCluster(object):
             self.rho0_cc = self.ne0_cc * globals.mu * (globals.m_p | units.g)
             self.rc_cc = rc / rc_fac
 
-        modelnames = {0: r"model: $\beta=2/3$",
-                      1: r"model: cut-off $\beta=2/3$",
-                      2: r"model: cut-off double $\beta (2/3)$",
-                      3: r"model: free $\beta$"}
+        modelnames = {0: r"$\beta=2/3$",
+                      1: r"cut-off $\beta=2/3$",
+                      2: r"cut-off double $\beta (2/3)$",
+                      3: r"free $\beta$"}
         self.modelname = modelnames[self.model]
 
         if dm_parms:
@@ -757,6 +759,23 @@ class SampledBox(object):
         halo0_analytical = setup_analytical_cluster(simulation, i=0)
         halo1_analytical = setup_analytical_cluster(simulation, i=1)
 
+        hist, edges = numpy.histogram(gas.x.value_in(units.kpc),
+            bins=numpy.sqrt(len(gas.x)))
+        # Domain contains indices of x values between -750 and 750
+        # somewhere in this range there is a minimum x-value, which
+        # is the center that we need to shift back the haloes.
+        domain = numpy.where(numpy.logical_and(edges>=-750, edges<=750))
+        ymin_index = numpy.argmin(hist[domain])
+        center = edges[domain][ymin_index]
+        if debug:
+            # numpy.amin(hist[domain])
+            pyplot.figure()
+            pyplot.plot(edges[domain], hist[domain])
+            ymin = hist[domain][ymin_index]
+            pyplot.axhline(ymin)
+            pyplot.axvline(center)
+            pyplot.show()
+
         # Histogram of gas x-values is beautifully bimodal (y, z aint)
         if debug:
             pyplot.figure(figsize=(12, 12))
@@ -765,15 +784,15 @@ class SampledBox(object):
 
 
         """ Third, split up particles in two haloes. Shift back to (0,0,0) """
-        print "Splitting up haloes, halo0: x<0; halo1: x>0."
+        print "Splitting up haloes, halo0: x<{0}; halo1: x>{0}.".format(center)
         # The merger-axis is x. We know halo center x position, is D_CoM_0/1
         # TODO: can we assume the box is split in two at x=0?
         # halo0 lives on the left-hand side of the box (negative x)
-        halo0gas = gas.select_array(lambda l : l < 0.0 | units.kpc, ["x"])
-        halo0dm = dm.select_array(lambda l : l < 0.0 | units.kpc, ["x"])
+        halo0gas = gas.select_array(lambda l : l < center | units.kpc, ["x"])
+        halo0dm = dm.select_array(lambda l : l < center | units.kpc, ["x"])
         # halo1 lives on the left-hand side of the box (negative x)
-        halo1gas = gas.select_array(lambda l : l > 0.0 | units.kpc, ["x"])
-        halo1dm = dm.select_array(lambda l : l > 0.0 | units.kpc, ["x"])
+        halo1gas = gas.select_array(lambda l : l > center | units.kpc, ["x"])
+        halo1dm = dm.select_array(lambda l : l > center | units.kpc, ["x"])
 
         # TODO: check if this routine is valid only for -DCOMET ?
         # TODO: boxhalf is added in Shift_Origin, but then subtracted in
@@ -814,8 +833,6 @@ class SampledBox(object):
             pyplot.figure(figsize=(12, 12))
             amuse_plot.hist(halo1gas.x, bins=int(numpy.sqrt(len(halo1gas.x))))
             pyplot.show()
-
-        import sys; sys.exit(0)
 
         # recalculate r because now it is calculated with uncentered x, y values
         print "Recalculating halo radii."

@@ -1,17 +1,30 @@
 import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
-pyplot.rcParams.update({"font.size": 22})
-pyplot.rcParams.update({"xtick.major.size": 16})
-pyplot.rcParams.update({"xtick.minor.size": 8})
-pyplot.rcParams.update({"ytick.major.size": 16})
-pyplot.rcParams.update({"ytick.minor.size": 8})
+pyplot.rcParams.update({"font.size": 28})
+pyplot.rcParams.update({"xtick.major.size": 8})
+pyplot.rcParams.update({"xtick.minor.size": 4})
+pyplot.rcParams.update({"ytick.major.size": 8})
+pyplot.rcParams.update({"ytick.minor.size": 4})
+pyplot.rcParams.update({"xtick.major.width": 4})
+pyplot.rcParams.update({"xtick.minor.width": 2})
+pyplot.rcParams.update({"ytick.major.width": 4})
+pyplot.rcParams.update({"ytick.minor.width": 2})
+pyplot.rcParams.update({"xtick.major.pad": 8})
+pyplot.rcParams.update({"xtick.minor.pad": 8})
+pyplot.rcParams.update({"ytick.major.pad": 8})
+pyplot.rcParams.update({"ytick.minor.pad": 8})
+pyplot.rcParams.update({"legend.loc": "best"})
+pyplot.rcParams.update({"figure.autolayout": True})
+
+#ax.tick_params(labelsize=28, width=2, length=8, axis='both', which='major', pad=8)
+#ax.tick_params(labelsize=28, width=5, length=2, axis='both', which='minor', pad=8)
 
 from cluster import ObservedCluster
 
 
 def plot_observation(cygA, cygB):
-    poster_style = True
+    poster_style = False
     if poster_style:
         pyplot.style.use(["dark_background"])
         # magenta, dark blue, orange, green, light blue (?)
@@ -40,10 +53,10 @@ def plot_observation(cygA, cygB):
 
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
-    # pyplot.tight_layout()
-    pyplot.xlim(0.5, 2000)
-    pyplot.ylabel(r"$n_e(r)$ [1/cm$^{-3}$]")
-    pyplot.xlabel(r"$r$ [arcsec]")
+    pyplot.xlim(0.3, 2500)
+    pyplot.yticks([1e-1, 1e-2, 1e-3, 1e-4])
+    pyplot.ylabel(r"Number density [cm$^{-3}$]")
+    pyplot.xlabel(r"Radius [arcsec]")
 
     pyplot.legend()
     pyplot.savefig("out/raw_observed_clusters{0}.png"\

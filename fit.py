@@ -11,10 +11,21 @@ matplotlib.use("Qt4Agg")
 matplotlib.rc("text", usetex=True)
 from matplotlib import pyplot
 pyplot.rcParams.update({"font.size": 33})
-pyplot.rcParams.update({"xtick.major.size": 12})
-pyplot.rcParams.update({"xtick.minor.size": 6})
-pyplot.rcParams.update({"ytick.major.size": 12})
-pyplot.rcParams.update({"ytick.minor.size": 6})
+pyplot.rcParams.update({"xtick.major.size": 8})
+pyplot.rcParams.update({"xtick.minor.size": 4})
+pyplot.rcParams.update({"ytick.major.size": 8})
+pyplot.rcParams.update({"ytick.minor.size": 4})
+pyplot.rcParams.update({"xtick.major.width": 4})
+pyplot.rcParams.update({"xtick.minor.width": 2})
+pyplot.rcParams.update({"ytick.major.width": 4})
+pyplot.rcParams.update({"ytick.minor.width": 2})
+pyplot.rcParams.update({"xtick.major.pad": 8})
+pyplot.rcParams.update({"xtick.minor.pad": 8})
+pyplot.rcParams.update({"ytick.major.pad": 8})
+pyplot.rcParams.update({"ytick.minor.pad": 8})
+pyplot.rcParams.update({"legend.loc": "best"})
+pyplot.rcParams.update({"figure.autolayout": True})
+
 
 from amuse.units import units
 from amuse.units import constants
@@ -235,7 +246,7 @@ def obtain_mles(observed, result, free_beta=False):
 
 def plot_fit_results(observed, analytical, numerical=None,
                      mass_density=False, save=False):
-    poster_style = False
+    poster_style = True
     if poster_style:
         pyplot.style.use(["dark_background"])
         pyplot.rcParams.update({"font.weight": "bold"})
@@ -274,7 +285,7 @@ def plot_fit_results(observed, analytical, numerical=None,
             label="800" if observed.oldICs else "900"+\
                   " ks Chandra\n(Wise+ 2016, in prep)",)
 
-    label = analytical.modelname+"\n\t"
+    label = "model: "+analytical.modelname+"\n\t"
     label +=  r"$n_{{e,0}} \,$ = {0:.2e} cm$^{{-3}}$".format(analytical.ne0.number) if not mass_density else r"$\rho_{{0}} \,$ = {0:.2e} g cm$^{{-3}}$".format(analytical.rho0.number)
     label += "\n\t"+ r"$r_c \,$ = {0:.2f} kpc".format(analytical.rc.number)
     if analytical.rcut is not None and not analytical.free_beta:
@@ -295,10 +306,10 @@ def plot_fit_results(observed, analytical, numerical=None,
     ax.set_xscale("log")
     ax.set_yscale("log")
     if mass_density:
-        ax.set_ylabel(r"$\rho_{{\rm gas}}(r)$ [g cm$^{-3}$]")
+        ax.set_ylabel(r"Gas density [g cm$^{-3}$]", fontsize=33)
         ax.set_ylim(min(observed_density)/1.5, max(observed_density)*1.3)
     else:
-        ax.set_ylabel(r"$n_e (r)$ [cm$^{-3}$]")
+        ax.set_ylabel(r"Gas density [cm$^{-3}$]", fontsize=33)
     ax.legend(loc=3, prop={'size':30})
 
     # Plot Residuals
@@ -325,20 +336,26 @@ def plot_fit_results(observed, analytical, numerical=None,
     nbins = len(ax_r.get_yticklabels())
     ax_r.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
 
-    ax_r.set_xlabel(r"$r$ [kpc]")
-    ax_r.set_ylabel("Residuals [\%]")
+    ax_r.set_xlabel(r"Radius [kpc]", fontsize=33)
+    ax_r.set_ylabel(r"Residuals [\%]", fontsize=33)
 
     ax.axvline(x=analytical.rc.value_in(units.kpc),
                lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
     ax_r.axvline(x=analytical.rc.value_in(units.kpc),
                  lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
 
+    # Force axis labels to align
+    ax.get_yaxis().set_label_coords(-0.1,0.5)
+    ax_r.get_yaxis().set_label_coords(-0.1,0.5)
+
     if save and not analytical.free_beta:
-        pyplot.savefig("out/density_betamodel_fit_{0}{1}.png"\
-            .format(observed.name, "_dark" if poster_style else ""), dpi=300)
+        pyplot.savefig("out/density_betamodel_fit_{0}{1}{2}.png"\
+            .format(observed.name, "_800ksec" if observed.oldICs else "_900ksec",
+                "_dark" if poster_style else ""), dpi=300)
     if save and analytical.free_beta:
-        pyplot.savefig("out/density_free_betamodel_fit_{0}{1}.png"\
-            .format(observed.name, "_dark" if poster_style else ""), dpi=300)
+        pyplot.savefig("out/density_free_betamodel_fit_{0}{1}{2}.png"\
+            .format(observed.name, "_800ksec" if observed.oldICs else "_900ksec",
+                "_dark" if poster_style else ""), dpi=300)
     # pyplot.show()
 
 
@@ -722,7 +739,7 @@ if __name__ == "__main__":
         plot_fit_results(cygB_observed, cygB_analytical_free,
                          mass_density=True, save=True)
 
-    pyplot.show()
+    #pyplot.show()
 
     import sys; sys.exit(0)
 

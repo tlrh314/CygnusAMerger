@@ -23,6 +23,7 @@ import convert
 
 from density_stability import plot_individual_cluster_density
 from density_stability import plot_individual_cluster_mass
+from density_stability import plot_individual_cluster_temperature
 
 
 if __name__ == "__main__":
@@ -35,33 +36,52 @@ if __name__ == "__main__":
     print "Parsing Toycluster output: double cluster (Xm != 0)"
     print 80*'-'
 
-    timestamp="20160617T1544"
-    # timestamp="20160617T1936"
+    myRun="20160704T1337"
+    snapnr = "000-ICOnly"
 
-    world = SampledBox(timestamp)
+    outdir="../runs/{0}/out/".format(myRun)
+    if not (os.path.isdir(outdir) or os.path.exists(outdir)):
+        os.mkdir(outdir)
 
-    world.halo0_numerical.get_gas_mass_via_density(DESNNGB=295)
+    world = SampledBox(myRun)
+
+    world.halo0_numerical.get_gas_mass_via_density(DESNNGB=50)
     world.halo0_numerical.get_dm_mass_via_number_density()
     world.halo0_numerical.set_dm_density()
 
-    world.halo1_numerical.get_gas_mass_via_density(DESNNGB=295)
+    world.halo1_numerical.get_gas_mass_via_density(DESNNGB=50)
     world.halo1_numerical.get_dm_mass_via_number_density()
     world.halo1_numerical.set_dm_density()
 
+    mass0_filename = outdir+"{0}-mass-halo0-{1}.png".format(myRun, snapnr)
+    density0_filename = outdir+"{0}-density-hal0-{1}.png".format(myRun, snapnr)
+    temperature0_filename = outdir+"{0}-temperature-halo0-{1}.png".format(myRun, snapnr)
+    mass1_filename = outdir+"{0}-mass-halo1-{1}.png".format(myRun, snapnr)
+    density1_filename = outdir+"{0}-density-halo1-{1}.png".format(myRun, snapnr)
+    temperature1_filename = outdir+"{0}-temperature-halo1-{1}.png".format(myRun, snapnr)
+
     plot_individual_cluster_density(world.halo0_numerical,
                                     world.halo0_analytical)
-    pyplot.show()
+    pyplot.savefig(density0_filename)
 
     plot_individual_cluster_mass(world.halo0_numerical,
                                  world.halo0_analytical)
-    pyplot.show()
+    pyplot.savefig(density1_filename)
 
     plot_individual_cluster_density(world.halo1_numerical,
                                     world.halo1_analytical)
-    pyplot.show()
+    pyplot.savefig(mass0_filename)
 
     plot_individual_cluster_mass(world.halo1_numerical,
                                  world.halo1_analytical)
-    pyplot.show()
+    pyplot.savefig(mass1_filename)
+
+    plot_individual_cluster_temperature(world.halo1_numerical,
+                                        world.halo1_analytical)
+    pyplot.savefig(temperature0_filename)
+
+    plot_individual_cluster_temperature(world.halo1_numerical,
+                                        world.halo1_analytical)
+    pyplot.savefig(temperature1_filename)
 
     print 80*'-'

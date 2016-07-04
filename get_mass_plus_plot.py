@@ -16,12 +16,21 @@ import matplotlib
 # matplotlib.use("TkAgg")
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
-pyplot.rcParams.update({"font.size": 22})
-pyplot.rcParams.update({"xtick.major.size": 12})
-pyplot.rcParams.update({"xtick.minor.size": 6})
-pyplot.rcParams.update({"ytick.major.size": 12})
-pyplot.rcParams.update({"ytick.minor.size": 6})
-
+pyplot.rcParams.update({"font.size": 28})
+pyplot.rcParams.update({"xtick.major.size": 8})
+pyplot.rcParams.update({"xtick.minor.size": 4})
+pyplot.rcParams.update({"ytick.major.size": 8})
+pyplot.rcParams.update({"ytick.minor.size": 4})
+pyplot.rcParams.update({"xtick.major.width": 4})
+pyplot.rcParams.update({"xtick.minor.width": 2})
+pyplot.rcParams.update({"ytick.major.width": 4})
+pyplot.rcParams.update({"ytick.minor.width": 2})
+pyplot.rcParams.update({"xtick.major.pad": 8})
+pyplot.rcParams.update({"xtick.minor.pad": 8})
+pyplot.rcParams.update({"ytick.major.pad": 8})
+pyplot.rcParams.update({"ytick.minor.pad": 8})
+pyplot.rcParams.update({"legend.loc": "best"})
+pyplot.rcParams.update({"figure.autolayout": True})
 
 from cluster import ObservedCluster
 from cluster import AnalyticalCluster
@@ -160,7 +169,21 @@ def rho_crit(z=0.0562):
     return rho_crit
 
 
-def plot_observed_cluster(observed, analytical_density):
+def plot_observed_cluster(observed, analytical_density, poster_style=False):
+    if poster_style:
+        pyplot.style.use(["dark_background"])
+        pyplot.rcParams.update({"font.weight": "bold"})
+        # magenta, dark blue, orange, green, light blue (?)
+        data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                       (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                       (41./255, 239./255, 239./255)]
+        fit_colour = "white"
+    else:
+        data_colour = ["g", "r", "b"]
+        fit_colour = "k"
+
+    data_colour = data_colour[0] if observed.name == "cygA" else data_colour[2]
+
     fig, (ax, ax_r) = pyplot.subplots(2, 2, sharex=True, figsize=(16, 12))
     gs1 = matplotlib.gridspec.GridSpec(3, 3)
     gs1.update(hspace=0)
@@ -171,25 +194,29 @@ def plot_observed_cluster(observed, analytical_density):
     pyplot.sca(ax)
     pyplot.errorbar(observed.radius+observed.binsize/2,
                     observed.density, xerr=observed.binsize/2,
-                    yerr=observed.density_std, marker="o", ms=6, ls="", c="g")
+                    yerr=observed.density_std, marker="o",
+                    ms=5 if poster_style else 3, elinewidth=3 if poster_style else 1,
+                    ls="", c=data_colour)
                     #label="800 ks Chandra\n(Wise+ 2016, in prep)")
 
     # Plot analytical gas profile
-    pyplot.plot(observed.radius, analytical_density,
-                c="k", ls="dashed")#, label="gas")
+    pyplot.plot(observed.radius, analytical_density, lw=3 if poster_style else 1,
+                c=fit_colour, ls="dashed")#, label="gas")
 
     # Plot Residuals
     pyplot.sca(ax_r)
     residual_density = (observed.density - analytical_density)/observed.density
-    pyplot.errorbar(observed.radius+observed.binsize/2, residual_density,
-            yerr=observed.density_std/observed.density, c="k", drawstyle="steps-mid")
+    pyplot.errorbar(observed.radius+observed.binsize/2, 100*residual_density,
+            yerr=100*observed.density_std/observed.density, c=fit_colour,
+            lw=3 if poster_style else 1,
+            elinewidth=1 if poster_style else 1, drawstyle="steps-mid")
     # Show dashed residuals zero line
-    ax_r.axhline(y=0, lw=2, ls="dashed", c="k")
+    ax_r.axhline(y=0, lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
 
     # Set axis labels
-    ax.set_ylabel(r"$\rho(r)$ [g/cm$^{-3}$]")
-    ax_r.set_xlabel(r"$r$ [kpc]")
-    ax_r.set_ylabel("Residuals")
+    ax.set_ylabel(r"Density [g cm$^{-3}$]")
+    ax_r.set_xlabel(r"Radius [kpc]")
+    ax_r.set_ylabel("Residuals [\%]")
 
     # Set logscale, but the residual y-axis is not logarithmic!
     ax.set_xscale("log")
@@ -197,13 +224,17 @@ def plot_observed_cluster(observed, analytical_density):
     ax_r.set_xscale("log")
 
     # Set residual y-limits: show 50% deviations from the data
-    ax_r.set_ylim(-0.5, 0.5)
+    ax_r.set_ylim(-50, 50)
 
     # Fix for overlapping y-axis markers
     from matplotlib.ticker import MaxNLocator
     ax.tick_params(labelbottom="off")
     nbins = len(ax_r.get_yticklabels())
     ax_r.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune="upper"))
+
+    # Force axis labels to align
+    ax.get_yaxis().set_label_coords(-0.1,0.5)
+    ax_r.get_yaxis().set_label_coords(-0.1,0.5)
 
     return fig
 
@@ -218,6 +249,19 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
     if visualise:
         gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc, beta)
         n=0
+
+        if poster_style:
+            pyplot.style.use(["dark_background"])
+            # magenta, dark blue, orange, green, light blue (?)
+            data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                           (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                           (41./255, 239./255, 239./255)]
+            fit_colour = "white"
+            accent_colour = (151./255, 24./255, 24./255)
+        else:
+            data_colour = ["g", "r", "b"]
+            fit_colour = "k"
+            accent_colour = "red"
 
     # Find r200 such that rho200 / rho_crit == 200
     lower = 10 * kpc2cm
@@ -264,21 +308,24 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
 
             dm_rhom = dm_density_hernquist(observed.radius*kpc2cm, Mdm, a)
 
-            pyplot.plot(observed.radius, dm_rhom, c="k", ls="solid")
-            pyplot.axhline(200*rho_crit(), c="k")
+            pyplot.plot(observed.radius, dm_rhom, c=fit_colour, lw=3 if poster_style else 1, ls="solid")
+            pyplot.axhline(200*rho_crit(), c=fit_colour, lw=3 if poster_style else 1)
             rho_avg_200 = M200 / (4./3 * numpy.pi * p3(r200))
-            pyplot.axhline(rho_avg_200, c="r")
+            pyplot.axhline(rho_avg_200, c=accent_colour, lw=3 if poster_style else 1)
 
             # Indicate bisection bounds
-            pyplot.axvline(x=lower*cm2kpc, c="k", ls="dotted")
-            pyplot.axvline(x=upper*cm2kpc, c="k", ls="dotted")
-            pyplot.axvline(x=r200*cm2kpc, c="r", ls="solid")
+            pyplot.axvline(x=lower*cm2kpc, c=fit_colour, ls="dotted", lw=3 if poster_style else 1)
+            pyplot.axvline(x=upper*cm2kpc, c=fit_colour, ls="dotted", lw=3 if poster_style else 1)
+            pyplot.axvline(x=r200*cm2kpc, c=accent_colour, ls="solid", lw=3 if poster_style else 1)
 
             # Plot textbox with bisection info
-            bisection_info = "\nlower: {0:.1f}\n".format(lower*cm2kpc) \
-                + "r200 : {0:.1f}\n".format(r200*cm2kpc) \
-                + "upper: {0:.1f}\n".format(upper*cm2kpc) \
-                + r"$\frac{{\rho(r_{{200}})}}{{\rho_{{\rm crit}}}}$: {0:.1f}".format(rho200_over_rhocrit)
+            bisection_info = r"\begin{tabular}{lll}"
+            bisection_info += " lower & : & {0:.1f} \\\\".format(lower*cm2kpc)
+            bisection_info += " r200 & : & {0:.1f} \\\\".format(r200*cm2kpc)
+            bisection_info += " upper & : & {0:.1f} \\\\".format(upper*cm2kpc)
+            bisection_info += r"$\frac{{\rho(r200)}}{{\rho_{{\rm crit}}}}$ & : & {0:.1f}"\
+                                .format(rho200_over_rhocrit)
+            bisection_info += (" \end{tabular}")
 
             if observed.name == "cygA":
                 textX = 3
@@ -288,10 +335,10 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
                 textY = 2e-29
 
             pyplot.text(textX, textY, bisection_info, size=18,
-                        ha="left", va="bottom",
+                        ha="left", va="bottom", color=fit_colour,
                         bbox=dict(boxstyle="round",
-                                  ec=(1., 0.5, 0.5),
-                                  fc=(1., 0.8, 0.8),
+                                  ec=accent_colour if poster_style else (1., 0.5, 0.5),
+                                  fc=accent_colour if poster_style else (1., 0.8, 0.8),
                                   )
                        )
 
@@ -305,8 +352,6 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
                 ax.set_xlim(40, 5000)
                 ax.set_ylim(1e-29, 3e-25)
 
-
-            #pyplot.show()
             pyplot.savefig("out/findmass_{1}_{0:03d}.png".format(n, observed.name))
             pyplot.close()
             n+=1
@@ -425,6 +470,7 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
         "masssameplot": mass of both CygA and CygB in the same plot
         "rhosingle"   : plot Chandra gas and fit with residuals and DM bestfit
         "bfsingle"    : Baryon fraction as a function of radius (single cluster)
+        "nfwsingle"   : Dark Matter density comparison of NFW and Hernquist
 
     """
     # Get continuous radius range. NB observed radius is discrete!
@@ -679,7 +725,7 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
             ax.set_xlim(40, 5000)
             ax.set_ylim(1e-29, 3e-25)
 
-        pyplot.savefig("out/density_profile_{0}{1}{2}.png"\
+        pyplot.savefig("out/density_profile_with_dm_{0}{1}{2}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
                     "_800ksec" if oldICs else "_900ksec"))
 
@@ -803,11 +849,12 @@ def is_solution_unique(rc, rho0, beta, observed):
 
 if __name__ == "__main__":
     # If visualise is True we create plots of the bisection method
-    visualise=False
+    visualise=True
     oldICs=False
     discard_firstbins = True
     discard_lastbins = False
     free_beta = False
+    poster_style = True
 
     print "Reading Chandra observed density profiles..."
     print 80*"-"
@@ -825,12 +872,12 @@ if __name__ == "__main__":
     # in a stable way
     if discard_firstbins:
         print "WARNING: Discarding first three CygA bins."
-        cygA_observed.radius = cygA_observed.radius[4:]
-        cygA_observed.binsize = cygA_observed.binsize[4:]
-        cygA_observed.density= cygA_observed.density[4:]
-        cygA_observed.density_std = cygA_observed.density_std[4:]
-        cygA_observed.number_density = cygA_observed.number_density[4:]
-        cygA_observed.number_density_std = cygA_observed.number_density_std[4:]
+        cygA_observed.radius = cygA_observed.radius[3:]
+        cygA_observed.binsize = cygA_observed.binsize[3:]
+        cygA_observed.density= cygA_observed.density[3:]
+        cygA_observed.density_std = cygA_observed.density_std[3:]
+        cygA_observed.number_density = cygA_observed.number_density[3:]
+        cygA_observed.number_density_std = cygA_observed.number_density_std[3:]
     if discard_lastbins:
         print "WARNING: Discarding last CygA bins."
         cygA_observed.radius = cygA_observed.radius[:-40]
@@ -919,6 +966,10 @@ if __name__ == "__main__":
     print 80*"-"
     print "Plotting the results..."
     print 80*"-"
+
+    make_plot(cygA, None, cygA_observed, None, mode="nfwsingle")
+    pyplot.show()
+    raw_input("Press enter to continue...\n")
 
     # Plot density+mass profiles (gas + dm in same plot); density left, mass right
     make_plot(cygA, cygB, mode="massboth")
