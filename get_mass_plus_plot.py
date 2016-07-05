@@ -123,6 +123,18 @@ def M_dm_below_r(r, Mdm, a):
     return M_dm_below_r
 
 
+def dm_density_nfw(r, rho0, rs):
+    """ NFW (1995) dark matter density profile """
+    rho_dm_nfw = rho0/(r/rs * p2(1 + r/rs))
+    return rho_dm_nfw
+
+
+def M_dm_below_r_nfw(r, rho0, rs):
+    """ Hernquist (1990) dark matter mass profile """
+
+    return 4*numpy.pi*rho0*p3(rs)*(numpy.log(1+r/rs) - (r/rs)/(1+r/rs))
+
+
 def gas_density_beta(r, rho0, rc, beta=None):
     """ Beta-model for gas density profile (Cavaliere & Fusco-Femiano 1978)
     with a fixed value beta = 2/3 (Mastropietro & Burkert 2008)
@@ -195,26 +207,27 @@ def plot_observed_cluster(observed, analytical_density, poster_style=False):
     pyplot.errorbar(observed.radius+observed.binsize/2,
                     observed.density, xerr=observed.binsize/2,
                     yerr=observed.density_std, marker="o",
-                    ms=5 if poster_style else 3, elinewidth=3 if poster_style else 1,
+                    ms=7 if poster_style else 3, elinewidth=5 if poster_style else 1,
                     ls="", c=data_colour)
                     #label="800 ks Chandra\n(Wise+ 2016, in prep)")
 
     # Plot analytical gas profile
-    pyplot.plot(observed.radius, analytical_density, lw=3 if poster_style else 1,
-                c=fit_colour, ls="dashed")#, label="gas")
+    pyplot.sca(ax)
+    ax.plot(observed.radius, analytical_density, lw=5 if poster_style else 1,
+            c=fit_colour, ls="dashed")#, label="gas")
 
     # Plot Residuals
     pyplot.sca(ax_r)
     residual_density = (observed.density - analytical_density)/observed.density
-    pyplot.errorbar(observed.radius+observed.binsize/2, 100*residual_density,
-            yerr=100*observed.density_std/observed.density, c=fit_colour,
-            lw=3 if poster_style else 1,
-            elinewidth=1 if poster_style else 1, drawstyle="steps-mid")
+    ax_r.errorbar(observed.radius+observed.binsize/2, 100*residual_density,
+        yerr=100*observed.density_std/observed.density, c=fit_colour,
+        lw=5 if poster_style else 1,
+        elinewidth=2 if poster_style else 1, drawstyle="steps-mid")
     # Show dashed residuals zero line
-    ax_r.axhline(y=0, lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
+    ax_r.axhline(y=0, lw=5 if poster_style else 1, ls="dashed", c=fit_colour)
 
     # Set axis labels
-    ax.set_ylabel(r"Density [g cm$^{-3}$]")
+    ax.set_ylabel(r"Density [g/cm$**$3]")
     ax_r.set_xlabel(r"Radius [kpc]")
     ax_r.set_ylabel("Residuals [\%]")
 
@@ -301,61 +314,85 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
             print
 
         if visualise:
-            fig = plot_observed_cluster(observed, gas_rhom)
+            fig = plot_observed_cluster(observed, gas_rhom, True)
             pyplot.figure(fig.number)
             ax, ax_r = fig.axes
+            pyplot.sca(ax_r)
+            pyplot.cla()
             pyplot.sca(ax)
+
+            # Remove residuals, increase ax size and change figure size
+            # fig.delaxes(ax_r)
+            # ax.change_geometry(1, 1, 1)
+            # fig.set_size_inches(12, 9, forward=True)
 
             dm_rhom = dm_density_hernquist(observed.radius*kpc2cm, Mdm, a)
 
-            pyplot.plot(observed.radius, dm_rhom, c=fit_colour, lw=3 if poster_style else 1, ls="solid")
-            pyplot.axhline(200*rho_crit(), c=fit_colour, lw=3 if poster_style else 1)
+            ax.plot(observed.radius, dm_rhom, c=fit_colour, lw=5 if poster_style else 1, ls="solid")
+            ax.plot(observed.radius, gas_rhom, c=fit_colour, lw=5 if poster_style else 1, ls="dashed")
+            pyplot.axhline(200*rho_crit(), c=fit_colour, lw=5 if poster_style else 1)
             rho_avg_200 = M200 / (4./3 * numpy.pi * p3(r200))
-            pyplot.axhline(rho_avg_200, c=accent_colour, lw=3 if poster_style else 1)
+            pyplot.axhline(rho_avg_200, c=accent_colour, lw=5 if poster_style else 1)
 
             # Indicate bisection bounds
-            pyplot.axvline(x=lower*cm2kpc, c=fit_colour, ls="dotted", lw=3 if poster_style else 1)
-            pyplot.axvline(x=upper*cm2kpc, c=fit_colour, ls="dotted", lw=3 if poster_style else 1)
-            pyplot.axvline(x=r200*cm2kpc, c=accent_colour, ls="solid", lw=3 if poster_style else 1)
+            pyplot.axvline(x=lower*cm2kpc, c=fit_colour, ls="dotted", lw=5 if poster_style else 1)
+            pyplot.axvline(x=upper*cm2kpc, c=fit_colour, ls="dotted", lw=5 if poster_style else 1)
+            pyplot.axvline(x=r200*cm2kpc, c=accent_colour, ls="solid", lw=5 if poster_style else 1)
 
+            ax_r.set_xlim(0, 1)
+            ax_r.set_ylim(0, 1)
             # Plot textbox with bisection info
             bisection_info = r"\begin{tabular}{lll}"
             bisection_info += " lower & : & {0:.1f} \\\\".format(lower*cm2kpc)
-            bisection_info += " r200 & : & {0:.1f} \\\\".format(r200*cm2kpc)
             bisection_info += " upper & : & {0:.1f} \\\\".format(upper*cm2kpc)
-            bisection_info += r"$\frac{{\rho(r200)}}{{\rho_{{\rm crit}}}}$ & : & {0:.1f}"\
+            bisection_info += (" \end{tabular}")
+
+            ax_r.text(0.3, 0, bisection_info, size=42,
+                      ha="center", va="bottom", color=fit_colour,
+                      bbox=dict(boxstyle="round",
+                                ec=accent_colour if poster_style else (1., 0.5, 0.5),
+                                fc=accent_colour if poster_style else (1., 0.8, 0.8),
+                                )
+                     )
+
+            bisection_info = r"\begin{tabular}{lll}"
+            bisection_info += " r200 & : & {0:.1f} \\\\".format(r200*cm2kpc)
+            bisection_info += r" avg / crit & : & {0:.1f}"\
                                 .format(rho200_over_rhocrit)
             bisection_info += (" \end{tabular}")
 
-            if observed.name == "cygA":
-                textX = 3
-                textY = 2e-29
-            else:
-                textX = 50
-                textY = 2e-29
-
-            pyplot.text(textX, textY, bisection_info, size=18,
-                        ha="left", va="bottom", color=fit_colour,
-                        bbox=dict(boxstyle="round",
-                                  ec=accent_colour if poster_style else (1., 0.5, 0.5),
-                                  fc=accent_colour if poster_style else (1., 0.8, 0.8),
-                                  )
-                       )
+            ax_r.text(0.7, 0, bisection_info, size=42,
+                      ha="center", va="bottom", color=fit_colour,
+                      bbox=dict(boxstyle="round",
+                                ec=accent_colour if poster_style else (1., 0.5, 0.5),
+                                fc=accent_colour if poster_style else (1., 0.8, 0.8),
+                                )
+                     )
+            ax_r.get_yaxis().set_visible(False)
+            ax_r.get_xaxis().set_visible(False)
+            ax_r.set_axis_off()
 
             # Set axis limits
             if observed.name == "cygA":
-                ax_r.set_xlim(1, 3000)
                 ax.set_xlim(1, 3000)
                 ax.set_ylim(1e-29, 1e-22)
             else:
-                ax_r.set_xlim(40, 5000)
-                ax.set_xlim(40, 5000)
-                ax.set_ylim(1e-29, 3e-25)
+                ax.set_xlim(10, 5000)
+                ax.set_ylim(1e-29, 1e-24)
 
-            pyplot.savefig("out/findmass_{1}_{0:03d}.png".format(n, observed.name))
+            ax.set_xlabel(r"Radius [kpc]")
+            ax.get_yaxis().set_label_coords(-0.15, 0.5)
+            ax.tick_params(labelbottom="on")
+
+            pyplot.savefig("out/findmass_{0}{1}{2}{3}{4:03d}.png"\
+                .format(observed.name,
+                        "_freebeta" if free_beta else "",
+                        "_800ksec" if oldICs else "_900ksec",
+                        "_dark" if poster_style else "", n), dpi=300)
+
             pyplot.close()
             n+=1
-            # import sys; sys.exit(0)
+            #import sys; sys.exit(0)
 
         # bisection
         if rho200_over_rhocrit < 200:
@@ -454,7 +491,8 @@ def print_inferred_values(halo):
     print
 
 
-def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
+def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
+              mode="", poster_style=False):
     """ Make plot of inferred profiles
 
     @param cyg*: dictionary with best-fit parameters (of gas and dm)
@@ -473,6 +511,19 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
         "nfwsingle"   : Dark Matter density comparison of NFW and Hernquist
 
     """
+    if poster_style:
+        pyplot.style.use(["dark_background"])
+        # magenta, dark blue, orange, green, light blue (?)
+        data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                       (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                       (41./255, 239./255, 239./255)]
+        fit_colour = "white"
+        accent_colour = (151./255, 24./255, 24./255)
+    else:
+        data_colour = ["g", "r", "b"]
+        fit_colour = "k"
+        accent_colour = "red"
+
     # Get continuous radius range. NB observed radius is discrete!
     r = numpy.arange(1, 1e4, 0.1)  # kpc!
 
@@ -547,19 +598,21 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
         # pyplot.show()
 
         pyplot.figure(figsize=(12, 9))
-        pyplot.plot(r, ratio, c="b")
+        pyplot.plot(r, ratio, c=data_colour, lw=3 if poster_style else 1)
         #pyplot.plot(r, ratio_min, c="k")
         #pyplot.plot(r, ratio_plus, c="r")
-        pyplot.fill_between(r, ratio_min, ratio_plus, facecolor="green", alpha=0.2)
+        pyplot.fill_between(r, ratio_min, ratio_plus,
+            facecolor=accent_colour if poster_style else "green", alpha=0.2)
         pyplot.gca().set_xscale("log")
-        pyplot.axvline(cygA["r200"]*cm2kpc, c="r")
+        pyplot.axvline(cygA["r200"]*cm2kpc, lw=3 if poster_style else 1, c=accent_colour)
         pyplot.xlabel(r"$r$ [kpc]")
         pyplot.ylabel(r"Mass Ratio [Cyg$_{\rm A}$/Cyg$_{\rm B}$]")
         pyplot.xlim(1, 4000)
         pyplot.ylim(numpy.min(ratio_plus)-0.3, numpy.max(ratio_min)+0.3)
-        pyplot.savefig("out/cygA_cygB_massRatio{0}{1}.png"\
+        pyplot.savefig("out/cygA_cygB_massRatio{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""), dpi=300)
 
     if mode == "rhomassboth":
         print "Generating ugly two-panel plot. Density left, mass right."
@@ -589,25 +642,34 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
         ax0.legend(loc=3, fontsize=12)
         ax1.legend(loc=4, fontsize=12)
         pyplot.tight_layout()
-        pyplot.savefig("out/cygA_cygB_massAndDensity{0}{1}.png"\
+        pyplot.savefig("out/cygA_cygB_massAndDensity{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""), dpi=300)
 
     if mode == "massboth":
         print "Generating two-panel mass plot. CygA left, CygB right."
         fig, (ax0, ax1) = pyplot.subplots(1, 2, sharex=True, sharey=True, figsize=(16, 8))
 
         pyplot.sca(ax0)
-        pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="total", c="k")
-        pyplot.loglog(r, cygA_dm_mass, label="dm", c="k", ls="dotted")
-        pyplot.loglog(r, cygA_gas_mass, label="gas", c="k", ls="dashed")
-        ax0.axvline(cygA["r200"]*cm2kpc, c="k", ls="dotted")
+        pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="total",
+                      c=fit_colour, lw=3 if poster_style else 1)
+        pyplot.loglog(r, cygA_dm_mass, label="dm", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dotted")
+        pyplot.loglog(r, cygA_gas_mass, label="gas", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dashed")
+        ax0.axvline(cygA["r200"]*cm2kpc, c=fit_colour,
+                    lw=3 if poster_style else 1, ls="dotted")
 
         pyplot.sca(ax1)
-        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="total", c="k")
-        pyplot.loglog(r, cygB_dm_mass, label="dm", c="k", ls="dotted")
-        pyplot.loglog(r, cygB_gas_mass, label="gas", c="k", ls="dashed")
-        ax1.axvline(cygB["r200"]*cm2kpc, c="k", ls="dotted")
+        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="total",
+                      lw=3 if poster_style else 1, c=fit_colour,)
+        pyplot.loglog(r, cygB_dm_mass, label="dm", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dotted")
+        pyplot.loglog(r, cygB_gas_mass, label="gas", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dashed")
+        ax1.axvline(cygB["r200"]*cm2kpc, c=fit_colour,
+                    lw=3 if poster_style else 1, ls="dotted")
 
         for ax in [ax0, ax1]:
             pyplot.sca(ax)
@@ -616,27 +678,37 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
 
         ax0.set_ylabel(r"$M(<r)$ [$M_{\odot}$]")
         pyplot.tight_layout()
-        pyplot.savefig("out/cygA_cygB_mass{0}{1}.png"\
+        pyplot.savefig("out/cygA_cygB_mass{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""), dpi=300)
 
     if mode == "masssameplot":
         print "Generating single plot with both CygA and CygB masses."
         fig = pyplot.figure(figsize=(12, 9))
 
-        pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="CygA total", c="r")
-        # pyplot.loglog(r, cygA_dm_mass, label="dm", c="k", ls="dotted")
-        pyplot.loglog(r, cygA_gas_mass, label="CygA gas", c="r", ls="dashed")
-        pyplot.axvline(cygA["r200"]*cm2kpc, c="r", ls="dotted")
+        pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="CygA total",
+                      c=accent_colour, lw=3 if poster_style else 1)
+        # pyplot.loglog(r, cygA_dm_mass, label="dm", c=fit_colour,
+        #               lw=3 if poster_style else 1, ls="dotted")
+        pyplot.loglog(r, cygA_gas_mass, label="CygA gas", c=accent_colour,
+                      lw=3 if poster_style else 1, ls="dashed")
+        pyplot.axvline(cygA["r200"]*cm2kpc, c=accent_colour,
+                       lw=3 if poster_style else 1, ls="dotted")
 
-        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygB total", c="k")
-        # pyplot.loglog(r, cygB_dm_mass, label="dm", c="k", ls="dotted")
-        pyplot.loglog(r, cygB_gas_mass, label="CygB gas", c="k", ls="dashed")
-        pyplot.axvline(cygB["r200"]*cm2kpc, c="k", ls="dashed")
+        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygB total",
+                      c=fit_colour, lw=3 if poster_style else 1)
+        # pyplot.loglog(r, cygB_dm_mass, label="dm", c=fit_colour,
+        #               lw=3 if poster_style else 1, ls="dotted")
+        pyplot.loglog(r, cygB_gas_mass, label="CygB gas", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dashed")
+        pyplot.axvline(cygB["r200"]*cm2kpc, c=fit_colour,
+                       lw=3 if poster_style else 1, ls="dashed")
 
         # Smith et al. quote a mass at 500 kpc, assuming H0 = 50.
         # So converting back to arcsec, and then assuming H0 = 70 to kpc
-        pyplot.axvline(500/1.527*1.091, c="red", ls="solid")
+        pyplot.axvline(500/1.527*1.091, c=accent_colour,
+                       lw=3 if poster_style else 1, ls="solid")
 
         pyplot.xlim(5, 3000)
         pyplot.ylim(1e10, 5e14)
@@ -644,23 +716,30 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
         pyplot.legend(loc=2, fontsize=12)
 
         pyplot.ylabel(r"$M(<r)$ [$M_{\odot}$]")
-        pyplot.savefig("out/cygA_cygB_mass_sameplot{0}{1}.png"\
+        pyplot.savefig("out/cygA_cygB_mass_sameplot{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""), dpi=300)
 
     if mode == "rhoboth":
         print "Generating two-panel denisty plot. CygA left, CygB right."
         fig, (ax0, ax1) = pyplot.subplots(1, 2, sharex=True, sharey=True, figsize=(16, 8))
 
         pyplot.sca(ax0)
-        pyplot.loglog(r, cygA_dm_rhom, label="dm", c="k", ls="dotted")
-        pyplot.loglog(r, cygA_gas_rhom, label="gas", c="k", ls="dashed")
-        ax0.axvline(cygA["r200"]*cm2kpc, c="k", ls="dotted")
+        pyplot.loglog(r, cygA_dm_rhom, label="dm", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dotted")
+        pyplot.loglog(r, cygA_gas_rhom, label="gas", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dashed")
+        ax0.axvline(cygA["r200"]*cm2kpc, c=fit_colour,
+                    lw=3 if poster_style else 1, ls="dotted")
 
         pyplot.sca(ax1)
-        pyplot.loglog(r, cygB_dm_rhom, label="dm", c="k", ls="dotted")
-        pyplot.loglog(r, cygB_gas_rhom, label="gas", c="k", ls="dashed")
-        ax1.axvline(cygB["r200"]*cm2kpc, c="k", ls="dotted")
+        pyplot.loglog(r, cygB_dm_rhom, label="dm", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dotted")
+        pyplot.loglog(r, cygB_gas_rhom, label="gas", c=fit_colour,
+                      lw=3 if poster_style else 1, ls="dashed")
+        ax1.axvline(cygB["r200"]*cm2kpc, c=fit_colour,
+                    lw=3 if poster_style else 1, ls="dotted")
 
         for ax in [ax0, ax1]:
             pyplot.sca(ax)
@@ -669,9 +748,10 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
 
         ax0.set_ylabel(r"$\rho$ [g/cm$^3$]")
         pyplot.tight_layout()
-        pyplot.savefig("out/cygA_cygB_density{0}{1}.png"\
+        pyplot.savefig("out/cygA_cygB_density{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec"), dpi=300)
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""), dpi=300)
 
     if "single" in mode:
         print "Plotting single cluster!"
@@ -707,12 +787,12 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
         ax, ax_r = fig.axes
         pyplot.sca(ax)
 
-        pyplot.plot(r, dm_rhom, c="k", ls="solid")
-        pyplot.axhline(200*rho_crit(), c="k")
+        pyplot.plot(r, dm_rhom, c=fit_colour, lw=3 if poster_style else 1, ls="solid")
+        pyplot.axhline(200*rho_crit(), c=fit_colour, lw=3 if poster_style else 1)
         rho_avg_200 = parms["M200"] / (4./3 * numpy.pi * p3(parms["r200"]))
-        pyplot.axhline(rho_avg_200, c="r")
+        pyplot.axhline(rho_avg_200, c=accent_colour, lw=3 if poster_style else 1)
 
-        pyplot.axvline(x=parms["r200"]*cm2kpc, c="r", ls="solid")
+        pyplot.axvline(x=parms["r200"]*cm2kpc, c=accent_colour, lw=3 if poster_style else 1, ls="solid")
 
 
         # Set axis limits
@@ -725,9 +805,10 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
             ax.set_xlim(40, 5000)
             ax.set_ylim(1e-29, 3e-25)
 
-        pyplot.savefig("out/density_profile_with_dm_{0}{1}{2}.png"\
+        pyplot.savefig("out/density_profile_with_dm_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec"))
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""))
 
     if mode == "bfsingle":
         print "Generating plot of the baryon fraction as a function of radius"
@@ -745,22 +826,88 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None, mode=""):
 
         bf = gas_mass/(dm_mass+gas_mass)
 
-        pyplot.figure(figsize=(12,9))
+        pyplot.figure(figsize=(12, 9))
 
-        pyplot.plot(r, bf, c="k")
+        pyplot.plot(r, bf, c=fit_colour, lw=3 if poster_style else 1)
         pyplot.gca().set_xscale("log")
 
-        pyplot.axvline(parms["r200"]*cm2kpc, c="r", ls="dotted")
-        pyplot.axvline(r500*cm2kpc, c="r", ls="dashed")
-        pyplot.axhline(0.17, c="k", ls="dotted", label=r"$\overline{\rho(r_{200})}=0.17$")
-        pyplot.axhline(0.14, c="k", ls="dashed", label=r"$\overline{\rho(r_{500})}=0.14$")
+        pyplot.axvline(parms["r200"]*cm2kpc, c=accent_colour,
+                       lw=3 if poster_style else 1, ls="dotted")
+        pyplot.axvline(r500*cm2kpc, c=accent_colour,
+                       lw=3 if poster_style else 1, ls="dashed")
+        pyplot.axhline(0.17, c=fit_colour, lw=3 if poster_style else 1,
+                       ls="dotted", label=r"$\overline{\rho(r_{200})}=0.17$")
+        pyplot.axhline(0.14, c=fit_colour, ls="dashed",
+                       lw=3 if poster_style else 1, label=r"$\overline{\rho(r_{500})}=0.14$")
         pyplot.xlabel(r"$r$ [kpc]")
         pyplot.ylabel(r"$b_f$")
 
         pyplot.legend(loc=2, fontsize=12)
-        pyplot.savefig("out/baryon_fraction_{0}{1}{2}.png"\
+        pyplot.savefig("out/baryon_fraction_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec"))
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""))
+
+    if mode == "nfwsingle":
+        print "Generating plot to show Hernquist -- NFW consistency."
+        pyplot.figure(figsize=(12, 9))
+
+        r_over_r200 = r / (parms["r200"]*cm2kpc)
+        rho0_over_rs = dm_rhom[0]/(parms["rs"]*cm2kpc)
+        rs_over_r200 = parms["rs"]/parms["r200"]
+
+        rho_nfw = dm_density_nfw(r_over_r200, rho0_over_rs, rs_over_r200)
+
+        pyplot.loglog(r_over_r200, rho_nfw/rho_crit(), c=fit_colour,
+                      lw=3 if poster_style else 1, label="NFW")
+        pyplot.loglog(r_over_r200, dm_rhom/rho_crit(), ls="dashed", c=fit_colour,
+                      lw=3 if poster_style else 1, label="Hernquist")
+        pyplot.axvline(rs_over_r200, ls="dashed", c=accent_colour,
+                       lw=3 if poster_style else 1)
+
+        pyplot.xlabel(r"Radius $r/r_{200}$")
+        pyplot.ylabel(r"Density $\rho/\rho_{\rm crit}$")
+
+        pyplot.xlim(3e-3, 2.5)
+        pyplot.ylim(1, 1e6)
+        pyplot.xticks([0.01, 0.10, 1.0], ["0.01", "0.10", "1.0"])
+        pyplot.yticks([1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6],
+                      ["$10^{0}$", "$10^{1}$", "$10^{2}$", "$10^{3}$",
+                       "$10^{4}$", "$10^{5}$", "$10^{6}$"])
+
+        pyplot.legend(loc=3)
+        pyplot.savefig("out/NFW_consistency_{0}{1}{2}{3}.png"\
+            .format(observed.name, "_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""))
+
+        pyplot.figure(figsize=(12, 9))
+        rho0_dm = rho_nfw[0]*g2msun/p3(cm2kpc)
+        rs = parms["rs"] * cm2kpc
+        dm_mass_nfw = M_dm_below_r_nfw(r, rho0_dm/rs, rs)
+
+        pyplot.loglog(r, dm_mass_nfw, c=fit_colour,
+                      lw=3 if poster_style else 1, label="NFW")
+        pyplot.loglog(r, dm_mass, ls="dashed", c=fit_colour,
+                      lw=3 if poster_style else 1, label="Hernquist")
+        pyplot.axvline(parms["r200"]*cm2kpc, ls="dashed", c=accent_colour,
+                       lw=3 if poster_style else 1)
+
+        pyplot.xlabel(r"Radius [kpc]")
+        pyplot.ylabel(r"Mass [MSun]")
+        pyplot.legend(loc=2)
+
+        #pyplot.xlim(3e-3, 2.5)
+        #pyplot.ylim(1, 1e6)
+        #pyplot.xticks([0.01, 0.10, 1.0], ["0.01", "0.10", "1.0"])
+        #pyplot.yticks([1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6],
+        #              ["$10^{0}$", "$10^{1}$", "$10^{2}$", "$10^{3}$",
+        #               "$10^{4}$", "$10^{5}$", "$10^{6}$"])
+
+        pyplot.savefig("out/NFW_consistency_mass_{0}{1}{2}{3}.png"\
+            .format(observed.name, "_freebeta" if free_beta else "",
+                    "_800ksec" if oldICs else "_900ksec",
+                    "_dark" if poster_style else ""))
 
     print
 
@@ -938,7 +1085,6 @@ if __name__ == "__main__":
     cygB_beta = None if not free_beta else cygB_ml_vals[2]
 
     #is_solution_unique(cygB_rc, cygB_rho0, cygB_observed)
-    #import sys; sys.exit(0)
 
     cygB = obtain_M200_bisection(cygB_rc, cygB_rho0, cygB_beta, verbose=False,
                                  visualise=visualise, observed=cygB_observed)
@@ -967,24 +1113,30 @@ if __name__ == "__main__":
     print "Plotting the results..."
     print 80*"-"
 
-    make_plot(cygA, None, cygA_observed, None, mode="nfwsingle")
-    pyplot.show()
+    make_plot(cygA, None, cygA_observed, None,
+              mode="nfwsingle", poster_style=poster_style)
+    make_plot(None, cygB, None, cygB_observed,
+              mode="nfwsingle", poster_style=poster_style)
     raw_input("Press enter to continue...\n")
 
     # Plot density+mass profiles (gas + dm in same plot); density left, mass right
-    make_plot(cygA, cygB, mode="massboth")
-    make_plot(cygA, cygB, mode="rhoboth")
-    make_plot(cygA, cygB, mode="masssameplot")
+    make_plot(cygA, cygB, mode="massboth", poster_style=poster_style)
+    make_plot(cygA, cygB, mode="rhoboth", poster_style=poster_style)
+    make_plot(cygA, cygB, mode="masssameplot", poster_style=poster_style)
 
-    make_plot(cygA, None, cygA_observed, None, mode="rhosingle")
-    make_plot(None, cygB, None, cygB_observed, mode="rhosingle")
+    make_plot(cygA, None, cygA_observed, None,
+              mode="rhosingle", poster_style=poster_style)
+    make_plot(None, cygB, None, cygB_observed,
+              mode="rhosingle", poster_style=poster_style)
 
     # Plot mass ratio
     make_plot(cygA, cygB, mode="ratio")
 
     # Plot baryon fraction
-    make_plot(cygA, None, cygA_observed, None, mode="bfsingle")
-    make_plot(None, cygB, None, cygB_observed, mode="bfsingle")
+    make_plot(cygA, None, cygA_observed, None,
+              mode="bfsingle", poster_style=poster_style)
+    make_plot(None, cygB, None, cygB_observed,
+              mode="bfsingle", poster_style=poster_style)
 
     #pyplot.show()
 

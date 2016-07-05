@@ -88,7 +88,7 @@ def make_video(rundir, chosen, projection):
     gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
     TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
 
-    toyclusterparms = parse_toycluster_parms(rundir+"ICs/toycluster.par")
+    toyclusterparms = parse_toycluster_parms(rundir+"ICs/ic_both_fixed.par")
     particles = toyclusterparms['Ntotal']
 
     if particles > 2e6:
@@ -128,6 +128,7 @@ def make_video(rundir, chosen, projection):
     for n in range(number_of_snapshots):
         # Set up four-panel plot, stitched together
         pyplot.figure(figsize=(16,16))
+        pyplot.style.use(["dark_background"])
         gs1 = gridspec.GridSpec(2, 2)
         gs1.update(wspace=0, hspace=0) # remove spacing between axes.
 
@@ -148,20 +149,19 @@ def make_video(rundir, chosen, projection):
                 ax.imshow(numpy.sqrt(data[i][n]), cmap=cmap[i])
             # Tile text: name of physical property
             pyplot.text(pad if i%2==0 else xlen-pad, pad,
-                        names[i], color="white", size=22,
+                        names[i], color="white", size=33,
                         horizontalalignment="left" if i%2==0 else "right",
                         verticalalignment="top")
         # Image scale (lives in lower right corner of tile 3)
-        pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=22,
+        pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=33,
                     horizontalalignment="right", verticalalignment="bottom")
 
         # pyplot.suptitle("T = {0:05.2f} Myr".format(0.05*n),
         pyplot.suptitle("T = {0:04.2f} Gyr".format(TimeBetSnapshot*n),
-            color="white", size=30)
+            color="white", size=42, y=0.95)
         pyplot.tight_layout()
         pyplot.savefig(rundir+"out/snapshot{0}_{1:03d}.png".format(projection, n))
         pyplot.close()
-        # import sys; sys.exit(0)
 
         print_progressbar(n, number_of_snapshots)
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
                8: "xray-surface-brightness",
                }
 
-    timestamp = "20160617T1544"
+    timestamp = "20160704T1337"
     projection = "z"
     chosen = (options[0], options[7], options[8], options[4])  # 0784
     rundir = "../runs/{0}/".format(timestamp)

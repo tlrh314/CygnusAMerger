@@ -36,7 +36,7 @@ if __name__ == "__main__":
     print "Parsing Toycluster output: double cluster (Xm != 0)"
     print 80*'-'
 
-    myRun="20160704T1337"
+    myRun="20160704T2243"
     snapnr = "000-ICOnly"
 
     outdir="../runs/{0}/out/".format(myRun)

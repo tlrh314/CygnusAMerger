@@ -10,7 +10,7 @@ cd "../runs/${TIMESTAMP}/out"
 # -r 5                  framerate
 # -i snapshot_%3d.png   name of input files /w 3 digits (e.g. 000, 001, 002)
 
-FPS=25
+FPS=8
 
 nice -n 19 ffmpeg -y -r $FPS -i snapshot_projection-${PROJECTION}_%3d.png \
     -profile:v high444 -level 4.1 -c:v libx264 -preset slow -crf 25 -s '2000:2000' \

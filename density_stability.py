@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160704T1335"
+    myRun = "20160704T2243"
     if IC_only:
         # TODO: there is something different in the Toycluster rho
         # than in the Gadget output :(

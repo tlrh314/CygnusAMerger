@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use("Qt4Agg")
 matplotlib.rc("text", usetex=True)
 from matplotlib import pyplot
-pyplot.rcParams.update({"font.size": 33})
+pyplot.rcParams.update({"font.size": 42})
 pyplot.rcParams.update({"xtick.major.size": 8})
 pyplot.rcParams.update({"xtick.minor.size": 4})
 pyplot.rcParams.update({"ytick.major.size": 8})
@@ -19,10 +19,10 @@ pyplot.rcParams.update({"xtick.major.width": 4})
 pyplot.rcParams.update({"xtick.minor.width": 2})
 pyplot.rcParams.update({"ytick.major.width": 4})
 pyplot.rcParams.update({"ytick.minor.width": 2})
-pyplot.rcParams.update({"xtick.major.pad": 8})
-pyplot.rcParams.update({"xtick.minor.pad": 8})
-pyplot.rcParams.update({"ytick.major.pad": 8})
-pyplot.rcParams.update({"ytick.minor.pad": 8})
+pyplot.rcParams.update({"xtick.major.pad": 16})
+pyplot.rcParams.update({"xtick.minor.pad": 16})
+pyplot.rcParams.update({"ytick.major.pad": 16})
+pyplot.rcParams.update({"ytick.minor.pad": 16})
 pyplot.rcParams.update({"legend.loc": "best"})
 pyplot.rcParams.update({"figure.autolayout": True})
 
@@ -149,7 +149,7 @@ def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.],
     # Fit to data
     if observed.name == "cygA":
         if len(parm) == 2:
-            bounds = [(None, None), (5, 50)]
+            bounds = [(0.091, 0.09162), (26.0160, 26.0162)]
         elif len(parm) == 3 and not free_beta:
             bounds = [(None, None), (None, None), (1700, 1900)]
         elif len(parm) == 3 and free_beta:
@@ -215,20 +215,29 @@ def obtain_mles(observed, result, free_beta=False):
     print "    chisq/dof   = {0:.5f}".format(ml_func/dof)
     print "    p-value     = {0:.5f}".format(pval)
 
+    if observed.name == "cygA" and model==0:
+        bounds = [(0.091, 0.09162), (26.0160, 26.0162)]
+        method = "trf"
+    else:
+        bounds = (0, [numpy.inf for i in range(len(ml_vals))])
+        method = "lm"
+
     if not free_beta:
         ml_vals, ml_covar = scipy.optimize.curve_fit(
                 Gas_density_profile_wrapper,
                 observed.radius, observed.number_density, p0=ml_vals,
-                sigma=observed.number_density_std,)
+                sigma=observed.number_density_std, bounds=bounds)
         # ml_funcval = stat(ml_vals, edges, dens, err, model)
     else:
         ml_vals, ml_covar = scipy.optimize.curve_fit(
-                lambda r, parm0, parm1, parm2: Gas_density_profile_wrapper(r, parm0, parm1, parm2, free_beta=free_beta),
+                lambda r, parm0, parm1, parm2: Gas_density_profile_wrapper(
+                    r, parm0, parm1, parm2, free_beta=free_beta),
                 observed.radius, observed.number_density, p0=ml_vals,
-                sigma=observed.number_density_std,)
+                sigma=observed.number_density_std, bounds=bounds)
 
     if not result["success"]:
-        print "  scipy.optimize.curve_fit broke down!\n    Reason: '{0}'".format(result["message"])
+        print "  scipy.optimize.curve_fit broke down!\n    Reason: '{0}'"\
+            .format(result["message"])
         print "  No confidence intervals have been calculated."
 
     err = numpy.sqrt(numpy.diag(ml_covar))
@@ -295,6 +304,19 @@ def plot_fit_results(observed, analytical, numerical=None,
     if analytical.rho0_cc is not None:
         label += "\n\t"+r"$n_{{e,0,cc}}$ = {0:.2f} cm$^{{-3}}$".format(analytical.ne0_cc.number) if not mass_density else "\n\t"+r"$\rho_{{0,cc}}$ = {0:.2f} kpc".format(analytical.rho0_cc.number)
         label += "\n\t"+r"$r_{{c,cc}}$ = {0:.2f} kpc".format(analytical.rc_cc.number)
+
+    label = r"\begin{tabular}{lll}"
+    if analytical.free_beta:
+        label += " Model & = & free beta \\\\"
+    else:
+        label += " Model & = & fixed beta \\\\"
+    label += " rho0 & = & {0:.2e} g/cm$**$3 \\\\".format(analytical.rho0.number)
+    label += " rc & = & {0:.2f} kpc \\\\".format(analytical.rc.number)
+    if analytical.free_beta:
+        label += " beta & = & {0:.3f} kpc \\\\".format(analytical.beta)
+    label += (" \end{tabular}")
+
+
     amuse_plot.plot(analytical.radius, analytical_density,
             c=fit_colour, lw=3 if poster_style else 1, label=label)
 
@@ -306,10 +328,10 @@ def plot_fit_results(observed, analytical, numerical=None,
     ax.set_xscale("log")
     ax.set_yscale("log")
     if mass_density:
-        ax.set_ylabel(r"Gas density [g cm$^{-3}$]", fontsize=33)
+        ax.set_ylabel(r"Gas density [g/cm$**$3]", fontsize=38)
         ax.set_ylim(min(observed_density)/1.5, max(observed_density)*1.3)
     else:
-        ax.set_ylabel(r"Gas density [cm$^{-3}$]", fontsize=33)
+        ax.set_ylabel(r"Gas density [1/cm$**$3]", fontsize=38)
     ax.legend(loc=3, prop={'size':30})
 
     # Plot Residuals
@@ -328,7 +350,10 @@ def plot_fit_results(observed, analytical, numerical=None,
     ax_r.set_xlim(min(observed.radius)-0.3, max(observed.radius)+2000)
 
     # Show 50% deviations from the data
-    ax_r.set_ylim(-50, 50)
+    if not analytical.free_beta and observed.name=="cygA":
+        ax_r.set_ylim(-20, 100)
+    else:
+        ax_r.set_ylim(-50, 50)
 
     # Fix for overlapping y-axis markers
     from matplotlib.ticker import MaxNLocator
@@ -336,8 +361,8 @@ def plot_fit_results(observed, analytical, numerical=None,
     nbins = len(ax_r.get_yticklabels())
     ax_r.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
 
-    ax_r.set_xlabel(r"Radius [kpc]", fontsize=33)
-    ax_r.set_ylabel(r"Residuals [\%]", fontsize=33)
+    ax_r.set_xlabel(r"Radius [kpc]", fontsize=38)
+    ax_r.set_ylabel(r"Residuals [\%]", fontsize=38)
 
     ax.axvline(x=analytical.rc.value_in(units.kpc),
                lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
@@ -345,8 +370,8 @@ def plot_fit_results(observed, analytical, numerical=None,
                  lw=3 if poster_style else 1, ls="dashed", c=fit_colour)
 
     # Force axis labels to align
-    ax.get_yaxis().set_label_coords(-0.1,0.5)
-    ax_r.get_yaxis().set_label_coords(-0.1,0.5)
+    ax.get_yaxis().set_label_coords(-0.15, 0.5)
+    ax_r.get_yaxis().set_label_coords(-0.15, 0.5)
 
     if save and not analytical.free_beta:
         pyplot.savefig("out/density_betamodel_fit_{0}{1}{2}.png"\
@@ -664,12 +689,13 @@ if __name__ == "__main__":
 
         discard_lastbins = False
         if discard_lastbins:
-            cygA_observed.radius = cygA_observed.radius[:-40]
-            cygA_observed.binsize = cygA_observed.binsize[:-40]
-            cygA_observed.density= cygA_observed.density[:-40]
-            cygA_observed.density_std = cygA_observed.density_std[:-40]
-            cygA_observed.number_density = cygA_observed.number_density[:-40]
-            cygA_observed.number_density_std = cygA_observed.number_density_std[:-40]
+            cut = 40
+            cygA_observed.radius = cygA_observed.radius[:-cut]
+            cygA_observed.binsize = cygA_observed.binsize[:-cut]
+            cygA_observed.density= cygA_observed.density[:-cut]
+            cygA_observed.density_std = cygA_observed.density_std[:-cut]
+            cygA_observed.number_density = cygA_observed.number_density[:-cut]
+            cygA_observed.number_density_std = cygA_observed.number_density_std[:-cut]
 
         # Cut-off single beta (2/3)
         cygA_fit, cygA_ml_vals, cygA_ml_covar = \

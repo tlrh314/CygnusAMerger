@@ -1001,10 +1001,12 @@ if __name__ == "__main__":
                     print "old\n", old, "\nnew\n", new
                 # raw_input("Press enter to continue\n")
                 print "\n"
+        print 80*'-'
 
+    compare_clusters = True
+    if compare_clusters:
         # print cygA_observed_800ksec
         # print cygA_observed_900ksec
-        print 80*'-'
         print "Generating plots for comparison of attributes"
         print 80*'-'
         for property in ["bin_volume", "density", "number_density", "pressure",
@@ -1016,7 +1018,7 @@ if __name__ == "__main__":
         print "Done generating plots for comparison of attributes"
         print 80*'-'
 
-    if debug and False:
+    if debug:
         print "Debug information after parsing Martijn's Chandra observation data"
         print 80*"-"
         print cygA_observed_900ksec
@@ -1030,15 +1032,17 @@ if __name__ == "__main__":
             simple_plot(cygB_observed_900ksec, property)
         print 80*"-"
 
-    print "Reading Toycluster Run without WVT relax"
-    print 80*'-'
-    numerical_cluster = NumericalCluster(
-        icdir="../runs/20160623T1755/ICs/",
-        snapdir="../runs/20160623T1755/ICs/",
-        logfile="runToycluster.log",
-        icfile="IC_single_0")
-    numerical_cluster.perform_sanity_checks()
-    print numerical_cluster.gas.u
-    print 80*'-'
+    numerical_sanity_check = False
+    if numerical_sanity_check:
+        print "Reading Toycluster Run without WVT relax"
+        print 80*'-'
+        numerical_cluster = NumericalCluster(
+            icdir="../runs/20160623T1755/ICs/",
+            snapdir="../runs/20160623T1755/ICs/",
+            logfile="runToycluster.log",
+            icfile="IC_single_0")
+        numerical_cluster.perform_sanity_checks()
+        print numerical_cluster.gas.u
+        print 80*'-'
 
     pyplot.show()
