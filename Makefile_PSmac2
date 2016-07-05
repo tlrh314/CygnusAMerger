@@ -72,25 +72,25 @@ ifeq ($(SYSTYPE),taurus)
 endif
 
 
-ifeq ($(SYSTYPE),*.lisa.surfsara.nl)
-	# Make sure env variables are set. They should contain the lib and include paths
-	ifndef SARA_INCLUDE_PATH
-		$(error SARA_INCLUDE_PATH not set.)
-	endif
-	ifndef SARA_LIBRARY_PATH
-		$(error SARA_LIBRARY_PATH not set.)
-	endif
+ifeq (lisa.surfsara.nl, $(findstring lisa.surfsara.nl, $(SYSTYPE)))
+# Make sure env variables are set. They should contain the lib and include paths
+ifndef SARA_INCLUDE_PATH
+$(error SARA_INCLUDE_PATH not set.)
+endif
+ifndef SARA_LIBRARY_PATH
+$(error SARA_LIBRARY_PATH not set.)
+endif
 
-	CC           = mpicc
-	OPTIMIZE     = -Wall -g -O3
-	MPI_INCL     = -I$(SARA_INCLUDE_PATH)
-	MPI_LIBS     = -L$(SARA_LIBRARY_PATH)
-	GSL_INCL     = -I$(SARA_INCLUDE_PATH)
-	GSL_LIBS     = -L$(SARA_LIBRARY_PATH)
-	CFITSIO_INCL = -I/home/timoh/prerequisites-10.0/include
-	CFITSIO_LIBS = -L/home/timoh/prerequisites-10.0/lib
-	HDF5INCL     = -I$(SARA_INCLUDE_PATH)
-	HDF5LIB      = -L$(SARA_LIBRARY_PATH) -lhdf5 -lz -lsz
+CC           = mpicc
+OPTIMIZE     = -Wall -g -O3
+MPI_INCL     = -I$(SARA_INCLUDE_PATH)
+MPI_LIBS     = -L$(SARA_LIBRARY_PATH)
+GSL_INCL     = -I$(SARA_INCLUDE_PATH)
+GSL_LIBS     = -L$(SARA_LIBRARY_PATH)
+CFITSIO_INCL = -I/home/timoh/MyCfitsIO/include
+CFITSIO_LIBS = -L/home/timoh/MyCfitsIO/lib
+HDF5INCL     = -I$(SARA_INCLUDE_PATH)
+HDF5LIB      = -L$(SARA_LIBRARY_PATH) -lhdf5 -lz -lsz
 endif
 
 

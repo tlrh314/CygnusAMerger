@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -lnodes=1:ppn=16:cores16
-#PBS -l walltime=06:00:00
+#PBS -l walltime=08:00:00
 
 # File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
@@ -159,7 +159,9 @@ setup_system() {
         THREADS=16 # set based on the nr of nodes requested
         NICE=0  # default is 0
         BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
-        #TIMESTAMP=""  # qsub no parse options..
+        TIMESTAMP="20160704T1337"  # qsub no parse options..
+        RUNSMAC=true
+        EFFECT="all"
         MAIL=true
         # TODO: I think home should not be used, instead use scratch??
         module load c/intel
@@ -214,8 +216,8 @@ setup_toycluster() {
 
     # If TIMESTAMP is not given we assume no initial conditions exist!
     if [ -z $TIMESTAMP ]; then
-        #TIMESTAMP=$(date +"%Y%m%dT%H%M")
-        TIMESTAMP="20160704T1335"
+        TIMESTAMP=$(date +"%Y%m%dT%H%M")
+        # TIMESTAMP="20160704T1335"
         echo "No timestamp  --> generating new ICs"
         echo "Timestamp       : ${TIMESTAMP}"
 
@@ -248,7 +250,7 @@ setup_toycluster() {
         TOYCLUSTERMAKEFILE="${ICOUTDIR}/Makefile_Toycluster"
         TOYCLUSTEREXECNAME=$(grep "EXEC =" "${TOYCLUSTERMAKEFILE}" | cut -d' ' -f3)
         TOYCLUSTEREXEC="${ICOUTDIR}/${TOYCLUSTEREXECNAME}"
-        TOYCLUSTERPARAMETERS="${ICOUTDIR}/{$MODEL_TO_USE}"
+        TOYCLUSTERPARAMETERS="${ICOUTDIR}/${MODEL_TO_USE}"
         TOYCLUSTERLOGFILE="${ICOUTDIR}/${TOYCLUSTERLOGFILENAME}"
         ICFILENAME=$(grep "Output_file" "${TOYCLUSTERPARAMETERS}" | cut -d' ' -f2)
         ICFILE="${ICOUTDIR}/${ICFILENAME:2}"
@@ -274,7 +276,7 @@ setup_toycluster() {
 set_toycluster_compile_files() {
     TOYCLUSTERMAKEFILE_GIT="${GITHUBDIR}/Makefile_Toycluster"
     if [ ! -f "${TOYCLUSTERMAKEFILE_GIT}" ]; then
-        echo "Error: ${TOYCLUSTERMAKEFILE_GIT} does not exist!"
+        echo "Error: TOYCLUSTERMAKEFILE_GIT does not exist!"
         exit 1
     fi
     cp "${TOYCLUSTERMAKEFILE_GIT}" "${TOYCLUSTERDIR}/Makefile"
@@ -301,7 +303,7 @@ set_toycluster_runtime_files() {
 
     TOYCLUSTERPARAMETERS_GIT="${GITHUBDIR}/${MODEL_TO_USE}"
     if [ ! -f "${TOYCLUSTERPARAMETERS_GIT}" ]; then
-        echo "Error: ${TOYCLUSTERPARAMETERS_GIT} does not exist!"
+        echo "Error: TOYCLUSTERPARAMETERS_GIT does not exist!"
         exit 1
     fi
     cp "${TOYCLUSTERPARAMETERS_GIT}" "${ICOUTDIR}"
@@ -327,31 +329,31 @@ run_toycluster() {
 check_toycluster_run() {
     # TODO: not all of these parameters exists. If they dont exist they cant be printed :-)...
     if [ ! -d "${SIMULATIONDIR}" ]; then
-        echo "Error: ${SIMULATIONDIR} does not exist!"
+        echo "Error: SIMULATIONDIR does not exist!"
         exit 1
     fi
     if [ ! -d "${ICOUTDIR}" ]; then
-        echo "Error: ${ICOUTDIR} does not exist!"
+        echo "Error: ICOUTDIR does not exist!"
         exit 1
     fi
     if [ ! -f "${TOYCLUSTERMAKEFILE}" ]; then
-        echo "Error: ${TOYCLUSTERMAKEFILE} does not exist!"
+        echo "Error: TOYCLUSTERMAKEFILE does not exist!"
         exit 1
     fi
     if [ ! -f "${TOYCLUSTEREXEC}" ]; then
-        echo "Error: ${TOYCLUSTEREXEC} does not exist!"
+        echo "Error: TOYCLUSTEREXE} does not exist!"
         exit 1
     fi
     if [ ! -f "${TOYCLUSTERPARAMETERS}" ]; then
-        echo "Error: ${TOYCLUSTERPARAMETERS} does not exist!"
+        echo "Error: TOYCLUSTERPARAMETERS does not exist!"
         exit 1
     fi
     if [ ! -f "${TOYCLUSTERLOGFILE}" ]; then
-        echo "Error: ${TOYCLUSTERLOGFILE} does not exist!"
+        echo "Error: TOYCLUSTERLOGFILE does not exist!"
         exit 1
     fi
     if [ ! -f "${ICFILE}" ]; then
-        echo "Error: ${ICFILE} does not exist!"
+        echo "Error: ICFILE does not exist!"
         exit 1
     fi
 }
@@ -554,9 +556,10 @@ check_gadget_run() {
 }
 
 setup_psmac2() {
-    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
-        return
-    fi
+    # if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+    #     echo "If running on Lisa: we terminate run"
+    #     echo "P-Smac Makefile is not configured for Lisa..."
+    # fi
     PSMAC2DIR="${BASEDIR}/P-Smac2"
     PSMAC2LOGFILENAME="runPSmac2.log"
 
@@ -621,6 +624,7 @@ compile_psmac2() {
     cd "${PSMAC2DIR}"
 
     # Compile the code
+    make help
     nice -n $NICE make clean
     nice -n $NICE make
 
@@ -641,23 +645,23 @@ set_psmac2_generic_runtime_files() {
 
 check_psmac2_generic_runtime_files() {
     if [ ! -d "${SIMULATIONDIR}" ]; then
-        echo "Error: ${SIMULATIONDIR} does not exist!"
+        echo "Error: SIMULATIONDIR does not exist!"
         exit 1
     fi
     if [ ! -d "${ANALYSISDIR}" ]; then
-        echo "Error: ${ANALYSISDIR} does not exist!"
+        echo "Error: ANALYSISDIR does not exist!"
         exit 1
     fi
     if [ ! -f "${PSMAC2MAKEFILE}" ]; then
-        echo "Error: ${PSMAC2MAKEFILE} does not exist!"
+        echo "Error: PSMAC2MAKEFILE does not exist!"
         exit 1
     fi
     if [ ! -f "${PSMAC2CONFIG}" ]; then
-        echo "Error: ${PSMAC2CONFIG} does not exist!"
+        echo "Error: PSMAC2CONFIG does not exist!"
         exit 1
     fi
     if [ ! -f "${PSMAC2PARAMETERS}" ]; then
-        echo "Error: ${PSMAC2PARAMETERS} does not exist!"
+        echo "Error: PSMAC2PARAMETERS does not exist!"
         exit 1
     fi
 }
@@ -781,16 +785,17 @@ run_psmac2_for_given_module() {
         echo
 
         if [ ! -f "${PSMAC2PARAMETERS}" ]; then
-            echo "Error: ${PSMAC2PARAMETERS} does not exist!"
+            echo "Error: PSMAC2PARAMETERS does not exist!"
             exit 1
         fi
 
         echo "    Running P-Smac2..."
         cd "${ANALYSISDIR}"
         SECONDS=0
+
         if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
             # the pee-bee-es situation fixes nodes/threads?
-            mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
+            mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
         elif [ "${SYSTYPE}" == "taurus" ]; then
             OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1 
         elif [ "${SYSTYPE}" == "MBP" ]; then
@@ -819,9 +824,9 @@ fi
 
 echo -e "\nStart of program at $(date)\n"
 
-MODEL_TO_USE="ic_cyga_fixed.par"
+#MODEL_TO_USE="ic_cyga_fixed.par"
 #MODEL_TO_USE="ic_cygb_fixed.par"
-#MODEL_TO_USE="ic_both_fixed.par"
+MODEL_TO_USE="ic_both_fixed.par"
 #Cannot run free beta model
 #MODEL_TO_USE="ic_cyga_free.par"
 #MODEL_TO_USE="ic_cygb_free.par"
@@ -922,11 +927,11 @@ case "${EFFECT}" in
         echo "Running P-Smac2 for Sunyaev-Sel'dovic effect: Thermal, DT/T"
         run_psmac2_for_given_module "sz-thermal-dt-over-t" "7" "1"
 
-        #echo "Running P-Smac2 for Dark Matter density."
-        #run_psmac2_for_given_module "dm-density" "10" "0"
+        echo "Running P-Smac2 for Dark Matter density."
+        run_psmac2_for_given_module "dm-density" "10" "0"
 
-        #echo "Running P-Smac2 for Dark Matter Annihilation."
-        #run_psmac2_for_given_module "dm-annihilation" "11" "0"
+        echo "Running P-Smac2 for Dark Matter Annihilation."
+        run_psmac2_for_given_module "dm-annihilation" "11" "0"
 esac
 
 if [ "$MAIL" = true ]; then
