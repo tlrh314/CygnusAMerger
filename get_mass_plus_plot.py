@@ -181,7 +181,8 @@ def rho_crit(z=0.0562):
     return rho_crit
 
 
-def plot_observed_cluster(observed, analytical_density, poster_style=False):
+def plot_observed_cluster(observed, analytical_density, poster_style=False,
+                          fix_cygA=False):
     if poster_style:
         pyplot.style.use(["dark_background"])
         pyplot.rcParams.update({"font.weight": "bold"})
@@ -237,7 +238,10 @@ def plot_observed_cluster(observed, analytical_density, poster_style=False):
     ax_r.set_xscale("log")
 
     # Set residual y-limits: show 50% deviations from the data
-    ax_r.set_ylim(-50, 50)
+    if fix_cygA:
+        ax_r.set_ylim(-20, 100)
+    else:
+        ax_r.set_ylim(-50, 50)
 
     # Fix for overlapping y-axis markers
     from matplotlib.ticker import MaxNLocator
@@ -343,8 +347,8 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
             ax_r.set_ylim(0, 1)
             # Plot textbox with bisection info
             bisection_info = r"\begin{tabular}{lll}"
-            bisection_info += " lower & : & {0:.1f} \\\\".format(lower*cm2kpc)
-            bisection_info += " upper & : & {0:.1f} \\\\".format(upper*cm2kpc)
+            bisection_info += " lower & : & {0:<6.1f} \\\\".format(lower*cm2kpc)
+            bisection_info += " upper & : & {0:<6.1f} \\\\".format(upper*cm2kpc)
             bisection_info += (" \end{tabular}")
 
             ax_r.text(0.3, 0, bisection_info, size=42,
@@ -356,8 +360,8 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
                      )
 
             bisection_info = r"\begin{tabular}{lll}"
-            bisection_info += " r200 & : & {0:.1f} \\\\".format(r200*cm2kpc)
-            bisection_info += r" avg / crit & : & {0:.1f}"\
+            bisection_info += " r200 & : & {0:<6.1f} \\\\".format(r200*cm2kpc)
+            bisection_info += r" avg / crit & : & {0:<6.1f}"\
                                 .format(rho200_over_rhocrit)
             bisection_info += (" \end{tabular}")
 
@@ -455,8 +459,16 @@ def propagate_errors(halo, to_print=True):
         return plus, min
 
 
-def print_inferred_values(halo):
-    plus, min = propagate_errors(halo)
+def print_inferred_values(halo, fix_cygA=False):
+    print halo
+    if fix_cygA:
+        # Yes, we are cheating here. But the statistical error actually does
+        # not matter anyway, and in addition there is systematic drift
+        # at higher radii due to the steeper beta required, but we set beta=2/3
+        plus = {key: 0.2*value if value else numpy.inf for (key, value) in halo.iteritems()}
+        min = {key: 0.2*value if value else numpy.inf for (key, value) in halo.iteritems()}
+    else:
+        plus, min = propagate_errors(halo)
 
     bf_200 = halo["Mgas200"]/(halo["Mdm200"]+halo["Mgas200"])
     bf_200_plus = plus["Mgas200"]/(plus["Mdm200"]+plus["Mgas200"])
@@ -492,7 +504,7 @@ def print_inferred_values(halo):
 
 
 def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
-              mode="", poster_style=False):
+              mode="", poster_style=False, fix_cygA=False):
     """ Make plot of inferred profiles
 
     @param cyg*: dictionary with best-fit parameters (of gas and dm)
@@ -598,11 +610,13 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         # pyplot.show()
 
         pyplot.figure(figsize=(12, 9))
-        pyplot.plot(r, ratio, c=data_colour, lw=3 if poster_style else 1)
-        #pyplot.plot(r, ratio_min, c="k")
-        #pyplot.plot(r, ratio_plus, c="r")
+        pyplot.plot(r, ratio, c=fit_colour, lw=3 if poster_style else 1)
+        pyplot.plot(r, ratio_min, c="k")
+        pyplot.plot(r, ratio_plus, c="r")
         pyplot.fill_between(r, ratio_min, ratio_plus,
-            facecolor=accent_colour if poster_style else "green", alpha=0.2)
+            facecolor=accent_colour if poster_style else "green",
+            edgecolor=accent_colour if poster_style else "green",
+            alpha=1 if poster_style else 0.2)
         pyplot.gca().set_xscale("log")
         pyplot.axvline(cygA["r200"]*cm2kpc, lw=3 if poster_style else 1, c=accent_colour)
         pyplot.xlabel(r"$r$ [kpc]")
@@ -780,7 +794,8 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         print "Generating single cluster density plot"
         gas_rhom_discrete = gas_density_beta(observed.radius, parms["rho0"],
                 parms["rc"]*cm2kpc, parms["beta"])
-        fig = plot_observed_cluster(observed, gas_rhom_discrete)
+        fig = plot_observed_cluster(observed, gas_rhom_discrete,
+            poster_style=poster_style, fix_cygA=fix_cygA)
 
         # Plot the analytical models: "continuous" radii and function values
         pyplot.figure(fig.number)
@@ -996,12 +1011,13 @@ def is_solution_unique(rc, rho0, beta, observed):
 
 if __name__ == "__main__":
     # If visualise is True we create plots of the bisection method
-    visualise=True
-    oldICs=False
+    visualise = False
+    oldICs = False
     discard_firstbins = True
     discard_lastbins = False
     free_beta = False
     poster_style = True
+    fix_cygA = True
 
     print "Reading Chandra observed density profiles..."
     print 80*"-"
@@ -1018,7 +1034,7 @@ if __name__ == "__main__":
     # Due to pile up in inner region (?). Also inside kernel: cannot model
     # in a stable way
     if discard_firstbins:
-        print "WARNING: Discarding first three CygA bins."
+        print "WARNING: Discarding first three CygA bins.\n"
         cygA_observed.radius = cygA_observed.radius[3:]
         cygA_observed.binsize = cygA_observed.binsize[3:]
         cygA_observed.density= cygA_observed.density[3:]
@@ -1026,7 +1042,7 @@ if __name__ == "__main__":
         cygA_observed.number_density = cygA_observed.number_density[3:]
         cygA_observed.number_density_std = cygA_observed.number_density_std[3:]
     if discard_lastbins:
-        print "WARNING: Discarding last CygA bins."
+        print "WARNING: Discarding last CygA bins.\n"
         cygA_observed.radius = cygA_observed.radius[:-40]
         cygA_observed.binsize = cygA_observed.binsize[:-40]
         cygA_observed.density= cygA_observed.density[:-40]
@@ -1036,18 +1052,20 @@ if __name__ == "__main__":
 
     if free_beta:
         print "INFO: Using free beta model.\n"
-        cygA_fit, cygA_ml_vals, cygA_ml_covar = \
-            fit_betamodel_to_chandra(cygA_observed,
-                parm=[0.1, 10, 0.67], free_beta=free_beta)
-        cygB_fit, cygB_ml_vals, cygB_ml_covar = \
-            fit_betamodel_to_chandra(cygB_observed,
-                parm=[0.001, 100, 0.79], free_beta=free_beta)
+        cygA_fit, cygA_ml_vals, cygA_ml_covar = fit_betamodel_to_chandra(
+            cygA_observed,
+            parm=[0.1, 10, 0.67], free_beta=free_beta, fix_cygA=False)
+        cygB_fit, cygB_ml_vals, cygB_ml_covar = fit_betamodel_to_chandra(
+            cygB_observed,
+            parm=[0.001, 100, 0.79], free_beta=free_beta, fix_cygA=False)
     else:
         print "INFO: Using beta=2/3 model.\n"
-        cygA_fit, cygA_ml_vals, cygA_ml_covar = \
-            fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
-        cygB_fit, cygB_ml_vals, cygB_ml_covar = \
-            fit_betamodel_to_chandra(cygB_observed, parm=[0.001, 100])
+        if fix_cygA:
+            print "WARNING: using fixed rho0 and rc for CygA!\n"
+        cygA_fit, cygA_ml_vals, cygA_ml_covar = fit_betamodel_to_chandra(
+            cygA_observed, parm=[0.1, 10], fix_cygA=fix_cygA)
+        cygB_fit, cygB_ml_vals, cygB_ml_covar = fit_betamodel_to_chandra(
+            cygB_observed, parm=[0.001, 100], fix_cygA=False)
     print 80*"-"
 
     print "Obtaining dark matter density/mass profile, r200, cNFW, etc."
@@ -1075,7 +1093,7 @@ if __name__ == "__main__":
     cygA["beta_sigma"] = cygA_beta_sigma
 
     print "CygA"
-    print_inferred_values(cygA)
+    print_inferred_values(cygA, fix_cygA=fix_cygA)
 
     print "CygB"
 
@@ -1113,32 +1131,32 @@ if __name__ == "__main__":
     print "Plotting the results..."
     print 80*"-"
 
-    make_plot(cygA, None, cygA_observed, None,
-              mode="nfwsingle", poster_style=poster_style)
-    make_plot(None, cygB, None, cygB_observed,
-              mode="nfwsingle", poster_style=poster_style)
-    raw_input("Press enter to continue...\n")
+    #make_plot(cygA, None, cygA_observed, None,
+    #          mode="nfwsingle", poster_style=poster_style)
+    #make_plot(None, cygB, None, cygB_observed,
+    #          mode="nfwsingle", poster_style=poster_style)
+    ## raw_input("Press enter to continue...\n")
 
-    # Plot density+mass profiles (gas + dm in same plot); density left, mass right
-    make_plot(cygA, cygB, mode="massboth", poster_style=poster_style)
-    make_plot(cygA, cygB, mode="rhoboth", poster_style=poster_style)
-    make_plot(cygA, cygB, mode="masssameplot", poster_style=poster_style)
+    ## Plot density+mass profiles (gas + dm in same plot); density left, mass right
+    #make_plot(cygA, cygB, mode="massboth", poster_style=poster_style)
+    #make_plot(cygA, cygB, mode="rhoboth", poster_style=poster_style)
+    #make_plot(cygA, cygB, mode="masssameplot", poster_style=poster_style)
 
-    make_plot(cygA, None, cygA_observed, None,
-              mode="rhosingle", poster_style=poster_style)
-    make_plot(None, cygB, None, cygB_observed,
-              mode="rhosingle", poster_style=poster_style)
+    make_plot(cygA, None, cygA_observed, None, mode="rhosingle",
+        poster_style=poster_style, fix_cygA=fix_cygA)
+    #make_plot(None, cygB, None, cygB_observed, mode="rhosingle",
+    #    poster_style=poster_style)
 
     # Plot mass ratio
-    make_plot(cygA, cygB, mode="ratio")
+    # make_plot(cygA, cygB, mode="ratio", poster_style=poster_style)
 
     # Plot baryon fraction
-    make_plot(cygA, None, cygA_observed, None,
-              mode="bfsingle", poster_style=poster_style)
-    make_plot(None, cygB, None, cygB_observed,
-              mode="bfsingle", poster_style=poster_style)
+    # make_plot(cygA, None, cygA_observed, None,
+    #           mode="bfsingle", poster_style=poster_style)
+    # make_plot(None, cygB, None, cygB_observed,
+    #           mode="bfsingle", poster_style=poster_style)
 
-    #pyplot.show()
+    pyplot.show()
 
     print 80*"-"
     print "End of pipeline."

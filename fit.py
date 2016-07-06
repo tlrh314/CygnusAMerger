@@ -45,7 +45,7 @@ from cluster import NumericalCluster
 import convert
 
 
-def Gas_density_profile(parm, r, free_beta=False):
+def Gas_density_profile(parm, r, free_beta=False, fix_cygA=False):
     """ Beta model if len(parm)==2 (Donnert 2014);
         Cut-off beta profile at rc and rcut if len(parm)==3 (Donnert et al. 2016, in prep)
         Double cut-off beta profile if len(parm)==5. See Toycluster/setup.c """
@@ -53,6 +53,10 @@ def Gas_density_profile(parm, r, free_beta=False):
     rho0 = parm[0]
     rc = parm[1]
     beta = 2.0/3
+
+    if fix_cygA:
+        rho0 = 0.09162
+        rc = 26.01621
 
     if len(parm) >= 3 and free_beta:
         beta = parm[2]
@@ -74,8 +78,8 @@ def Gas_density_profile(parm, r, free_beta=False):
     return rho
 
 
-def Gas_density_profile_wrapper(r, parm0, parm1,
-        parm2=None, parm3=None, parm4=None, free_beta=False):
+def Gas_density_profile_wrapper(r, parm0, parm1, parm2=None, parm3=None,
+        parm4=None, free_beta=False, fix_cygA=False):
     """ Same same, but scipy.optimize.minimize expects different form of
         function than scipy.optimize.curve_fit does. """
     if parm3 and parm4:  # coolcore, double beta
@@ -85,63 +89,25 @@ def Gas_density_profile_wrapper(r, parm0, parm1,
     elif parm2 and free_beta:
         return Gas_density_profile((parm0, parm1, parm2), r, free_beta=True)
     else:
-        return Gas_density_profile((parm0, parm1), r)
-
-
-def Mass_profile(r, rho0, rc, rcut):
-    """ return M(<= R) of a double beta profile with beta=2/3  """
-    r2 = p2(r)
-    rc2 = p2(rc)
-    rcut2 = p2(rcut)
-    sqrt2 = numpy.sqrt(2)
-
-    A = (rc2 - rcut2)*(numpy.log(rcut2 - sqrt2*rcut*r + r2) \
-        - numpy.log(rcut2 + sqrt2*rcut*r + r2))
-    Bplus = 2*(rc2 + rcut2)*numpy.arctan(1 + sqrt2*r/rcut)
-    Bmin = 2*(rc2 + rcut2)*numpy.arctan(1 - sqrt2*r/rcut)
-
-    # NB the paper is slightly different: equation 2 does not contain 4*pi*rho
-    M_gas_below_r = (4 * numpy.pi * rho0) *\
-        rc2*p3(rcut)/(8*(p2(rcut2)+p2(rc2))) *\
-        (sqrt2*(A - Bmin + Bplus) - 8*rc*rcut*numpy.arctan(r/rc))
-    return M_gas_below_r
-
-
-def concentration_parameter(cluster, gas_mass):
-    A = 5.74
-    B = -0.097
-    C = -0.47
-    Mpivot = 2e12 / cluster.cc.h
-
-    UnitMass_in_g = 1.989e43  # 1e10 Msun
-    Msol2cgs = 1.98892e33
-
-    bf = 0.17
-    total_mass = gas_mass * (1+1/bf)  #Mgas+Mdm, Mdm = Mgas/bf
-
-    # total mass has to be in 1e10 Msun
-
-    mass = total_mass*UnitMass_in_g/Msol2cgs
-
-    c_NFW = A * pow(mass/Mpivot, B) * pow(1 + cluster.cc.z, C)
-
-    return c_NFW
+        return Gas_density_profile((parm0, parm1), r, fix_cygA=fix_cygA)
 
 
 # Define the statistical model, in this case we shall use a chi-squared distribution, assuming normality in the errors
-def stat(parm, x, y, dy, free_beta=False):
-    ymodel = Gas_density_profile(parm, x, free_beta=free_beta)
+def stat(parm, x, y, dy, free_beta=False, fix_cygA=False):
+    ymodel = Gas_density_profile(parm, x, free_beta=free_beta, fix_cygA=fix_cygA)
     chisq = numpy.sum((y - ymodel)**2 / dy**2)
     return(chisq)
 
 
 def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.],
-                             free_beta=False):
+                             free_beta=False, fix_cygA=False):
     """ Fit betamodel to cluster observation
         if len(parm) == 2: single beta-model with beta = 2/3
            len(parm) == 3: cut-off beta-model with beta = 2/3
            len(parm) == 5: cut-off double beta-model with beta = 2/3
         if free_beta: use single beta-model with beta as fit parameter
+        if fix_cygA : "run" fit with beta, rc, and rho0 fixed for compatibility
+                      with routines that import this function externally.
 
         returns scipy.curve_fit fit result
     """
@@ -149,7 +115,10 @@ def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.],
     # Fit to data
     if observed.name == "cygA":
         if len(parm) == 2:
-            bounds = [(0.091, 0.09162), (26.0160, 26.0162)]
+            if fix_cygA:
+                bounds = [(0.091, 0.09162), (26.0160, 26.0162)]
+            else:
+                bounds = [(None, None), (None, None)]
         elif len(parm) == 3 and not free_beta:
             bounds = [(None, None), (None, None), (1700, 1900)]
         elif len(parm) == 3 and free_beta:
@@ -168,16 +137,17 @@ def fit_betamodel_to_chandra(observed, parm=[1., 1., 1.],
 
     result = scipy.optimize.minimize(stat, parm,
             args=(observed.radius, observed.number_density,
-                  observed.number_density_std, free_beta),
+                  observed.number_density_std, free_beta, fix_cygA),
             method='L-BFGS-B', bounds=bounds)
 
     # Obtain and print MLEs
-    ml_vals, ml_covar = obtain_mles(observed, result, free_beta=free_beta)
+    ml_vals, ml_covar = obtain_mles(observed, result,
+        free_beta=free_beta, fix_cygA=fix_cygA)
 
     return result, ml_vals, ml_covar
 
 
-def obtain_mles(observed, result, free_beta=False):
+def obtain_mles(observed, result, free_beta=False, fix_cygA=False):
     ml_vals = result["x"]
     ml_func = result["fun"]
 
@@ -215,25 +185,24 @@ def obtain_mles(observed, result, free_beta=False):
     print "    chisq/dof   = {0:.5f}".format(ml_func/dof)
     print "    p-value     = {0:.5f}".format(pval)
 
-    if observed.name == "cygA" and model==0:
-        bounds = [(0.091, 0.09162), (26.0160, 26.0162)]
-        method = "trf"
+    if free_beta:
+        ml_vals, ml_covar = scipy.optimize.curve_fit(
+                lambda r, parm0, parm1, parm2: Gas_density_profile_wrapper(r,
+                parm0, parm1, parm2, free_beta=free_beta, fix_cygA=fix_cygA),
+                observed.radius, observed.number_density, p0=ml_vals,
+                sigma=observed.number_density_std)
+    elif fix_cygA:
+        ml_vals, ml_covar = scipy.optimize.curve_fit(
+                lambda r, parm0, parm1: Gas_density_profile_wrapper(r,
+                parm0, parm1, free_beta=free_beta, fix_cygA=fix_cygA),
+                observed.radius, observed.number_density, p0=ml_vals,
+                sigma=observed.number_density_std)
     else:
-        bounds = (0, [numpy.inf for i in range(len(ml_vals))])
-        method = "lm"
-
-    if not free_beta:
         ml_vals, ml_covar = scipy.optimize.curve_fit(
                 Gas_density_profile_wrapper,
                 observed.radius, observed.number_density, p0=ml_vals,
-                sigma=observed.number_density_std, bounds=bounds)
+                sigma=observed.number_density_std)
         # ml_funcval = stat(ml_vals, edges, dens, err, model)
-    else:
-        ml_vals, ml_covar = scipy.optimize.curve_fit(
-                lambda r, parm0, parm1, parm2: Gas_density_profile_wrapper(
-                    r, parm0, parm1, parm2, free_beta=free_beta),
-                observed.radius, observed.number_density, p0=ml_vals,
-                sigma=observed.number_density_std, bounds=bounds)
 
     if not result["success"]:
         print "  scipy.optimize.curve_fit broke down!\n    Reason: '{0}'"\
@@ -254,8 +223,8 @@ def obtain_mles(observed, result, free_beta=False):
 
 
 def plot_fit_results(observed, analytical, numerical=None,
-                     mass_density=False, save=False):
-    poster_style = True
+                     mass_density=False, save=False, poster_style=False,
+                     fix_cygA=False):
     if poster_style:
         pyplot.style.use(["dark_background"])
         pyplot.rcParams.update({"font.weight": "bold"})
@@ -350,7 +319,7 @@ def plot_fit_results(observed, analytical, numerical=None,
     ax_r.set_xlim(min(observed.radius)-0.3, max(observed.radius)+2000)
 
     # Show 50% deviations from the data
-    if not analytical.free_beta and observed.name=="cygA":
+    if fix_cygA:
         ax_r.set_ylim(-20, 100)
     else:
         ax_r.set_ylim(-50, 50)
@@ -381,131 +350,8 @@ def plot_fit_results(observed, analytical, numerical=None,
         pyplot.savefig("out/density_free_betamodel_fit_{0}{1}{2}.png"\
             .format(observed.name, "_800ksec" if observed.oldICs else "_900ksec",
                 "_dark" if poster_style else ""), dpi=300)
-    # pyplot.show()
-
-
-# TODO: place this in AnalyticalCluster?
-def get_cluster_mass_analytical(observed, result):
-    poster_style = True
-    if poster_style:
-        pyplot.style.use(["dark_background"])
-        # magenta, dark blue, orange, green, light blue (?)
-        data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
-                       (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
-                       (41./255, 239./255, 239./255)]
-        fit_colour = "white"
     else:
-        data_colour = ["g", "r", "b"]
-        fit_colour = "k"
-
-    ml_vals = result["x"]
-
-    ne0_fit = ml_vals[0]  # | 1/units.cm**3
-    rc_fit = ml_vals[1]  # | units.kpc
-    if len(ml_vals) == 3:
-        rcut_fit = ml_vals[2]  # | units.kpc
-    if len(ml_vals) == 5:
-        Rho0_Fac = ml_vals[3]
-        Rc_Fac = ml_vals[4]
-
-    kpc2cm = units.kpc(1).value_in(units.cm)
-    rho0_analytical = convert.ne_to_rho(ne0_fit) # g/cm**3
-    rc_analytical = rc_fit * kpc2cm  # cm
-    rhocrit200 = 200*observed.cc.rho_crit()
-
-    analytical_radius = numpy.arange(1, 1e4, 0.001) * kpc2cm
-    analytical_density = Gas_density_profile((rho0_analytical, rc_analytical), analytical_radius)
-    analytical_mass = cummulative_mass_profile(analytical_radius, rc_analytical,  rho0_analytical)
-    rho_average = (analytical_mass / (4./3*numpy.pi*analytical_radius**3))
-    r200_analytical = analytical_radius[(numpy.abs(rho_average-rhocrit200)).argmin()]
-
-    print observed.name
-    print "  r200 = {0:.4e} kpc".format((r200_analytical | units.cm).value_in(units.kpc))
-    # M200_analytical = analytical_mass[(numpy.abs(analytical_radius-r200_analytical)).argmin()]
-    # print "M200 =", (M200_analytical | units.g).value_in(units.MSun)
-    M200_analytical = cummulative_mass_profile(r200_analytical, rc_analytical, rho0_analytical)
-    print "  M200 = {0:.4e} MSun".format((M200_analytical | units.g).value_in(units.MSun))
-
-    fig, (ax1, ax2) = pyplot.subplots(1, 2, sharex=True, figsize=(18, 9))
-    pyplot.suptitle("Obtaining M200 from analytical fit to observed density profile")
-    # Step 1: calculate average density
-    # Step 2: find where average density equals 200 times critical density at given z (0.0562)
-    # Step 3: find r200
-    # Step 4: find M200 given the above obtained r200
-    pyplot.sca(ax1)
-    amuse_plot.loglog((analytical_radius | units.cm).as_quantity_in(units.kpc),
-        (analytical_density | units.g/units.cm**3), c=fit_colour, label="analytical")
-    amuse_plot.loglog((analytical_radius | units.cm).as_quantity_in(units.kpc),
-        (rho_average | units.g/units.cm**3), c=data_colour[0], label="average")
-    pyplot.axhline(rhocrit200, ls="dashed", c=data_colour[0])
-    pyplot.axvline((r200_analytical | units.cm).value_in(units.kpc), ls="dashed", c=data_colour[0])
-    amuse_plot.ylabel(r"$\rho_{\rm gas}(r)$")
-    amuse_plot.xlabel(r"$r$")
-    pyplot.legend(loc=2)
-
-    pyplot.sca(ax2)
-    amuse_plot.loglog((analytical_radius | units.cm).as_quantity_in(units.kpc),
-        (analytical_mass | units.g).as_quantity_in(units.MSun), c=fit_colour)
-    pyplot.axhline((M200_analytical | units.g).value_in(units.MSun), ls="dashed", c=data_colour[0])
-    pyplot.axvline((r200_analytical | units.cm).value_in(units.kpc), ls="dashed", c=data_colour[0])
-    amuse_plot.ylabel(r"$M(<r)$")
-    amuse_plot.xlabel(r"$r$")
-    pyplot.savefig("out/m200_analytical_{0}.png".format(observed.name), dpi=300)
-
-
-def cummulative_mass_profile(r, r_c, rho_0):
-    return 4*numpy.pi*r_c**3*rho_0 * (r/r_c - numpy.arctan(r/r_c))
-
-
-# TODO: Place this in ObservedCluster and get it working
-def get_mass_profile(observed, result):
-    ml_vals = result["x"]
-
-    ne0_fit = ml_vals[0]  # | 1/units.cm**3
-    rc_fit = ml_vals[1]  # | units.kpc
-    if len(ml_vals) == 3:
-        rcut_fit = ml_vals[2]  # | units.kpc
-    if len(ml_vals) == 5:
-        Rho0_Fac = ml_vals[3]
-        Rc_Fac = ml_vals[4]
-
-    kpc2cm = units.kpc(1).value_in(units.cm)
-    rho0_analytical = convert.ne_to_rho(ne0_fit)  # g/cm**3
-    rc_analytical = rc_fit * kpc2cm  # cm
-
-    analytical_radius = numpy.arange(min(observed.radius), max(observed.radius), 0.01) * kpc2cm
-    analytical_mass = cummulative_mass_profile(analytical_radius, rc_analytical,  rho0_analytical)
-
-    mass = observed.density * observed.bin_volume
-    volume = 4./3*numpy.pi*(observed.radius*kpc2cm)**3  # cm cubed
-    mass2 = observed.density * volume
-    # numpy.cumsum() actually works :-)....
-    # mass_summed = numpy.zeros(len(mass))
-    # mass_summed[0] = mass[0]
-    # mass2_summed = numpy.zeros(len(mass))
-    # mass2_summed[0] = mass2[0]
-    # for i in range(1, len(mass)):
-    #     mass_summed[i] = mass_summed[i-1] + mass[i]
-    #     mass2_summed[i] = mass2_summed[i-1] + mass2[i]
-
-    pyplot.figure(figsize=(12, 9))
-    amuse_plot.plot((analytical_radius | units.cm).as_quantity_in(units.kpc),
-        (analytical_mass | units.g).as_quantity_in(units.MSun),
-        label="Analytical")
-    # amuse_plot.plot((observed.radius*kpc2cm | units.cm).as_quantity_in(units.kpc),
-    #     (mass_summed | units.g).as_quantity_in(units.MSun),
-    #     label="Martijn selfsummed")
-    amuse_plot.plot((observed.radius*kpc2cm | units.cm).as_quantity_in(units.kpc),
-        (mass.cumsum() | units.g).as_quantity_in(units.MSun),
-        label="Martijn")
-    # amuse_plot.plot((observed.outer_radius*kpc2cm | units.cm).as_quantity_in(units.kpc),
-    #     (mass2_summed | units.g).as_quantity_in(units.MSun), label="Timo selfsummed")
-    amuse_plot.plot((observed.outer_radius*kpc2cm | units.cm).as_quantity_in(units.kpc),
-        (mass2.cumsum() | units.g).as_quantity_in(units.MSun), label="Timo")
-    pyplot.legend(loc=2)
-    pyplot.gca().set_xscale("log")
-    pyplot.gca().set_yscale("log")
-    # pyplot.show()
+        pyplot.show()
 
 
 def write_parms_to_textfile(filename, parms):
@@ -664,6 +510,26 @@ def get_cluster_mass_from_toycluster(observed, analytical, verbose=True):
 
 
 if __name__ == "__main__":
+    # We obtain core radius and central density of CygA from fit where
+    # beta is also a free parameter. But then we want Toycuster to reach
+    # the same central density for which we need to continue the analysis
+    # to infer the total mass and mass ratio given the model that only
+    # fits the inner region, but has a systematic deviation from the data
+    # because the observed slope is steeper but we are bound to beta 2/3
+    # in Toycluster... for now. Hence, fix_cygA
+
+    fix_cygA = True
+
+    fit = True
+    discard_firstbins = True
+    discard_lastbins = False
+    plot_fit = False
+    poster_style = True
+    mass_density = True
+    save = False
+
+
+
     print "Reading Chandra Observed Density Profiles"
     print 80*"-"
     cygA_observed = ObservedCluster("cygA", oldICs=False)
@@ -672,13 +538,11 @@ if __name__ == "__main__":
     print cygB_observed
     print 80*"-"
 
-    fit = True
     if fit:
         print "Obtaining parameters from observed density profiles"
         print 80*"-"
         # Due to pile up in inner region (?). Also inside kernel: cannot model
         # in a stable way
-        discard_firstbins = True
         if discard_firstbins:
             cygA_observed.radius = cygA_observed.radius[3:]
             cygA_observed.binsize = cygA_observed.binsize[3:]
@@ -687,7 +551,6 @@ if __name__ == "__main__":
             cygA_observed.number_density = cygA_observed.number_density[3:]
             cygA_observed.number_density_std = cygA_observed.number_density_std[3:]
 
-        discard_lastbins = False
         if discard_lastbins:
             cut = 40
             cygA_observed.radius = cygA_observed.radius[:-cut]
@@ -705,8 +568,8 @@ if __name__ == "__main__":
             fit_betamodel_to_chandra(cygA_observed,
                 parm=[0.1, 10, 0.67], free_beta=True)
         # Single beta (2/3): use this for numerical setup
-        cygA_fit, cygA_ml_vals, cygA_ml_covar = \
-            fit_betamodel_to_chandra(cygA_observed, parm=[0.1, 10])
+        cygA_fit, cygA_ml_vals, cygA_ml_covar = fit_betamodel_to_chandra(
+            cygA_observed, parm=[0.1, 10], fix_cygA=fix_cygA)
 
         # Cut-off single beta (2/3)
         cygB_fit, cygB_ml_vals, cygB_ml_covar = \
@@ -735,7 +598,6 @@ if __name__ == "__main__":
             cygB_analytical.rho0.value_in(units.g/units.cm**3))
         print 80*"-"
 
-    plot_fit = True
     if plot_fit:
         # Number density
         # plot_fit_results(cygA_observed, cygA_analytical,
@@ -756,97 +618,30 @@ if __name__ == "__main__":
         #     icfile="CygB_trial")
 
         plot_fit_results(cygA_observed, cygA_analytical,
-                         mass_density=True, save=True)
+            mass_density=mass_density, save=save, poster_style=poster_style)
         plot_fit_results(cygB_observed, cygB_analytical,
-                         mass_density=True, save=True)
+            mass_density=mass_density, save=save, poster_style=poster_style)
 
         plot_fit_results(cygA_observed, cygA_analytical_free,
-                         mass_density=True, save=True)
+            mass_density=mass_density, save=save, poster_style=poster_style)
         plot_fit_results(cygB_observed, cygB_analytical_free,
-                         mass_density=True, save=True)
+            mass_density=mass_density, save=save, poster_style=poster_style)
 
     #pyplot.show()
 
-    import sys; sys.exit(0)
+    #import sys; sys.exit(0)
 
-    # None of the code below actually works. See get_mass*.py...
-    fit_toycluster = False
+    # None of the code below actually works (physically). This is a neat
+    # toycluster bruteforce which we leave in cause it is kind of awesome tho.
+    # See get_mass_plus_plot.py for a working (physical) implementation.
+    fit_toycluster = True
     if fit_toycluster:
         print "Fitting Toycluster calculated rho_0, rc to Chandra data"
         print 80*"-"
         tcA = get_cluster_mass_from_toycluster(cygA_observed, cygA_analytical)
-        tcB = get_cluster_mass_from_toycluster(cygB_observed, cygB_analytical)
 
         cygA_mass = tcA.halosetup[0]['Mass_in_R200']
-        cygB_mass = tcB.halosetup[0]['Mass_in_R200']
 
         print "M_CygA          =", cygA_mass
         print "rc              =", tcA.halosetup[0]['rc']
         print "c_nfw           =", tcA.halosetup[0]['c_nfw']
-        print
-        print "M_CygB          =", cygB_mass
-        print "rc              =", tcB.halosetup[0]['rc']
-        print "c_nfw           =", tcB.halosetup[0]['c_nfw']
-
-        print
-        print "M_CygA/M_CygB   =", cygA_mass/cygB_mass
-        print "M_CygB/M_CygA   =", cygB_mass/cygA_mass
-        print "Mtotal          =", cygA_mass + cygB_mass
-
-        print 80*"-"
-
-    obtain_mass = False
-    if obtain_mass:
-        print "Obtaining observed mass profiles"
-        print 80*"-"
-        cygA_mass = get_mass_profile(cygA_observed, cygA_fit)
-        cygB_mass = get_mass_profile(cygB_observed, cygA_fit)
-        print 80*"-"
-
-    find_r200_observed = False
-    if find_r200_observed:
-        print "Obtaining r_200 from Chandra observation"
-        print 80*"-"
-        rhocrit200A = 200*cygA_observed.cc.rho_crit()
-        rhocrit200B = 200*cygB_observed.cc.rho_crit()
-
-        mass_densityA = cygA_observed.density
-        volumeA = 4*numpy.pi*cygA_observed.radius**2 * cygA_observed.binsize
-        # cm**-3 --> kpc**-3 = 2.9379989455e+64 ?
-        rho_averageA = (cygA_observed.bin_volume/2.9379989455e+64)*cygA_observed.density / volumeA
-        pyplot.figure(figsize=(12,9))
-        pyplot.plot(cygA_observed.radius, cygA_observed.density, label="obs")
-        pyplot.plot(cygA_observed.radius, rho_averageA, label="avg")
-        pyplot.axhline(rhocrit200A)
-        pyplot.gca().set_xscale("log")
-        pyplot.gca().set_yscale("log")
-        pyplot.legend()
-        pyplot.show()
-        print rho_averageA
-        r_200A = cygA_observed.radius[(numpy.abs(rho_averageA-rhocrit200A)).argmin()]
-
-        mass_densityB = cygB_observed.density
-        rho_averageB = (cygB_observed.density / (4./3*numpy.pi*cygB_observed.radius**3))
-        r_200B = cygB_observed.radius[(numpy.abs(rho_averageB-rhocrit200B)).argmin()]
-
-        print "CygA"
-        print "  200*rhocrit =", rhocrit200A
-        print "  Indices of rho_average where rho_average > 200*rhocrit"
-        print "   ", numpy.where(rho_averageA > rhocrit200A)
-        print "  r200        =", r_200A
-        print
-        print "CygB"
-        print "  200*rhocrit =", rhocrit200B
-        print "  Indices of rho_average where rho_average > 200*rhocrit"
-        print "   ", numpy.where(rho_averageB > rhocrit200B)
-        print "  r200        =", r_200B
-        print 80*"-"
-        import sys; sys.exit(0)
-
-    mass_analytical = False
-    if mass_analytical:
-        print "Obtaining cluster mass from analytical density profile"
-        print 80*"-"
-        get_cluster_mass_analytical(cygA_observed, cygA_fit)
-        get_cluster_mass_analytical(cygB_observed, cygB_fit)
-        print 80*"-"

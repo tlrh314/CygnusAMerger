@@ -30,6 +30,7 @@ from ioparser import Toycluster2RuntimeOutputParser
 from ioparser import parse_gadget_parms
 from cluster import NumericalCluster
 from cluster import AnalyticalCluster
+from cluster import ObservedCluster
 import convert
 
 
@@ -43,6 +44,12 @@ def plot_individual_cluster_density(numerical, analytical):
                    (41./255, 239./255, 239./255)]
     fit_colour = "white"
 
+    observed = ObservedCluster("cygA")
+    pyplot.errorbar(observed.radius+observed.binsize/2,
+                    observed.density, xerr=observed.binsize/2,
+                    yerr=observed.density_std, marker="o",
+                    ms=7, elinewidth=5, ls="", c=data_colour[0])
+
 
     # Gas RHO and RHOm from Toycluster living in AMUSE datamodel
     amuse_plot.scatter(numerical.gas.r, numerical.gas.rho,
@@ -54,7 +61,7 @@ def plot_individual_cluster_density(numerical, analytical):
 
     # DM density obtained from mass profile (through number density)
     amuse_plot.scatter(numerical.dm_radii, numerical.rho_dm_below_r,
-       c=data_colour[2], edgecolor="face", s=1, label=r"DM, sampled")
+       c=data_colour[2], edgecolor="face", s=10, label=r"DM, sampled")
 
     # Analytical solutions.
 
@@ -69,7 +76,7 @@ def plot_individual_cluster_density(numerical, analytical):
         label=r"DM: Hernquist")# "\n" r"$M_{{\rm dm}}= ${0:.2e} MSun; $a = $ {1} kpc".format(
         #analytical.M_dm.number, analytical.a.number))
 
-    amuse_plot.ylabel(r"Density [g cm$^{-3}$]")
+    amuse_plot.ylabel(r"Density [g/cm$**$3]")
     amuse_plot.xlabel(r"Radius [kpc]")
 
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
@@ -78,13 +85,16 @@ def plot_individual_cluster_density(numerical, analytical):
     pyplot.gca().set_yscale("log")
 
     pyplot.axvline(x=numerical.R200.value_in(units.kpc), lw=1, c=fit_colour)
-    pyplot.text(numerical.R200.value_in(units.kpc), 3e-24, r"r200 = {0}".format(numerical.rcut))
+    pyplot.text(numerical.R200.value_in(units.kpc), 3e-24, r"r200 = {0:.2f} kpc".format(numerical.rcut.value_in(units.kpc)))
     pyplot.axvline(x=numerical.rc.value_in(units.kpc), lw=1, c=fit_colour)
-    pyplot.text(numerical.rc.value_in(units.kpc), 1e-24, r"rc = {0}".format(numerical.rc))
+    pyplot.text(numerical.rc.value_in(units.kpc), 1e-24, r"rc = {0:.2f} kpc".format(numerical.rc.value_in(units.kpc)))
     # pyplot.axvline(x=numerical.a.value_in(units.kpc), lw=1, c=fit_colour)
     # pyplot.text(numerical.a.value_in(units.kpc), 1e-24, r"$a =$ {0}".format(numerical.a))
 
+    pyplot.savefig("out/actuallyran.png")
     pyplot.legend(loc=3)#, prop={"size": 22})
+    pyplot.show()
+    import sys; sys.exit(0)
 
 
 def plot_individual_cluster_mass(numerical, analytical):
@@ -158,13 +168,13 @@ def plot_individual_cluster_temperature(numerical, analytical):
 
 
 if __name__ == "__main__":
-    IC_only = False
-    save = True
+    IC_only = True
+    save = False
     replot = True
 
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160704T2243"
+    myRun = "20160706T2012"
     if IC_only:
         # TODO: there is something different in the Toycluster rho
         # than in the Gadget output :(
