@@ -49,14 +49,16 @@ elif [ "$(uname -s)" == "Darwin" ]; then
     echo "Syncing Taurus <--> ChezTimo"
     echo "TAURUSDIR = ${TAURUSDIR}"
     echo "RUNDIR    = ${RUNDIR}"
-    rsync -auHxz --progress taurus:"${TAURUSDIR}" "${RUNDIR}"
-    rsync -auHxz --progress "${RUNDIR}" taurus:"${TAURUSDIR}"
+    rsync -auHxz --progress --exclude="20160704T1335" --exclude="20160704T1336" --exclude="20160704T1337" --exclude="20160704T2243" taurus:"${TAURUSDIR}" "${RUNDIR}"
+    #rsync -auHxz --progress "${RUNDIR}" taurus:"${TAURUSDIR}"
+
+    #rsync -auHxz --progress lisa:"${LISADIR}" "${RUNDIR}"
 
     ZOLTANDIR="/media/WD30EFRX/Backups/Masterproject/"
     echo "Backing up to ZoltaN"
     echo "MSCPROJDIR = ${MSCPROJDIR}"
     echo "ZOLTANDIR  = ${ZOLTANDIR}"
-    rsync -auHxz --progress --exclude="Code/bigruns" "${MSCPROJDIR}" ZoltaN:"${ZOLTANDIR}"
+    rsync -auHxz --progress --exclude="Code/bigruns" --exclude="Code/runs" "${MSCPROJDIR}" ZoltaN:"${ZOLTANDIR}"
 else
     echo "Unknown system: ${SYSTYPE}. Exiting"
     exit 1

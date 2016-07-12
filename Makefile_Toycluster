@@ -9,7 +9,7 @@ OPT     += -DGIVEPARAMS            # more merger parameters in .par file
 
 OPT     += -DGADGET2
 OPT     += -DSPH_CUBIC_SPLINE
-#OPT     += -DFREEBETA
+OPT     += -DFREEBETA
 
 #OPT     += -DDOUBLE_BETA_COOL_CORES
 
@@ -93,8 +93,8 @@ EXEC = Toycluster
 SRCDIR    = src/
 
 OBJFILES = main.o aux.o positions.o velocities.o temperature.o \
-           magnetic_field.o io.o unit.o cosmo.o setup.o  tree.o \
-           sph.o wvt_relax.o substructure.o ids.o sort.o peano.o
+           magnetic_field.o io.o unit.o cosmo.o setup.o spline_integrate.o \
+           tree.o sph.o wvt_relax.o substructure.o ids.o sort.o peano.o
 
 OBJS    = $(addprefix $(SRCDIR),$(OBJFILES))
 

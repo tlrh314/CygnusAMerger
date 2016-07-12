@@ -88,7 +88,7 @@ def make_video(rundir, chosen, projection):
     gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
     TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
 
-    toyclusterparms = parse_toycluster_parms(rundir+"ICs/ic_both_fixed.par")
+    toyclusterparms = parse_toycluster_parms(rundir+"ICs/ic_both_hybrid.par")
     particles = toyclusterparms['Ntotal']
 
     if particles > 2e6:
@@ -130,9 +130,11 @@ def make_video(rundir, chosen, projection):
         pyplot.figure(figsize=(16,16))
         pyplot.style.use(["dark_background"])
         gs1 = gridspec.GridSpec(2, 2)
+        #gs1 = gridspec.GridSpec(1, 1)
         gs1.update(wspace=0, hspace=0) # remove spacing between axes.
 
         for i in range(4):  # gridspec indexes start at 0
+        #for i in range(1):  # gridspec indexes start at 0
             ax = pyplot.subplot(gs1[i])
             pyplot.axis('on')
             ax.set_xticklabels([])
@@ -149,16 +151,20 @@ def make_video(rundir, chosen, projection):
                 ax.imshow(numpy.sqrt(data[i][n]), cmap=cmap[i])
             # Tile text: name of physical property
             pyplot.text(pad if i%2==0 else xlen-pad, pad,
-                        names[i], color="white", size=33,
+                        names[i], color="white", size=42,
                         horizontalalignment="left" if i%2==0 else "right",
                         verticalalignment="top")
+            # pyplot.text(pad if i%2==0 else xlen-pad, ylen-pad,
+            #             names[i], color="white", size=42,
+            #             horizontalalignment="left" if i%2==0 else "right",
+            #             verticalalignment="bottom")
         # Image scale (lives in lower right corner of tile 3)
-        pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=33,
+        pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=42,
                     horizontalalignment="right", verticalalignment="bottom")
 
         # pyplot.suptitle("T = {0:05.2f} Myr".format(0.05*n),
         pyplot.suptitle("T = {0:04.2f} Gyr".format(TimeBetSnapshot*n),
-            color="white", size=42, y=0.95)
+            color="white", size=52, y=0.95)
         pyplot.tight_layout()
         pyplot.savefig(rundir+"out/snapshot{0}_{1:03d}.png".format(projection, n))
         pyplot.close()
@@ -182,9 +188,10 @@ if __name__ == "__main__":
                8: "xray-surface-brightness",
                }
 
-    timestamp = "20160704T1337"
+    timestamp = "20160707T0034"
     projection = "z"
-    chosen = (options[0], options[7], options[8], options[4])  # 0784
+    chosen = (options[0], options[7], options[8], options[2])  # 0784
+    #chosen = [options[8]]  # 0784
     rundir = "../runs/{0}/".format(timestamp)
     make_video(rundir, chosen, projection)
     os.system("./make_movie.sh {0} {1}".format(timestamp, projection))

@@ -34,7 +34,7 @@ from cluster import ObservedCluster
 import convert
 
 
-def plot_individual_cluster_density(numerical, analytical):
+def plot_individual_cluster_density(numerical, analytical, observed=None):
     """ Plot the particles' density radial profile and compare to model """
     pyplot.figure(figsize=(16, 12))
     pyplot.style.use(["dark_background"])
@@ -44,14 +44,16 @@ def plot_individual_cluster_density(numerical, analytical):
                    (41./255, 239./255, 239./255)]
     fit_colour = "white"
 
-    observed = ObservedCluster("cygA")
-    pyplot.errorbar(observed.radius+observed.binsize/2,
-                    observed.density, xerr=observed.binsize/2,
-                    yerr=observed.density_std, marker="o",
-                    ms=7, elinewidth=5, ls="", c=data_colour[0])
+    if observed:
+        pyplot.errorbar(observed.radius+observed.binsize/2,
+                        observed.density, xerr=observed.binsize/2,
+                        yerr=observed.density_std, marker="o",
+                        ms=7, elinewidth=5, ls="", c=data_colour[3],
+                        label=observed.name)
 
 
     # Gas RHO and RHOm from Toycluster living in AMUSE datamodel
+    # cut = numpy.where(numerical.gas.r < numerical.R200)
     amuse_plot.scatter(numerical.gas.r, numerical.gas.rho,
         c=data_colour[0], edgecolor="face", s=1, label=r"Gas, sampled")
 
@@ -91,10 +93,8 @@ def plot_individual_cluster_density(numerical, analytical):
     # pyplot.axvline(x=numerical.a.value_in(units.kpc), lw=1, c=fit_colour)
     # pyplot.text(numerical.a.value_in(units.kpc), 1e-24, r"$a =$ {0}".format(numerical.a))
 
-    pyplot.savefig("out/actuallyran.png")
+    # pyplot.savefig("out/actuallyran.png")
     pyplot.legend(loc=3)#, prop={"size": 22})
-    pyplot.show()
-    import sys; sys.exit(0)
 
 
 def plot_individual_cluster_mass(numerical, analytical):
@@ -169,12 +169,12 @@ def plot_individual_cluster_temperature(numerical, analytical):
 
 if __name__ == "__main__":
     IC_only = True
-    save = False
+    save = True
     replot = True
 
     myRun = "yes_wvt_relax"
     myRun = "no_wvt_relax"
-    myRun = "20160706T2012"
+    myRun = "20160712T2017"
     if IC_only:
         # TODO: there is something different in the Toycluster rho
         # than in the Gadget output :(

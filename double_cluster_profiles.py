@@ -16,7 +16,7 @@ from macro import *
 # from cosmology import CosmologyCalculator
 from ioparser import Toycluster2RuntimeOutputParser
 from ioparser import Gadget2BinaryF77UnformattedType2Parser
-# from cluster import ObservedCluster
+from cluster import ObservedCluster
 from cluster import AnalyticalCluster
 from cluster import SampledBox
 import convert
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     print "Parsing Toycluster output: double cluster (Xm != 0)"
     print 80*'-'
 
-    myRun="20160704T2243"
+    myRun="20160712T2041"
     snapnr = "000-ICOnly"
 
     outdir="../runs/{0}/out/".format(myRun)
@@ -60,24 +60,27 @@ if __name__ == "__main__":
     density1_filename = outdir+"{0}-density-halo1-{1}.png".format(myRun, snapnr)
     temperature1_filename = outdir+"{0}-temperature-halo1-{1}.png".format(myRun, snapnr)
 
+    observed_cygA = ObservedCluster("cygA")
     plot_individual_cluster_density(world.halo0_numerical,
-                                    world.halo0_analytical)
+        world.halo0_analytical, observed_cygA)
     pyplot.savefig(density0_filename)
+
+    observed_cygB = ObservedCluster("cygB")
+    plot_individual_cluster_density(world.halo1_numerical,
+        world.halo1_analytical, observed_cygB)
+    pyplot.savefig(density1_filename)
+    import sys; sys.exit(0)
 
     plot_individual_cluster_mass(world.halo0_numerical,
                                  world.halo0_analytical)
-    pyplot.savefig(density1_filename)
-
-    plot_individual_cluster_density(world.halo1_numerical,
-                                    world.halo1_analytical)
     pyplot.savefig(mass0_filename)
 
     plot_individual_cluster_mass(world.halo1_numerical,
                                  world.halo1_analytical)
     pyplot.savefig(mass1_filename)
 
-    plot_individual_cluster_temperature(world.halo1_numerical,
-                                        world.halo1_analytical)
+    plot_individual_cluster_temperature(world.halo0_numerical,
+                                        world.halo0_analytical)
     pyplot.savefig(temperature0_filename)
 
     plot_individual_cluster_temperature(world.halo1_numerical,

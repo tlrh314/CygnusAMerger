@@ -24,7 +24,7 @@ from cluster import ObservedCluster
 
 
 def plot_observation(cygA, cygB):
-    poster_style = False
+    poster_style = True
     if poster_style:
         pyplot.style.use(["dark_background"])
         # magenta, dark blue, orange, green, light blue (?)
@@ -55,7 +55,7 @@ def plot_observation(cygA, cygB):
     pyplot.gca().set_yscale("log")
     pyplot.xlim(0.3, 2500)
     pyplot.yticks([1e-1, 1e-2, 1e-3, 1e-4])
-    pyplot.ylabel(r"Number density [cm$^{-3}$]")
+    pyplot.ylabel(r"Number density [1/cm$**$3]")
     pyplot.xlabel(r"Radius [arcsec]")
 
     pyplot.legend()

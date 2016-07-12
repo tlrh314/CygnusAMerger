@@ -726,7 +726,7 @@ class SampledBox(object):
     particles in the datamodel :-)... """
 
     def __init__(self, timestamp):
-        debug = True
+        debug = False
 
         """ First read IC output where two clusters live in the box.
         NB simulation to make distinction between `numerical' (has 1 cluster),
@@ -760,7 +760,7 @@ class SampledBox(object):
         halo1_analytical = setup_analytical_cluster(simulation, i=1)
 
         hist, edges = numpy.histogram(gas.x.value_in(units.kpc),
-            bins=numpy.sqrt(len(gas.x)))
+            bins=int(numpy.sqrt(len(gas.x))))
         # Domain contains indices of x values between -750 and 750
         # somewhere in this range there is a minimum x-value, which
         # is the center that we need to shift back the haloes.

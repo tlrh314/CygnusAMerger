@@ -677,7 +677,11 @@ set_psmac_parameterfile_snapshot_path() {
         echo "Warning: no Gadget snapshots. Did you run the simulation?"
         echo "Assuming we want to run P-Smac2 with ICs!"
         echo -e "\nSetting Input_File to: /path/to/IC_file"
-        ICFILE_ESCAPED=$(echo "${ICFILE}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        if [ "${SYSTYPE}" == "MBP" ]; then
+            ICFILE_ESCAPED=$(echo "../ICs/IC_single_0" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        else
+            ICFILE_ESCAPED=$(echo "${ICFILE}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        fi
         perl -pi -e "s/Input_File.*/Input_File ${ICFILE_ESCAPED}/g" "${PSMAC2PARAMETERS}"
         grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
         return
@@ -826,11 +830,13 @@ echo -e "\nStart of program at $(date)\n"
 
 #MODEL_TO_USE="ic_cyga_fixed.par"
 #MODEL_TO_USE="ic_cygb_fixed.par"
-MODEL_TO_USE="ic_both_fixed.par"
+#MODEL_TO_USE="ic_both_fixed.par"
+#MODEL_TO_USE="ic_cyga_hybrid.par"
+#MODEL_TO_USE="ic_both_hybrid.par"
 #Cannot run free beta model
 #MODEL_TO_USE="ic_cyga_free.par"
 #MODEL_TO_USE="ic_cygb_free.par"
-#MODEL_TO_USE="ic_both_free.par"
+MODEL_TO_USE="ic_both_free.par"
 
 setup_system
 setup_toycluster
