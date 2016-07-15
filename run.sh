@@ -2,7 +2,6 @@
 #PBS -lnodes=1:ppn=16:cores16
 #PBS -l walltime=08:00:00
 
-# File: run.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
 #
@@ -46,7 +45,7 @@ Options:
                         TODO: to implement loglevel (do I want this?)
   -m   --mail           send email when code execution is completed
   -o   --onlyic         only run Toycluster, not Gadget2, not P-Smac2
-  -r   --restart        resume Gadget-2 simulation (TODO: to implement!)
+  -r   --rotate         rotate simulation snapshot
   -t   --timestamp      provide a timestamp/'simulation ID'. Do not run
                         new simulation but set paths for this specific simulation.
 
@@ -64,9 +63,9 @@ parse_options() {
     # It is possible to use multiple arguments for a long option.
     # Specifiy here how many are expected.
     declare -A longoptspec
-    longoptspec=( [loglevel]=1 [timestamp]=1 [effect]=1 )
+    longoptspec=( [loglevel]=1 [timestamp]=1 [effect]=1 [rotate]=1 )
 
-    optspec=":e:hlmort:-:"
+    optspec=":e:hlmor:t:-:"
     while getopts "$optspec" opt; do
     while true; do
         case "${opt}" in
@@ -109,10 +108,10 @@ parse_options() {
                 ONLY_TOYCLUSTER=true
                 echo "ONLY_TOYCLUSTER = true"
                 ;;
-            r|restart)
-                echo "This function is not implemented"
-                echo "OPTARG=${OPTARG}$"
-                exit 1
+            r|rotate)
+                ROTATE=true
+                ROTATESNAPNR="${OPTARG}"
+                echo "Rotate snapnr   = ${ROTATESNAPNR}"
                 ;;
             t|timestamp)
                 TIMESTAMP="${OPTARG}"
@@ -251,6 +250,13 @@ setup_toycluster() {
         TOYCLUSTEREXECNAME=$(grep "EXEC =" "${TOYCLUSTERMAKEFILE}" | cut -d' ' -f3)
         TOYCLUSTEREXEC="${ICOUTDIR}/${TOYCLUSTEREXECNAME}"
         TOYCLUSTERPARAMETERS="${ICOUTDIR}/${MODEL_TO_USE}"
+        # MODEL_TO_USE has been implemented to qsub multiple run.sh simultaneously
+        # After running simulation we do not like to set the correct MODEL_TO_USE
+        # for the specific simulation. So if it is set incorrectly, then
+        # grep the name of MODEL_TO_USE from the ICOUT directory listing.
+        if [ ! -f "${TOYCLUSTERPARAMETERS}" ]; then
+            TOYCLUSTERPARAMETERS=$(ls "${ICOUTDIR}" | grep par)
+        fi
         TOYCLUSTERLOGFILE="${ICOUTDIR}/${TOYCLUSTERLOGFILENAME}"
         ICFILENAME=$(grep "Output_file" "${TOYCLUSTERPARAMETERS}" | cut -d' ' -f2)
         ICFILE="${ICOUTDIR}/${ICFILENAME:2}"
@@ -564,6 +570,9 @@ setup_psmac2() {
     PSMAC2LOGFILENAME="runPSmac2.log"
 
     ANALYSISDIR="${SIMULATIONDIR}/analysis"
+    if [ "$ROTATE" = true ]; then
+        ANALYSISDIR="${SIMULATIONDIR}/rotation"
+    fi
 
     if [ ! -d "${ANALYSISDIR}" ]; then  # compile :)
         echo "No ANALYSISDIR--> Compiling P-Smac2!"
@@ -673,7 +682,17 @@ set_psmac_parameterfile_snapshot_path() {
     # echo "Setting Input_File to: snapshot_000 snapshot_${SNAPMAX} 1"
     # Match line containing Input_File; set fits output name
 
-    if [ -z "${GADGETSNAPSHOTS}" ]; then
+    if [ ! -z ${ROTATESNAPNR+x} ]; then
+        echo -e "\nSetting Input_File to: /path/to/snapshot_to_rotate"
+        if [ "${SYSTYPE}" == "MBP" ]; then
+            SNAPFILE_ESCAPED=$(echo "../snaps/snapshot_${ROTATESNAPNR}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        else
+            SNAPFILE_ESCAPED=$(echo "${ICFILE}" | sed -e 's/[]\/$*.^|[]/\\&/g')
+        fi
+        perl -pi -e "s/Input_File.*/Input_File ${SNAPFILE_ESCAPED}/g" "${PSMAC2PARAMETERS}"
+        grep -n --color=auto "Input_File" "${PSMAC2PARAMETERS}"
+        return
+    elif [ -z "${GADGETSNAPSHOTS}" ]; then
         echo "Warning: no Gadget snapshots. Did you run the simulation?"
         echo "Assuming we want to run P-Smac2 with ICs!"
         echo -e "\nSetting Input_File to: /path/to/IC_file"
@@ -818,6 +837,105 @@ run_psmac2_for_given_module() {
 }
 
 
+rotate() {
+    setup_psmac2
+    check_psmac2_generic_runtime_files
+
+    echo -e "\nRunning Rotation Method"
+
+    Euler_Angle_0="0"
+    Euler_Angle_1="0"
+    Euler_Angle_2="0"
+
+    EFFECT_MODULE="2"
+    EFFECT_FLAG="0"
+    echo "  Setting Effect_Module to: ${EFFECT_MODULE}"
+    perl -pi -e 's/Effect_Module.*/Effect_Module '${EFFECT_MODULE}'/g' "${PSMAC2PARAMETERS}"
+    echo "  Setting Effect_Flag to: ${EFFECT_FLAG}"
+    perl -pi -e 's/Effect_Flag.*/Effect_Flag '${EFFECT_FLAG}'/g' "${PSMAC2PARAMETERS}"
+
+    echo -e "\n  Starting rotation loop"
+    cd "${ANALYSISDIR}"
+    for Euler_Angle_1 in {0..360..10}; do
+        echo -e "\n    Setting parameterfile"
+        EA0="$(printf "%03d" ${Euler_Angle_0})"
+        EA1="$(printf "%03d" ${Euler_Angle_1})"
+        EA2="$(printf "%03d" ${Euler_Angle_2})"
+        ROTATION_OUTFILE="rotation_xray_${EA0}_${EA1}_${EA2}"
+        # echo "    Setting Euler_Angle_0 to: ${Euler_Angle_0}"
+        perl -pi -e 's/^Euler_Angle_0.*/Euler_Angle_0 '${Euler_Angle_0}'/g' "${PSMAC2PARAMETERS}"
+
+        # echo "    Setting Euler_Angle_1 to: ${Euler_Angle_1}"
+        perl -pi -e 's/^Euler_Angle_1.*/Euler_Angle_1 '${Euler_Angle_1}'/g' "${PSMAC2PARAMETERS}"
+
+        # echo "    Setting Euler_Angle_2 to: ${Euler_Angle_2}"
+        perl -pi -e 's/^Euler_Angle_2.*/Euler_Angle_2 '${Euler_Angle_2}'/g' "${PSMAC2PARAMETERS}"
+
+        # Set smac2.par to run DM, change outputfile and logfile
+        # Match line containing Output_File; set fits output name
+        OUTPUTFILE="${ROTATION_OUTFILE}.fits"
+        # echo "    Setting Output_File to: ${OUTPUTFILE}"
+        perl -pi -e 's/Output_File.*/Output_File '${OUTPUTFILE}'/g' "${PSMAC2PARAMETERS}"
+
+        echo "      Effect_Module   : ${EFFECT_MODULE}"
+        echo "      Effect_Flag     : ${EFFECT_FLAG}"
+        echo "      Euler_Angle_0   : ${Euler_Angle_0}"
+        echo "      Euler_Angle_1   : ${Euler_Angle_1}"
+        echo "      Euler_Angle_2   : ${Euler_Angle_2}"
+        echo "      Output fits file: ${OUTPUTFILE}"
+
+        echo "    Checking parameterfile"
+        echo -n "      "
+        grep -n --color=auto "Effect_Module" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "Effect_Flag" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "^Euler_Angle_0" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "^Euler_Angle_1" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "^Euler_Angle_2" "${PSMAC2PARAMETERS}"
+        echo -n "      "
+        grep -n --color=auto "Output_File" "${PSMAC2PARAMETERS}"
+
+        if [ ! -f "${PSMAC2PARAMETERS}" ]; then
+            echo "Error: PSMAC2PARAMETERS does not exist!"
+            exit 1
+        fi
+
+        echo "    Running P-Smac2..."
+        SECONDS=0
+
+        echo "Effect_Module   : ${EFFECT_MODULE}"  >> "${PSMAC2LOGFILE}"
+        echo "Effect_Flag     : ${EFFECT_FLAG}" >> "${PSMAC2LOGFILE}"
+        echo "Euler_Angle_0   : ${Euler_Angle_0}" >> "${PSMAC2LOGFILE}"
+        echo "Euler_Angle_1   : ${Euler_Angle_1}" >> "${PSMAC2LOGFILE}"
+        echo "Euler_Angle_2   : ${Euler_Angle_2}" >> "${PSMAC2LOGFILE}"
+        echo "Output fits file: ${OUTPUTFILE}" >> "${PSMAC2LOGFILE}"
+
+        if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+            # the pee-bee-es situation fixes nodes/threads?
+            mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
+        elif [ "${SYSTYPE}" == "taurus" ]; then
+            OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1 
+        elif [ "${SYSTYPE}" == "MBP" ]; then
+            # EXEC="./${PSMAC2EXEC##*/}"
+            # PARM="${PSMAC2PARAMETERS##*/}"
+            OMP_NUM_THREADS=$THREADS nice -n $NICE mpiexec -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
+        fi
+        RUNTIME=$SECONDS
+        HOUR=$(($RUNTIME/3600))
+        MINS=$(( ($RUNTIME%3600) / 60))
+        SECS=$(( ($RUNTIME%60) ))
+        printf "      Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
+
+        echo "    ... done running P-Smac2"
+        # break
+    done
+
+}
+
+
 # Main
 # Uncomment if options are required
 # if [ $# = 0 ]; then _usage && exit 2; fi
@@ -831,18 +949,23 @@ echo -e "\nStart of program at $(date)\n"
 #MODEL_TO_USE="ic_cyga_fixed.par"
 #MODEL_TO_USE="ic_cygb_fixed.par"
 #MODEL_TO_USE="ic_both_fixed.par"
+
 #MODEL_TO_USE="ic_cyga_hybrid.par"
 #MODEL_TO_USE="ic_both_hybrid.par"
-#Cannot run free beta model
+
 #MODEL_TO_USE="ic_cyga_free.par"
-#MODEL_TO_USE="ic_cygb_free.par"
-MODEL_TO_USE="ic_both_free.par"
+MODEL_TO_USE="ic_cygb_free.par"
+#MODEL_TO_USE="ic_both_free.par"
 
 setup_system
 setup_toycluster
 
 if [ ! "$ONLY_TOYCLUSTER" = true ]; then
     setup_gadget
+fi
+
+if [ "$ROTATE" = true ]; then
+    rotate
 fi
 
 if [ "$RUNSMAC" = true ]; then
