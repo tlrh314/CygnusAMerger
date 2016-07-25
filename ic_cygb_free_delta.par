@@ -1,14 +1,14 @@
 % % Toycluster Parameter File %%
 %
-% Parameter file for the free beta model, both haloes.
+% Parameter file for the free beta model, single halo Cygnus B
 %
 
 Output_file ./IC_single_0   % Base name 
 
 Ntotal      200000  % Total Number of Particles in R200
-Mtotal      38799    % Total Mass in Code Units
+Mtotal      14820   % Total Mass in Code Units
 
-Mass_Ratio  0.3215        % set =0 for single cluster
+Mass_Ratio  0        % set =0 for single cluster
 
 ImpactParam 0
 ZeroEOrbitFrac 0.1
@@ -32,17 +32,17 @@ UnitVelocity_in_cm_per_s     1e5                %  1 km/sec
 %% -DGIVEPARAMS Options
 %% here some more merger parameters can be set by hand
 
-% cluster 0 is CygA
-c_nfw_0     3.662
+% cluster 0 is CygB
+c_nfw_0     3.913
 v_com_0     0
-beta_0      0.538
-rc_0        26.016
+beta_0      0.790
+rc_0        305.78
 
-% cluster 1 is CygB
-c_nfw_1     4.089
+% cluster 1
+c_nfw_1     0
 v_com_1     0
-beta_1      0.790
-rc_1        305.78
+beta_1      0
+rc_1        0
 
 %% -DADD_THIRD_SUBHALO Options
 

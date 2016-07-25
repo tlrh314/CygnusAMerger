@@ -29,7 +29,6 @@ class ObservedCluster(object):
             @param oldICs: True -> old (800 ksec) data, else latest (900 ksec)
         """
 
-
         self.name = name
         self.oldICs = oldICs
 
@@ -726,17 +725,24 @@ class SampledBox(object):
     particles in the datamodel :-)... """
 
     def __init__(self, timestamp):
-        debug = False
+        debug = True
 
         """ First read IC output where two clusters live in the box.
         NB simulation to make distinction between `numerical' (has 1 cluster),
         and `simulation' where two clusters live in the box. """
+
+        icdir = "../runs/{0}/ICs/".format(timestamp)
         simulation = NumericalCluster(
-            icdir="../runs/{0}/ICs/".format(timestamp),
-            snapdir="../runs/{0}/ICs/".format(timestamp),
+            icdir=icdir,
+            snapdir=icdir,
             logfile="runToycluster.log",
             icfile="IC_single_0")
 
+        boxsize = simulation.toyclusterlog.systemsetup['Boxsize']\
+            .value_in(units.kpc)
+
+        # import os
+        # tc_par_name = [file for file in os.listdir(icdir) if "par" in file][0]
         # NB simulation contains particles of both haloes
         gas, dm = simulation.place_ic_data_in_datamodel(simulation.raw_data)
 
@@ -744,14 +750,14 @@ class SampledBox(object):
         # NB this is rather stupid but we cannot say halo0_numerical = simulation
         # because then id(halo0_numerical) = id(halo1_numerical) = id(simulation)
         halo0_numerical = NumericalCluster(
-            icdir="../runs/{0}/ICs/".format(timestamp),
-            snapdir="../runs/{0}/ICs/".format(timestamp),
+            icdir=icdir,
+            snapdir=icdir,
             logfile="runToycluster.log",
             icfile="IC_single_0")
 
         halo1_numerical = NumericalCluster(
-            icdir="../runs/{0}/ICs/".format(timestamp),
-            snapdir="../runs/{0}/ICs/".format(timestamp),
+            icdir=icdir,
+            snapdir=icdir,
             logfile="runToycluster.log",
             icfile="IC_single_0")
 
@@ -761,10 +767,14 @@ class SampledBox(object):
 
         hist, edges = numpy.histogram(gas.x.value_in(units.kpc),
             bins=int(numpy.sqrt(len(gas.x))))
+        if debug:
+            pyplot.figure()
+            pyplot.plot((edges[1:]+edges[:-1])/2, hist)
+            pyplot.show()
         # Domain contains indices of x values between -750 and 750
         # somewhere in this range there is a minimum x-value, which
         # is the center that we need to shift back the haloes.
-        domain = numpy.where(numpy.logical_and(edges>=-750, edges<=750))
+        domain = numpy.where(numpy.logical_and(edges>=-1000, edges<=1000))
         ymin_index = numpy.argmin(hist[domain])
         center = edges[domain][ymin_index]
         if debug:

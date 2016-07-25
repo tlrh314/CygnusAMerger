@@ -1,6 +1,8 @@
 import glob
 import os
 import numpy
+import argparse
+
 import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
@@ -166,16 +168,33 @@ def plot_individual_cluster_temperature(numerical, analytical):
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
     pyplot.legend(loc=3)
 
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        description="Plot rho(r), M(<r), T(r) for given SimulationID.")
+    parser.add_argument("-o", "--onlyic", dest="IC_only",
+        action="store_true", default=True,
+        help="only use ICfile, else use Gadget snapshots")
+    parser.add_argument("-s", "--show", dest="save",
+        action="store_false", default=True,
+        help="show instead of save plots; default is save")
+    parser.add_argument("-r", "--replot", dest="replot",
+        action="store_true", default=False,
+        help="if plot already exists, plot it anyway")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-t", "--timestamp", dest="simulationID", nargs=1,
+        help="string of the Simulation ID")
+    parser.add_argument("-c", "--cluster", dest="clustername", default=None,
+        choices=["cygA", "cygB"], help="also plot observed cluster")
+
+    return parser
 
 if __name__ == "__main__":
-    IC_only = True
-    save = True
-    replot = True
+    arguments = new_argument_parser().parse_args()
 
-    myRun = "yes_wvt_relax"
-    myRun = "no_wvt_relax"
-    myRun = "20160712T2017"
-    if IC_only:
+    myRun = arguments.simulationID[0]
+    observed = ObservedCluster(arguments.clustername) if arguments.clustername else None
+
+    if arguments.IC_only:
         # TODO: there is something different in the Toycluster rho
         # than in the Gadget output :(
         icdir = "../runs/{0}/ICs/".format(myRun)
@@ -195,7 +214,7 @@ if __name__ == "__main__":
         fname = snap.split('/')[-1]
         snapnr = fname.split('_')[-1]
 
-        if IC_only:
+        if arguments.IC_only:
             TimeBetSnapshot = 0
             snapnr += "00-ICOnly"
         else:
@@ -210,7 +229,7 @@ if __name__ == "__main__":
         if (os.path.isfile(mass_filename) and os.path.exists(mass_filename)
                 and os.path.isfile(density_filename) \
                 and os.path.exists(density_filename)) \
-                and not replot:
+                and not arguments.replot:
             print "Plots exist. Skipping", snap
             continue
 
@@ -218,7 +237,7 @@ if __name__ == "__main__":
             icdir=icdir,
             snapdir=snapdir,
             logfile="runToycluster.log",
-            icfile="IC_single_0" if IC_only else "snapshot_"+snapnr)
+            icfile="IC_single_0" if arguments.IC_only else "snapshot_"+snapnr)
 
         """ TODO: can use cluster.py setup_analytical_cluster
                   to obtain AnalyticalCluster from NumericalCluster"""
@@ -233,25 +252,26 @@ if __name__ == "__main__":
         analytical = AnalyticalCluster(parms, dm_parms, z=numerical.z)
 
         # 295 for WC6, 50 for Cubic Spline kernel
-        numerical.get_gas_mass_via_density(DESNNGB=50 if IC_only else 50)
+        numerical.get_gas_mass_via_density(
+            DESNNGB=50 if arguments.IC_only else 50)
         numerical.get_dm_mass_via_number_density(log_binning=True)
         numerical.set_dm_density()
 
-        plot_individual_cluster_density(numerical, analytical)
+        plot_individual_cluster_density(numerical, analytical, observed)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot), y=1.03)
-        if save:
+        if arguments.save:
             pyplot.savefig(density_filename)
             pyplot.close()
 
         plot_individual_cluster_mass(numerical, analytical)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot), y=1.03)
-        if save:
+        if arguments.save:
             pyplot.savefig(mass_filename)
             pyplot.close()
 
         plot_individual_cluster_temperature(numerical, analytical)
         pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot), y=1.03)
-        if save:
+        if arguments.save:
             pyplot.savefig(temperature_filename)
             pyplot.close()
         else:

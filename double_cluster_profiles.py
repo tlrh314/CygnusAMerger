@@ -1,6 +1,7 @@
 import os
 import numpy
 import scipy
+import argparse
 
 import matplotlib
 matplotlib.use("Qt4Agg")
@@ -25,6 +26,18 @@ from density_stability import plot_individual_cluster_density
 from density_stability import plot_individual_cluster_mass
 from density_stability import plot_individual_cluster_temperature
 
+def new_argument_parser():
+    parser = argparse.ArgumentParser(description="""Plot rho(r), M(<r),
+        T(r) for given SimulationID with two clusters.""")
+    parser.add_argument("-s", "--show", dest="save",
+        action="store_false", default=True,
+        help="show instead of save plots; default is save")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-t", "--timestamp", dest="simulationID", nargs=1,
+        help="string of the Simulation ID")
+
+    return parser
+
 
 if __name__ == "__main__":
     """ Parse Toycluster output for two clusters living in a box.
@@ -32,11 +45,13 @@ if __name__ == "__main__":
     for both clusters and check that it matches the Chandra observation.
     """
 
+    arguments = new_argument_parser().parse_args()
+    myRun = arguments.simulationID[0]
+
     print 80*'-'
     print "Parsing Toycluster output: double cluster (Xm != 0)"
     print 80*'-'
 
-    myRun="20160712T2041"
     snapnr = "000-ICOnly"
 
     outdir="../runs/{0}/out/".format(myRun)
@@ -63,28 +78,42 @@ if __name__ == "__main__":
     observed_cygA = ObservedCluster("cygA")
     plot_individual_cluster_density(world.halo0_numerical,
         world.halo0_analytical, observed_cygA)
-    pyplot.savefig(density0_filename)
+
+    if arguments.save:
+        pyplot.savefig(density0_filename)
+        pyplot.close()
 
     observed_cygB = ObservedCluster("cygB")
     plot_individual_cluster_density(world.halo1_numerical,
         world.halo1_analytical, observed_cygB)
-    pyplot.savefig(density1_filename)
-    import sys; sys.exit(0)
+    if arguments.save:
+        pyplot.savefig(density1_filename)
+        pyplot.close()
 
     plot_individual_cluster_mass(world.halo0_numerical,
                                  world.halo0_analytical)
-    pyplot.savefig(mass0_filename)
+    if arguments.save:
+        pyplot.savefig(mass0_filename)
+        pyplot.close()
 
     plot_individual_cluster_mass(world.halo1_numerical,
                                  world.halo1_analytical)
-    pyplot.savefig(mass1_filename)
+    if arguments.save:
+        pyplot.savefig(mass1_filename)
+        pyplot.close()
 
     plot_individual_cluster_temperature(world.halo0_numerical,
                                         world.halo0_analytical)
-    pyplot.savefig(temperature0_filename)
+    if arguments.save:
+        pyplot.savefig(temperature0_filename)
+        pyplot.close()
 
     plot_individual_cluster_temperature(world.halo1_numerical,
                                         world.halo1_analytical)
-    pyplot.savefig(temperature1_filename)
+    if arguments.save:
+        pyplot.savefig(temperature1_filename)
+        pyplot.close()
+    else:
+        pyplot.show()
 
     print 80*'-'

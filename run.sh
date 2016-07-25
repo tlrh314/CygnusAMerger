@@ -183,7 +183,8 @@ Cheers,\n${SYSTYPE}"
         BASEDIR="/scratch/timo"
     elif [ "$(uname -s)" == "Darwin" ]; then
         SYSTYPE="MBP"
-        BASEDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code"
+        #BASEDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code"
+        BASEDIR="/usr/local/mscproj"
         THREADS=$(sysctl -n hw.ncpu)  # OSX *_*
         NICE=10
     else
@@ -509,6 +510,8 @@ run_gadget() {
         mpiexec "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
     elif [ "${SYSTYPE}" == "taurus" ]; then
         nice -n $NICE mpiexec.hydra -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
+    elif [ "${SYSTYPE}" == "MBP" ]; then
+        nice -n $NICE mpirun -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
     fi
 
     echo "... done running Gadget2"
@@ -571,7 +574,7 @@ setup_psmac2() {
 
     ANALYSISDIR="${SIMULATIONDIR}/analysis"
     if [ "$ROTATE" = true ]; then
-        ANALYSISDIR="${SIMULATIONDIR}/rotation"
+        ANALYSISDIR="${SIMULATIONDIR}/rotation2"
     fi
 
     if [ ! -d "${ANALYSISDIR}" ]; then  # compile :)
@@ -856,81 +859,90 @@ rotate() {
 
     echo -e "\n  Starting rotation loop"
     cd "${ANALYSISDIR}"
-    for Euler_Angle_1 in {0..360..10}; do
-        echo -e "\n    Setting parameterfile"
-        EA0="$(printf "%03d" ${Euler_Angle_0})"
-        EA1="$(printf "%03d" ${Euler_Angle_1})"
-        EA2="$(printf "%03d" ${Euler_Angle_2})"
-        ROTATION_OUTFILE="rotation_xray_${EA0}_${EA1}_${EA2}"
-        # echo "    Setting Euler_Angle_0 to: ${Euler_Angle_0}"
-        perl -pi -e 's/^Euler_Angle_0.*/Euler_Angle_0 '${Euler_Angle_0}'/g' "${PSMAC2PARAMETERS}"
+    for Euler_Angle_0 in {0..360..40}; do
+        for Euler_Angle_1 in {0..360..40}; do
+            for Euler_Angle_2 in {0..360..40}; do
+                echo -e "\n    Setting parameterfile"
+                EA0="$(printf "%03d" ${Euler_Angle_0})"
+                EA1="$(printf "%03d" ${Euler_Angle_1})"
+                EA2="$(printf "%03d" ${Euler_Angle_2})"
+                ROTATION_OUTFILE="rotation_xray_${EA0}_${EA1}_${EA2}"
 
-        # echo "    Setting Euler_Angle_1 to: ${Euler_Angle_1}"
-        perl -pi -e 's/^Euler_Angle_1.*/Euler_Angle_1 '${Euler_Angle_1}'/g' "${PSMAC2PARAMETERS}"
+                if [ -f "${ANALYSISDIR}/${ROTATION_OUTFILE}.fits.fz" ]; then
+                    echo "${ANALYSISDIR}/${ROTATION_OUTFILE}.fits.fz" "Exists"
+                    continue
+                fi
+                # echo "    Setting Euler_Angle_0 to: ${Euler_Angle_0}"
+                perl -pi -e 's/^Euler_Angle_0.*/Euler_Angle_0 '${Euler_Angle_0}'/g' "${PSMAC2PARAMETERS}"
 
-        # echo "    Setting Euler_Angle_2 to: ${Euler_Angle_2}"
-        perl -pi -e 's/^Euler_Angle_2.*/Euler_Angle_2 '${Euler_Angle_2}'/g' "${PSMAC2PARAMETERS}"
+                # echo "    Setting Euler_Angle_1 to: ${Euler_Angle_1}"
+                perl -pi -e 's/^Euler_Angle_1.*/Euler_Angle_1 '${Euler_Angle_1}'/g' "${PSMAC2PARAMETERS}"
 
-        # Set smac2.par to run DM, change outputfile and logfile
-        # Match line containing Output_File; set fits output name
-        OUTPUTFILE="${ROTATION_OUTFILE}.fits"
-        # echo "    Setting Output_File to: ${OUTPUTFILE}"
-        perl -pi -e 's/Output_File.*/Output_File '${OUTPUTFILE}'/g' "${PSMAC2PARAMETERS}"
+                # echo "    Setting Euler_Angle_2 to: ${Euler_Angle_2}"
+                perl -pi -e 's/^Euler_Angle_2.*/Euler_Angle_2 '${Euler_Angle_2}'/g' "${PSMAC2PARAMETERS}"
 
-        echo "      Effect_Module   : ${EFFECT_MODULE}"
-        echo "      Effect_Flag     : ${EFFECT_FLAG}"
-        echo "      Euler_Angle_0   : ${Euler_Angle_0}"
-        echo "      Euler_Angle_1   : ${Euler_Angle_1}"
-        echo "      Euler_Angle_2   : ${Euler_Angle_2}"
-        echo "      Output fits file: ${OUTPUTFILE}"
+                # Set smac2.par to run DM, change outputfile and logfile
+                # Match line containing Output_File; set fits output name
+                OUTPUTFILE="${ROTATION_OUTFILE}.fits"
+                # echo "    Setting Output_File to: ${OUTPUTFILE}"
+                perl -pi -e 's/Output_File.*/Output_File '${OUTPUTFILE}'/g' "${PSMAC2PARAMETERS}"
 
-        echo "    Checking parameterfile"
-        echo -n "      "
-        grep -n --color=auto "Effect_Module" "${PSMAC2PARAMETERS}"
-        echo -n "      "
-        grep -n --color=auto "Effect_Flag" "${PSMAC2PARAMETERS}"
-        echo -n "      "
-        grep -n --color=auto "^Euler_Angle_0" "${PSMAC2PARAMETERS}"
-        echo -n "      "
-        grep -n --color=auto "^Euler_Angle_1" "${PSMAC2PARAMETERS}"
-        echo -n "      "
-        grep -n --color=auto "^Euler_Angle_2" "${PSMAC2PARAMETERS}"
-        echo -n "      "
-        grep -n --color=auto "Output_File" "${PSMAC2PARAMETERS}"
+                echo "      Effect_Module   : ${EFFECT_MODULE}"
+                echo "      Effect_Flag     : ${EFFECT_FLAG}"
+                echo "      Euler_Angle_0   : ${Euler_Angle_0}"
+                echo "      Euler_Angle_1   : ${Euler_Angle_1}"
+                echo "      Euler_Angle_2   : ${Euler_Angle_2}"
+                echo "      Output fits file: ${OUTPUTFILE}"
 
-        if [ ! -f "${PSMAC2PARAMETERS}" ]; then
-            echo "Error: PSMAC2PARAMETERS does not exist!"
-            exit 1
-        fi
+                echo "    Checking parameterfile"
+                echo -n "      "
+                grep -n --color=auto "Effect_Module" "${PSMAC2PARAMETERS}"
+                echo -n "      "
+                grep -n --color=auto "Effect_Flag" "${PSMAC2PARAMETERS}"
+                echo -n "      "
+                grep -n --color=auto "^Euler_Angle_0" "${PSMAC2PARAMETERS}"
+                echo -n "      "
+                grep -n --color=auto "^Euler_Angle_1" "${PSMAC2PARAMETERS}"
+                echo -n "      "
+                grep -n --color=auto "^Euler_Angle_2" "${PSMAC2PARAMETERS}"
+                echo -n "      "
+                grep -n --color=auto "Output_File" "${PSMAC2PARAMETERS}"
 
-        echo "    Running P-Smac2..."
-        SECONDS=0
+                if [ ! -f "${PSMAC2PARAMETERS}" ]; then
+                    echo "Error: PSMAC2PARAMETERS does not exist!"
+                    exit 1
+                fi
 
-        echo "Effect_Module   : ${EFFECT_MODULE}"  >> "${PSMAC2LOGFILE}"
-        echo "Effect_Flag     : ${EFFECT_FLAG}" >> "${PSMAC2LOGFILE}"
-        echo "Euler_Angle_0   : ${Euler_Angle_0}" >> "${PSMAC2LOGFILE}"
-        echo "Euler_Angle_1   : ${Euler_Angle_1}" >> "${PSMAC2LOGFILE}"
-        echo "Euler_Angle_2   : ${Euler_Angle_2}" >> "${PSMAC2LOGFILE}"
-        echo "Output fits file: ${OUTPUTFILE}" >> "${PSMAC2LOGFILE}"
+                echo "    Running P-Smac2..."
+                SECONDS=0
 
-        if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
-            # the pee-bee-es situation fixes nodes/threads?
-            mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
-        elif [ "${SYSTYPE}" == "taurus" ]; then
-            OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1 
-        elif [ "${SYSTYPE}" == "MBP" ]; then
-            # EXEC="./${PSMAC2EXEC##*/}"
-            # PARM="${PSMAC2PARAMETERS##*/}"
-            OMP_NUM_THREADS=$THREADS nice -n $NICE mpiexec -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
-        fi
-        RUNTIME=$SECONDS
-        HOUR=$(($RUNTIME/3600))
-        MINS=$(( ($RUNTIME%3600) / 60))
-        SECS=$(( ($RUNTIME%60) ))
-        printf "      Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
+                echo "Effect_Module   : ${EFFECT_MODULE}"  >> "${PSMAC2LOGFILE}"
+                echo "Effect_Flag     : ${EFFECT_FLAG}" >> "${PSMAC2LOGFILE}"
+                echo "Euler_Angle_0   : ${Euler_Angle_0}" >> "${PSMAC2LOGFILE}"
+                echo "Euler_Angle_1   : ${Euler_Angle_1}" >> "${PSMAC2LOGFILE}"
+                echo "Euler_Angle_2   : ${Euler_Angle_2}" >> "${PSMAC2LOGFILE}"
+                echo "Output fits file: ${OUTPUTFILE}" >> "${PSMAC2LOGFILE}"
 
-        echo "    ... done running P-Smac2"
-        # break
+                if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+                    # the pee-bee-es situation fixes nodes/threads?
+                    mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
+                elif [ "${SYSTYPE}" == "taurus" ]; then
+                    OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1 
+                elif [ "${SYSTYPE}" == "MBP" ]; then
+                    # EXEC="./${PSMAC2EXEC##*/}"
+                    # PARM="${PSMAC2PARAMETERS##*/}"
+                    OMP_NUM_THREADS=$THREADS nice -n $NICE mpiexec -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1
+                fi
+                RUNTIME=$SECONDS
+                HOUR=$(($RUNTIME/3600))
+                MINS=$(( ($RUNTIME%3600) / 60))
+                SECS=$(( ($RUNTIME%60) ))
+                printf "      Runtime = %d s, which is %02d:%02d:%02d\n" "$RUNTIME" "$HOUR" "$MINS" "$SECS"
+
+                echo "    ... done running P-Smac2"
+                # break
+            done
+        done 
     done
 
 }
@@ -954,8 +966,12 @@ echo -e "\nStart of program at $(date)\n"
 #MODEL_TO_USE="ic_both_hybrid.par"
 
 #MODEL_TO_USE="ic_cyga_free.par"
-MODEL_TO_USE="ic_cygb_free.par"
+#MODEL_TO_USE="ic_cygb_free.par"
 #MODEL_TO_USE="ic_both_free.par"
+
+#MODEL_TO_USE="ic_cyga_free_delta.par"
+#MODEL_TO_USE="ic_cygb_free_delta.par"
+MODEL_TO_USE="ic_both_free_delta.par"
 
 setup_system
 setup_toycluster

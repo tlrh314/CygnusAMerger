@@ -79,10 +79,10 @@ def helix_tables(module, flag, inv=False, values=None):
     return cx
 
 
-@concurrent(processes=8)
+@concurrent(processes=4)
 def make_plot(rotation, cmap, scale, xlen, ylen, name):
-    replot = True
-    print "Generating plot of", rotation
+    replot = False
+    print "\nGenerating plot of", rotation, "\n"
     rundir = "/".join(rotation.split("/")[0:-2])
 
 
@@ -91,8 +91,13 @@ def make_plot(rotation, cmap, scale, xlen, ylen, name):
         data = f[0].data
         filename = rotation.split("/")[-1].split(".")[0]
 
+    Euler_Angle_0 = filename.split("_")[-3]
+    Euler_Angle_1 = filename.split("_")[-2]
+    Euler_Angle_2 = filename.split("_")[-1]
+    angles = "Euler Angle 0 = {0}\nEuler Angle 1 = {1}\nEuler Angle 2 = {2}".format(Euler_Angle_0, Euler_Angle_1, Euler_Angle_2)
+
     pad = 4  # number of pixels padding for text placement (of tile titles)
-    imshowfilename = rundir+"/out/{0}.png".format(filename)
+    imshowfilename = rundir+"/rotation2/{0}.png".format(filename)
     if (os.path.isfile(imshowfilename) and os.path.exists(imshowfilename)
             and not replot):
         print "Plots exist. Skipping imshow of", filename
@@ -106,24 +111,29 @@ def make_plot(rotation, cmap, scale, xlen, ylen, name):
         ax.set_aspect('equal')
 
         # Clip to avoid "RuntimeWarning: divide by zero encountered in log"
-        ax.imshow(numpy.log10(data[0].clip(min=1e-10)), cmap=cmap)
+        ax.imshow(numpy.log10(data[0].clip(min=1e-10)), cmap=cmap,
+            origin="lower")
         # Tile text: name of physical property
-        pyplot.text(pad, pad,
-                    name, color="white", size=42,
-                    horizontalalignment="left",
+        pyplot.text(xlen/2, pad,
+                    name, color="white", size=32,
+                    horizontalalignment="center",
                     verticalalignment="top")
 
-        pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=42,
+        pyplot.text(xlen-pad, ylen-pad, scale, color="white", size=32,
                     horizontalalignment="right", verticalalignment="bottom")
+
+        pyplot.text(pad, ylen-pad, angles, color="white", size=32,
+                    horizontalalignment="left", verticalalignment="bottom")
 
         #pyplot.suptitle("T = {0:04.2f} Gyr".format(TimeBetSnapshot*n),
         #    color="white", size=52, y=0.95)
         pyplot.tight_layout()
         pyplot.savefig(imshowfilename)
         pyplot.close()
+
     return
 
-    aplfilename = rundir+"/out/apl_{0}.pdf".format(filename)
+    aplfilename = rundir+"/rotation2/apl_{0}.pdf".format(filename)
     if (os.path.isfile(aplfilename) and os.path.exists(aplfilename)
             and not replot):
         print "Plots exist. Skipping apl show_colorscale of", filename
@@ -134,7 +144,7 @@ def make_plot(rotation, cmap, scale, xlen, ylen, name):
         f.save(aplfilename, dpi=300)
         # raw_input()
 
-    print "Done generating plots of", rotation
+    print "\nDone generating plots of", rotation, "\n"
 
 
 @synchronized
@@ -150,7 +160,7 @@ def plot_all(rundir):
     if particles > 2e6:
         print "Strap in, this could take a while :-) ..."
 
-    files = sorted(glob.glob(rundir+"rotation/*.fits.fz"), key=os.path.getmtime)
+    files = sorted(glob.glob(rundir+"rotation2/*.fits.fz"), key=os.path.getmtime)
 
     with fits.open(files[0]) as f:
         header = f[0].header
@@ -176,6 +186,8 @@ def plot_all(rundir):
         xlen = header['NAXIS1']
         ylen = header['NAXIS2']
 
+    # files = [file for file in files if "xray_180_" in file]
+
     for filename in files:
         make_plot(filename, cmap, scale, xlen, ylen, name)
 
@@ -184,7 +196,7 @@ if __name__ == "__main__":
     timestamp = "20160707T0034"
     rundir = "../runs/{0}/".format(timestamp)
 
-    if not (os.path.isdir(rundir+"/out") or os.path.exists(rundir+"/out")):
-        os.mkdir(rundir+"/out")
+    if not (os.path.isdir(rundir+"/rotation2") or os.path.exists(rundir+"/rotation2")):
+        os.mkdir(rundir+"/rotation2")
 
     plot_all(rundir)

@@ -2,7 +2,7 @@
 
 set -e
 
-FPS=2
+FPS=3
 TIMESTAMP="20160707T0034"
 
 # for i in {0..360..10}; do
@@ -17,15 +17,26 @@ TIMESTAMP="20160707T0034"
 
 for i in {0..360..10}; do
     i="$(printf "%03d" ${i})"
-    nice -n 19 ffmpeg -y -r $FPS -i ../runs/${TIMESTAMP}/out/rotation_xray_${i}_000_000.png \
-        -profile:v high444 -level 4.1 -c:v libx264 -preset slow -crf 25 -s '2000:2000' \
-        -an "../runs/${TIMESTAMP}/out/rotation_xray_x_000_000.mp4"
-
-    nice -n 19 ffmpeg -y -r $FPS -i ../runs/${TIMESTAMP}/out/rotation_xray_000_${i}_000.png \
-        -profile:v high444 -level 4.1 -c:v libx264 -preset slow -crf 25 -s '2000:2000' \
-        -an "../runs/${TIMESTAMP}/out/rotation_xray_000_x_000.mp4"
-
-    nice -n 19 ffmpeg -y -r $FPS -i ../runs/${TIMESTAMP}/out/rotation_xray_000_000_${i}.png \
-        -profile:v high444 -level 4.1 -c:v libx264 -preset slow -crf 25 -s '2000:2000' \
-        -an "../runs/${TIMESTAMP}/out/rotation_xray_000_000_x.mp4"
+    #touch ../runs/${TIMESTAMP}/out/rotation_xray_000_000_${i}.png  
+    #touch ../runs/${TIMESTAMP}/out/rotation_xray_000_${i}_000.png  
+    #touch ../runs/${TIMESTAMP}/out/rotation_xray_${i}_000_000.png  
+    touch ../runs/${TIMESTAMP}/out/rotation_xray_180_${i}_000.png  
 done
+
+convert -delay 10 -loop 0  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_180_*_000.png  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_180_x_000.gif
+
+exit 0
+
+convert -delay 10 -loop 0  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_000_000_*.png  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_000_000_x.gif
+
+convert -delay 10 -loop 0  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_000_*_000.png  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_000_x_000.gif
+
+convert -delay 10 -loop 0  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_*_000_000.png  \
+    ../runs/${TIMESTAMP}/out/rotation_xray_x_000_000.gif

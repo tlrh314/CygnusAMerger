@@ -34,7 +34,7 @@ PeriodicBoundariesOn     1
 % Characteristics of run
 
 TimeBegin                0.0
-TimeMax                  5.0  % in units of Gyr
+TimeMax                  1.0  % in units of Gyr
 
 Omega0                   0.3
 OmegaLambda              0.7

@@ -12,6 +12,8 @@ import numpy
 from scipy import special
 import pandas
 import matplotlib
+
+# TODO: place all matplotlib styling in a separate plot style file
 # Anaconda python gives annoying "setCanCycle: is deprecated" when using Tk
 # matplotlib.use("TkAgg")
 matplotlib.use("Qt4Agg")
@@ -81,6 +83,31 @@ def rho_to_ne(rho):
     mp = 1.672621637e-24
     ne = rho/(umu*mp)
     return ne
+
+
+def overdensity_parameter(cc):
+    """ Return the overdensity parameter as function of cosmology cc """
+    # Pierpaoli 2001, Boehringer+ 2012 */
+
+    # Pierpaoli+ 01 Table 1
+    cij = numpy.zeros((5, 5))
+    cij = [
+           [546.67, -137.82, 94.083, -204.68,  111.51],
+           [-1745.6, 627.22,  -1175.2, 2445.7,  -1341.7],
+           [3928.8, -1519.3, 4015.8,  -8415.3, 4642.1],
+           [-4384.8, 1748.7,  -5362.1, 11257.,  -6218.2],
+           [1842.3, -765.53, 2507.7, -5210.7, 2867.5]
+          ]
+
+    x = cc.WM - 0.2
+    y = cc.WV
+
+    result = 0
+    for i in range(5):
+        for j in range(5):
+            result += cij[i][j] * numpy.power(x, i) * numpy.power(y, j)
+
+    return cc.WM * result
 
 
 def concentration_parameter(M200):
@@ -257,11 +284,19 @@ def plot_observed_cluster(observed, analytical_density, poster_style=False,
 
 
 def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
-                          visualise=False, observed=None):
+                          visualise=False, observed=None, delta=None):
     """ We follow the Toycluster (Donnert 2014) setup.c method in reverse.
     If we assume a value for r200 and we assume the baryon fraction at r200
     is equal to 0.17 we are able to obtain a total mass M200 for which
     rho_average(r200) == 200 rho_crit."""
+
+    if delta:
+        if not observed:
+            print "Error: observed cluster must be given to use delta."
+            raise RuntimeError
+        delta = overdensity_parameter(observed.cc)
+    else:
+        delta = 200
 
     if visualise:
         gas_rhom = gas_density_beta(observed.radius, rho0, rc*cm2kpc, beta)
@@ -314,6 +349,8 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
             print "r200                   = {0:3.1f}".format(r200 * cm2kpc)
             print "Upper                  = {0:3.1f}".format(upper * cm2kpc)
             print "rho_avg(r200)/rho_crit = {0:.1f}".format(rho200_over_rhocrit)
+            if delta:
+                print "Overdensity parameter  = {0:.1f}".format(delta)
             print "Ratio                  = {0:.1f}".format(rho200_over_rhocrit/200)
             print
 
@@ -334,7 +371,7 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
 
             ax.plot(observed.radius, dm_rhom, c=fit_colour, lw=5 if poster_style else 1, ls="solid")
             ax.plot(observed.radius, gas_rhom, c=fit_colour, lw=5 if poster_style else 1, ls="dashed")
-            pyplot.axhline(200*rho_crit(), c=fit_colour, lw=5 if poster_style else 1)
+            pyplot.axhline(delta*rho_crit(), c=fit_colour, lw=5 if poster_style else 1)
             rho_avg_200 = M200 / (4./3 * numpy.pi * p3(r200))
             pyplot.axhline(rho_avg_200, c=accent_colour, lw=5 if poster_style else 1)
 
@@ -399,9 +436,9 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
             #import sys; sys.exit(0)
 
         # bisection
-        if rho200_over_rhocrit < 200:
+        if rho200_over_rhocrit < delta:
             upper = r200
-        if rho200_over_rhocrit > 200:
+        if rho200_over_rhocrit > delta:
             lower = r200
 
     # r200, thus M200 found
@@ -423,7 +460,7 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
     return halo
 
 
-def propagate_errors(halo, to_print=True):
+def propagate_errors(halo, to_print=True, observed=None, delta=None):
     """ We have an error on rho0 and rc from the fit to the Chandra data
 
         We obtain M200 and the other parameters using
@@ -440,11 +477,11 @@ def propagate_errors(halo, to_print=True):
     plus = obtain_M200_bisection(halo["rc"]+halo["rc_sigma"],
         halo["rho0"]+halo["rho0_sigma"],
         None if not halo["beta"] else halo["beta"]+halo["beta_sigma"],
-        verbose=False, visualise=False)
+        observed=observed, verbose=False, visualise=False, delta=delta)
     min = obtain_M200_bisection(halo["rc"]-halo["rc_sigma"],
         halo["rho0"]-halo["rho0_sigma"],
         None if not halo["beta"] else halo["beta"]-halo["beta_sigma"],
-        verbose=False, visualise=False)
+        observed=observed, verbose=False, visualise=False, delta=delta)
 
     if to_print:
         plus = pandas.Series(plus)
@@ -459,8 +496,7 @@ def propagate_errors(halo, to_print=True):
         return plus, min
 
 
-def print_inferred_values(halo, fix_cygA=False):
-    print halo
+def print_inferred_values(halo, fix_cygA=False, observed=None, delta=None):
     if fix_cygA:
         # Yes, we are cheating here. But the statistical error actually does
         # not matter anyway, and in addition there is systematic drift
@@ -468,7 +504,7 @@ def print_inferred_values(halo, fix_cygA=False):
         plus = {key: 0.2*value if value else numpy.inf for (key, value) in halo.iteritems()}
         min = {key: 0.2*value if value else numpy.inf for (key, value) in halo.iteritems()}
     else:
-        plus, min = propagate_errors(halo)
+        plus, min = propagate_errors(halo, observed=observed, delta=delta)
 
     bf_200 = halo["Mgas200"]/(halo["Mdm200"]+halo["Mgas200"])
     bf_200_plus = plus["Mgas200"]/(plus["Mdm200"]+plus["Mgas200"])
@@ -504,7 +540,7 @@ def print_inferred_values(halo, fix_cygA=False):
 
 
 def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
-              mode="", poster_style=False, fix_cygA=False):
+              mode="", poster_style=False, fix_cygA=False, delta=None):
     """ Make plot of inferred profiles
 
     @param cyg*: dictionary with best-fit parameters (of gas and dm)
@@ -557,8 +593,10 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
 
     if mode == "ratio":
         print "Generating plot of the mass ratio"
-        cygA_plus, cygA_min = propagate_errors(cygA, to_print=False)
-        cygB_plus, cygB_min = propagate_errors(cygB, to_print=False)
+        cygA_plus, cygA_min = propagate_errors(cygA, to_print=False,
+            observed=cygA_observed, delta=delta)
+        cygB_plus, cygB_min = propagate_errors(cygB, to_print=False,
+            observed=cygB_observed, delta=delta)
 
         cygA_gas_plus_sigma = M_gas_below_r(r, cygA_plus["rho0"]*g2msun/p3(cm2kpc),
                 cygA_plus["rc"]*cm2kpc, cygA_plus["beta"])
@@ -1015,9 +1053,10 @@ if __name__ == "__main__":
     oldICs = False
     discard_firstbins = True
     discard_lastbins = False
-    free_beta = False
-    poster_style = True
-    fix_cygA = True
+    free_beta = True
+    poster_style = False
+    fix_cygA = False
+    delta = True  # use overdensity_parameter instead of 200 rho_crit
 
     print "Reading Chandra observed density profiles..."
     print 80*"-"
@@ -1028,6 +1067,7 @@ if __name__ == "__main__":
     cygB_observed = ObservedCluster("cygB", oldICs=oldICs)
     print ".... done reading Chandra observed density profiles."
     print 80*"-"
+
 
     print "Obtaining central density and core radius."
     print 80*"-"
@@ -1080,7 +1120,8 @@ if __name__ == "__main__":
     # is_solution_unique(cygA_rc, cygA_rho0, cygA_observed)
 
     cygA = obtain_M200_bisection(cygA_rc, cygA_rho0, cygA_beta, verbose=False,
-                                 visualise=visualise, observed=cygA_observed)
+                                 visualise=visualise, observed=cygA_observed,
+                                 delta=delta)
 
     cygA_sigma = numpy.sqrt(numpy.diag(cygA_ml_covar))
     cygA_ne0_sigma = cygA_sigma[0]
@@ -1093,7 +1134,8 @@ if __name__ == "__main__":
     cygA["beta_sigma"] = cygA_beta_sigma
 
     print "CygA"
-    print_inferred_values(cygA, fix_cygA=fix_cygA)
+    print_inferred_values(cygA, fix_cygA=fix_cygA,
+        observed=cygA_observed, delta=delta)
 
     print "CygB"
 
@@ -1105,7 +1147,8 @@ if __name__ == "__main__":
     #is_solution_unique(cygB_rc, cygB_rho0, cygB_observed)
 
     cygB = obtain_M200_bisection(cygB_rc, cygB_rho0, cygB_beta, verbose=False,
-                                 visualise=visualise, observed=cygB_observed)
+                                 visualise=visualise, observed=cygB_observed,
+                                 delta=delta)
 
     cygB_sigma = numpy.sqrt(numpy.diag(cygB_ml_covar))
     cygB_ne0_sigma = cygB_sigma[0]
@@ -1117,7 +1160,7 @@ if __name__ == "__main__":
     cygB["rc_sigma"] = cygB_rc_sigma
     cygB["beta_sigma"] = cygB_beta_sigma
 
-    print_inferred_values(cygB)
+    print_inferred_values(cygB, observed=cygB_observed, delta=delta)
 
     print "cygA_M200            = {0:1.4e} MSun".format(cygA["M200"] * g2msun)
     print "cygB_M200            = {0:1.4e} MSun".format(cygB["M200"] * g2msun)
@@ -1128,36 +1171,37 @@ if __name__ == "__main__":
     print
 
     print 80*"-"
+    import sys; sys.exit(0)
     print "Plotting the results..."
     print 80*"-"
 
-    #make_plot(cygA, None, cygA_observed, None,
-    #          mode="nfwsingle", poster_style=poster_style)
-    #make_plot(None, cygB, None, cygB_observed,
-    #          mode="nfwsingle", poster_style=poster_style)
-    ## raw_input("Press enter to continue...\n")
+    make_plot(cygA, None, cygA_observed, None,
+              mode="nfwsingle", poster_style=poster_style)
+    make_plot(None, cygB, None, cygB_observed,
+              mode="nfwsingle", poster_style=poster_style)
+    # raw_input("Press enter to continue...\n")
 
-    ## Plot density+mass profiles (gas + dm in same plot); density left, mass right
-    #make_plot(cygA, cygB, mode="massboth", poster_style=poster_style)
-    #make_plot(cygA, cygB, mode="rhoboth", poster_style=poster_style)
-    #make_plot(cygA, cygB, mode="masssameplot", poster_style=poster_style)
+    # Plot density+mass profiles (gas + dm in same plot); density left, mass right
+    make_plot(cygA, cygB, mode="massboth", poster_style=poster_style)
+    make_plot(cygA, cygB, mode="rhoboth", poster_style=poster_style)
+    make_plot(cygA, cygB, mode="masssameplot", poster_style=poster_style)
 
     make_plot(cygA, None, cygA_observed, None, mode="rhosingle",
         poster_style=poster_style, fix_cygA=fix_cygA)
-    #make_plot(None, cygB, None, cygB_observed, mode="rhosingle",
-    #    poster_style=poster_style)
+    make_plot(None, cygB, None, cygB_observed, mode="rhosingle",
+        poster_style=poster_style)
 
     # Plot mass ratio
-    # make_plot(cygA, cygB, mode="ratio", poster_style=poster_style)
+    make_plot(cygA, cygB, mode="ratio", poster_style=poster_style)
 
     # Plot baryon fraction
-    # make_plot(cygA, None, cygA_observed, None,
-    #           mode="bfsingle", poster_style=poster_style)
-    # make_plot(None, cygB, None, cygB_observed,
-    #           mode="bfsingle", poster_style=poster_style)
+    make_plot(cygA, None, cygA_observed, None,
+              mode="bfsingle", poster_style=poster_style)
+    make_plot(None, cygB, None, cygB_observed,
+              mode="bfsingle", poster_style=poster_style)
 
     pyplot.show()
 
     print 80*"-"
     print "End of pipeline."
-    print 80*"-"
+    # print 80*"-"

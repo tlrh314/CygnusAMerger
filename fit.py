@@ -518,7 +518,7 @@ if __name__ == "__main__":
     # because the observed slope is steeper but we are bound to beta 2/3
     # in Toycluster... for now. Hence, fix_cygA
 
-    fix_cygA = True
+    fix_cygA = False
 
     fit = True
     discard_firstbins = True
@@ -527,6 +527,7 @@ if __name__ == "__main__":
     poster_style = True
     mass_density = True
     save = False
+    fit_toycluster = False
 
 
 
@@ -634,7 +635,6 @@ if __name__ == "__main__":
     # None of the code below actually works (physically). This is a neat
     # toycluster bruteforce which we leave in cause it is kind of awesome tho.
     # See get_mass_plus_plot.py for a working (physical) implementation.
-    fit_toycluster = True
     if fit_toycluster:
         print "Fitting Toycluster calculated rho_0, rc to Chandra data"
         print 80*"-"
