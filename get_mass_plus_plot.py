@@ -8,14 +8,15 @@ Code based on Julius Donnert's 20160617 cyg.pro script.
 
 """
 
+import argparse
 import numpy
 from scipy import special
 import pandas
-import matplotlib
 
 # TODO: place all matplotlib styling in a separate plot style file
 # Anaconda python gives annoying "setCanCycle: is deprecated" when using Tk
 # matplotlib.use("TkAgg")
+import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
 pyplot.rcParams.update({"font.size": 28})
@@ -38,7 +39,6 @@ from cluster import ObservedCluster
 from cluster import AnalyticalCluster
 from fit import fit_betamodel_to_chandra
 from macro import print_progressbar
-
 
 # from amuse.units import constants
 # from amuse.units import units
@@ -1047,17 +1047,54 @@ def is_solution_unique(rc, rho0, beta, observed):
         print_progressbar(n, N)
 
 
-if __name__ == "__main__":
-    # If visualise is True we create plots of the bisection method
-    visualise = False
-    oldICs = False
-    discard_firstbins = True
-    discard_lastbins = False
-    free_beta = True
-    poster_style = False
-    fix_cygA = False
-    delta = True  # use overdensity_parameter instead of 200 rho_crit
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        description="Obtain rho0, r_c from Chandra observation.")
+    parser.add_argument("-b", "--betafree", dest="freebeta",
+        action="store_false", default=True,
+        help="Leave beta as a free fit parameter. Default is True.")
+    parser.add_argument("-v", "--visualise", dest="visualise",
+        action="store_true", default=False,
+        help="Visualise bisection method. Default is False.")
+    parser.add_argument("-o", "--oldICs", dest="oldICs",
+        action="store_true", default=False,
+        help="Use old (800 ksec) Chandra observation with smaller merger-region cut-out and different normalisation. Default is False. (Thus the latest 900 ksec observation is used).")
+    parser.add_argument("-l", "--lastbins", dest="discard_lastbins",
+        action="store_true", default=False,
+        help="Discard last CygA bins to see for which r beta=2/3 would still be useable (NB it is not!). Default is False.")
+    parser.add_argument("-f", "--firstbins", dest="discard_firstbins",
+        action="store_false", default=True,
+        help="Discard inner CygA bins that are piled-up and dominated by AGN emission. Default is True")
+    parser.add_argument("-p", "--posterstyle", dest="poster_style",
+        action="store_true", default=False,
+        help="Use poster style (dark background). Default is False.")
+    parser.add_argument("-c", "--cygafix", dest="fix_cygA",
+        action="store_true", default=False,
+        help="Fix CygA's rho0, rc to bestfit freebeta values, but do use beta=2/3. Default is False")
+    parser.add_argument("-d", "--delta", dest="delta",
+        action="store_false", default=True,
+        help="Use Overdensity_Parameter instead of delta=200. This changes the halo definition to delta*rho_crit instead of 200*rho_crit. Default is True.")
+    return parser
 
+
+if __name__ == "__main__":
+    arguments = new_argument_parser().parse_args()
+
+    print 80*"-"
+    print "\nRunning {0} with arguments:".format(__file__)
+    for key, val in vars(arguments).iteritems():
+        print "  {0:<17} : {1}".format(key, val)
+    print 80*"-"
+
+    # If visualise is True we create plots of the bisection method
+    visualise = arguments.visualise
+    oldICs = arguments.oldICs
+    discard_firstbins = arguments.discard_firstbins
+    discard_lastbins = arguments.discard_lastbins
+    free_beta = arguments.freebeta
+    poster_style = arguments.poster_style
+    fix_cygA = arguments.fix_cygA
+    delta = arguments.delta # use overdensity_parameter instead of 200 rho_crit
     print "Reading Chandra observed density profiles..."
     print 80*"-"
     if oldICs:

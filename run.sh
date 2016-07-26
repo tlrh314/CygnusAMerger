@@ -63,9 +63,9 @@ parse_options() {
     # It is possible to use multiple arguments for a long option.
     # Specifiy here how many are expected.
     declare -A longoptspec
-    longoptspec=( [loglevel]=1 [timestamp]=1 [effect]=1 [rotate]=1 )
+    longoptspec=( [loglevel]=1 [timestamp]=1 [effect]=1 [rotate]=1 [use]=1 )
 
-    optspec=":e:hlmor:t:-:"
+    optspec=":e:hlmor:t:u:-:"
     while getopts "$optspec" opt; do
     while true; do
         case "${opt}" in
@@ -114,8 +114,12 @@ parse_options() {
                 echo "Rotate snapnr   = ${ROTATESNAPNR}"
                 ;;
             t|timestamp)
-                TIMESTAMP="${OPTARG}"
-                echo "Timestamp       = ${TIMESTAMP}"
+                timestamp="${OPTARG}"
+                echo "timestamp       = ${timestamp}"
+                ;;
+            u|use)
+                MODEL_TO_USE="${OPTARG}"
+                echo "MODEL_TO_USE = ${MODEL_TO_USE}"
                 ;;
         esac
     break; done
@@ -971,7 +975,11 @@ echo -e "\nStart of program at $(date)\n"
 
 #MODEL_TO_USE="ic_cyga_free_delta.par"
 #MODEL_TO_USE="ic_cygb_free_delta.par"
-MODEL_TO_USE="ic_both_free_delta.par"
+#MODEL_TO_USE="ic_both_free_delta.par"
+
+if [ ! -z "${MODEL_TO_USE}" ]; then
+    MODEL_TO_USE="toycluster.par"
+fi
 
 setup_system
 setup_toycluster
