@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#PBS -lnodes=1:ppn=16:cores16
+#PBS -lnodes=8:ppn=16:cores16
 #PBS -l walltime=08:00:00
 
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
@@ -155,10 +155,10 @@ setup_system() {
         # TODO: check how multiple threas/nodes works on Lisa?
         # TODO: is the PBS situation the scheduler that also sets nodes/threads?
         # THREADS=$(grep -c ^processor /proc/cpuinfo)
-        THREADS=16 # set based on the nr of nodes requested
+        THREADS=128 # set based on the nr of nodes requested
         NICE=0  # default is 0
         BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
-        TIMESTAMP="20160704T1337"  # qsub no parse options..
+        #TIMESTAMP="20160704T1337"  # qsub no parse options..
         RUNSMAC=true
         EFFECT="all"
         MAIL=true
@@ -323,7 +323,11 @@ run_toycluster() {
     cd "${ICOUTDIR}"
 
     SECONDS=0
-    OMP_NUM_THREADS=$THREADS nice -n $NICE "${TOYCLUSTEREXEC}" "${TOYCLUSTERPARAMETERS}" 2>&1 >> "${TOYCLUSTERLOGFILE}"
+    if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+        OMP_NUM_THREADS=16 "${TOYCLUSTEREXEC}" "${TOYCLUSTERPARAMETERS}" 2>&1 >> "${TOYCLUSTERLOGFILE}"
+    else
+        OMP_NUM_THREADS=$THREADS nice -n $NICE "${TOYCLUSTEREXEC}" "${TOYCLUSTERPARAMETERS}" 2>&1 >> "${TOYCLUSTERLOGFILE}"
+    fi
     RUNTIME=$SECONDS
     HOUR=$(($RUNTIME/3600))
     MINS=$(( ($RUNTIME%3600) / 60))
