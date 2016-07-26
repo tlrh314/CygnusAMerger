@@ -110,6 +110,15 @@ HDF5INCL =  -I/home/thalbes1/local/include
 HDF5LIB  =  -L/home/thalbes1/local/lib -lhdf5 -lz -lsz
 endif
 
+ifeq (uwp.science.uva.nl, $(findstring uwp.science.uva.nl, $(SYSTYPE)))
+CC       = /net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/bin/mpicc
+OPTIMIZE = -O3 -Wall
+GSL_INCL = -I/net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/include
+GSL_LIBS = -L/net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/lib  -lgsl -lgslcblas -lm
+FFTW_INCL= -I/net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/include
+FFTW_LIBS= -L/net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/lib
+endif
+
 # Edit by TLRH, 2016/04/19
 ifeq ($(SYSTYPE),MBP)
 CC       =  mpicc

@@ -40,6 +40,13 @@ GSL_INCL = $(CPPFLAGS)
 GSL_LIBS = $(LDFLAGS)
 endif
 
+ifeq (uwp.science.uva.nl, $(findstring uwp.science.uva.nl, $(SYSTYPE)))
+CC       = /net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/bin/gcc
+OPTIMIZE = -O3 -Wall
+GSL_INCL = -I/net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/include
+GSL_LIBS = -L/net/glados2.science.uva.nl/api/thalbes1/prerequisites-10.0/lib  -lgsl -lgslcblas -lm
+endif
+
 ifeq ($(SYSTYPE),taurus)
 CC       = gcc
 OPTIMIZE = -Wall -g -O2

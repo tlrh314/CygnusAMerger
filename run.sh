@@ -114,8 +114,8 @@ parse_options() {
                 echo "Rotate snapnr   = ${ROTATESNAPNR}"
                 ;;
             t|timestamp)
-                timestamp="${OPTARG}"
-                echo "timestamp       = ${timestamp}"
+                TIMESTAMP="${OPTARG}"
+                echo "timestamp       = ${TIMESTAMP}"
                 ;;
             u|use)
                 MODEL_TO_USE="${OPTARG}"
@@ -191,6 +191,10 @@ Cheers,\n${SYSTYPE}"
         BASEDIR="/usr/local/mscproj"
         THREADS=$(sysctl -n hw.ncpu)  # OSX *_*
         NICE=10
+    elif [[ "${SYSTYPE}" == *".uwp.science.uva.nl" ]]; then
+        THREADS=4
+        NICE=19
+        BASEDIR="/net/glados2.science.uva.nl/api/thalbes1"
     else
         echo "Unknown system. Exiting."
         exit 1
@@ -261,6 +265,7 @@ setup_toycluster() {
         # grep the name of MODEL_TO_USE from the ICOUT directory listing.
         if [ ! -f "${TOYCLUSTERPARAMETERS}" ]; then
             TOYCLUSTERPARAMETERS=$(ls "${ICOUTDIR}" | grep par)
+            MODEL_TO_USE="${TOYCLUSTERPARAMETERS}"
         fi
         TOYCLUSTERLOGFILE="${ICOUTDIR}/${TOYCLUSTERLOGFILENAME}"
         ICFILENAME=$(grep "Output_file" "${TOYCLUSTERPARAMETERS}" | cut -d' ' -f2)
@@ -459,7 +464,7 @@ compile_gadget() {
 
     cd "${GADGETDIR}"
     nice -n $NICE make clean
-    nice -n $NICE make -j8
+    nice -n $NICE make
 
     echo "... done compiling Gadget"
 }
@@ -516,6 +521,8 @@ run_gadget() {
         nice -n $NICE mpiexec.hydra -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
     elif [ "${SYSTYPE}" == "MBP" ]; then
         nice -n $NICE mpirun -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
+    elif [[ "${SYSTYPE}" == *".uwp.science.uva.nl" ]]; then
+        nice -n $NICE mpiexec.hydra -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
     fi
 
     echo "... done running Gadget2"
@@ -962,6 +969,9 @@ fi
 
 echo -e "\nStart of program at $(date)\n"
 
+setup_system
+setup_toycluster
+
 #MODEL_TO_USE="ic_cyga_fixed.par"
 #MODEL_TO_USE="ic_cygb_fixed.par"
 #MODEL_TO_USE="ic_both_fixed.par"
@@ -977,12 +987,10 @@ echo -e "\nStart of program at $(date)\n"
 #MODEL_TO_USE="ic_cygb_free_delta.par"
 #MODEL_TO_USE="ic_both_free_delta.par"
 
-if [ ! -z "${MODEL_TO_USE}" ]; then
-    MODEL_TO_USE="toycluster.par"
+if [ -z "${MODEL_TO_USE}" ]; then
+    echo "WARNING: MODEL_TO_USE not set!"
+    exit 1
 fi
-
-setup_system
-setup_toycluster
 
 if [ ! "$ONLY_TOYCLUSTER" = true ]; then
     setup_gadget
