@@ -3,6 +3,8 @@ import os
 import numpy
 import argparse
 
+from deco import concurrent, synchronized
+
 import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
@@ -34,6 +36,37 @@ from cluster import NumericalCluster
 from cluster import AnalyticalCluster
 from cluster import ObservedCluster
 import convert
+
+
+class Run(object):
+    def __init__(self, arguments):
+        self.timestamp = arguments.simulationID[0]
+        self.observed = ObservedCluster(arguments.clustername) if arguments.clustername else None
+        if arguments.IC_only:
+            # TODO: there is something different in the Toycluster rho
+            # than in the Gadget output :(
+            self.IC_only = True
+            self.icdir = "../runs/{0}/ICs/".format(self.timestamp)
+            self.snapdir = "../runs/{0}/ICs/".format(self.timestamp)
+            self.snaps = ["../runs/{0}/ICs/IC_single_0".format(self.timestamp)]
+        else:
+            self.IC_only = False
+            self.icdir = "../runs/{0}/ICs/".format(self.timestamp)
+            self.snapdir = "../runs/{0}/snaps/".format(self.timestamp)
+            self.snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*"
+                .format(self.timestamp)),  key=os.path.getmtime)
+            print self.snaps, "\n"
+
+        self.outdir="../runs/{0}/out/".format(self.timestamp)
+        if not (os.path.isdir(self.outdir) or os.path.exists(self.outdir)):
+            os.mkdir(self.outdir)
+
+        if self.IC_only:
+            self.TimeBetSnapshot = 0
+        else:
+            # For time counter
+            gadgetparms = parse_gadget_parms(self.snapdir+"gadget2.par")
+            self.TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
 
 
 def plot_individual_cluster_density(numerical, analytical, observed=None):
@@ -98,7 +131,6 @@ def plot_individual_cluster_density(numerical, analytical, observed=None):
     # pyplot.savefig("out/actuallyran.png")
     pyplot.legend(loc=3)#, prop={"size": 22})
 
-
 def plot_individual_cluster_mass(numerical, analytical):
     pyplot.figure(figsize=(16, 12))
     pyplot.style.use(["dark_background"])
@@ -134,7 +166,6 @@ def plot_individual_cluster_mass(numerical, analytical):
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
     pyplot.legend(loc=4)
 
-
 def plot_individual_cluster_temperature(numerical, analytical):
     pyplot.figure(figsize=(16, 12))
     pyplot.style.use(["dark_background"])
@@ -168,11 +199,89 @@ def plot_individual_cluster_temperature(numerical, analytical):
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
     pyplot.legend(loc=3)
 
+
+@concurrent(processes=4)
+def make_all_plots(run, snap, i, replot=False):
+    print "Generating plots for:", snap
+
+    fname = snap.split('/')[-1]
+    snapnr = fname.split('_')[-1]
+    if run.IC_only:
+        snapnr += "00-ICOnly"
+
+    mass_filename = run.outdir+"{0}-mass-{1}.png".format(run.timestamp, snapnr)
+    density_filename = run.outdir+"{0}-density-{1}.png".format(run.timestamp, snapnr)
+    temperature_filename = run.outdir+"{0}-temperature-{1}.png".format(run.timestamp, snapnr)
+
+    if (os.path.isfile(mass_filename) and os.path.exists(mass_filename)
+            and os.path.isfile(density_filename) \
+            and os.path.exists(density_filename)) \
+            and not replot:
+        print "Plots exist. Skipping", snap
+        return
+
+    numerical = NumericalCluster(
+        icdir=run.icdir,
+        snapdir=run.snapdir,
+        logfile="runToycluster.log",
+        icfile="IC_single_0" if run.IC_only else "snapshot_"+snapnr,
+        verbose=False)
+
+    """ TODO: can use cluster.py setup_analytical_cluster
+              to obtain AnalyticalCluster from NumericalCluster"""
+    # Caution: parms[0] is number density! Caution: use unitsless numbers!
+    ne0 = convert.rho_to_ne(numerical.rho0gas.value_in(units.g/units.cm**3),
+        numerical.z)
+    parms = (ne0, numerical.rc.value_in(units.kpc),
+        numerical.R200.value_in(units.kpc))
+    # TODO: not use this, but if doing so then use halo0_sampling...
+    dm_parms = (numerical.Mass_in_DM, numerical.a)
+
+    analytical = AnalyticalCluster(parms, dm_parms, z=numerical.z)
+
+    # 295 for WC6, 50 for Cubic Spline kernel
+    numerical.get_gas_mass_via_density(
+        DESNNGB=50 if arguments.IC_only else 50)
+    numerical.get_dm_mass_via_number_density(log_binning=True)
+    numerical.set_dm_density()
+
+    plot_individual_cluster_density(numerical, analytical, run.observed)
+    pyplot.title("Time = {0:1.2f} Gyr".format(i*run.TimeBetSnapshot), y=1.03)
+    if arguments.save:
+        pyplot.savefig(density_filename)
+        pyplot.close()
+
+    plot_individual_cluster_mass(numerical, analytical)
+    pyplot.title("Time = {0:1.2f} Gyr".format(i*run.TimeBetSnapshot), y=1.03)
+    if arguments.save:
+        pyplot.savefig(mass_filename)
+        pyplot.close()
+
+    plot_individual_cluster_temperature(numerical, analytical)
+    pyplot.title("Time = {0:1.2f} Gyr".format(i*run.TimeBetSnapshot), y=1.03)
+    if arguments.save:
+        pyplot.savefig(temperature_filename)
+        pyplot.close()
+    else:
+        pyplot.show()
+
+    # break
+    print "Done with snapshot:  ", snap
+
+
+@synchronized
+def generate_plots(arguments):
+    run = Run(arguments)
+
+    for i, snap in enumerate(run.snaps):
+        make_all_plots(run, snap, i, replot=arguments.replot)
+
+
 def new_argument_parser():
     parser = argparse.ArgumentParser(
         description="Plot rho(r), M(<r), T(r) for given SimulationID.")
     parser.add_argument("-o", "--onlyic", dest="IC_only",
-        action="store_true", default=True,
+        action="store_true", default=False,
         help="only use ICfile, else use Gadget snapshots")
     parser.add_argument("-s", "--show", dest="save",
         action="store_false", default=True,
@@ -190,93 +299,4 @@ def new_argument_parser():
 
 if __name__ == "__main__":
     arguments = new_argument_parser().parse_args()
-
-    myRun = arguments.simulationID[0]
-    observed = ObservedCluster(arguments.clustername) if arguments.clustername else None
-
-    if arguments.IC_only:
-        # TODO: there is something different in the Toycluster rho
-        # than in the Gadget output :(
-        icdir = "../runs/{0}/ICs/".format(myRun)
-        snapdir = "../runs/{0}/ICs/".format(myRun)
-        snaps = ["../runs/{0}/ICs/IC_single_0".format(myRun)]
-    else:
-        icdir = "../runs/{0}/ICs/".format(myRun)
-        snapdir = "../runs/{0}/snaps/".format(myRun)
-        snaps = sorted(glob.glob("../runs/{0}/snaps/snapshot_*".format(myRun)),  key=os.path.getmtime)
-        print snaps
-
-    outdir="../runs/{0}/out/".format(myRun)
-    if not (os.path.isdir(outdir) or os.path.exists(outdir)):
-        os.mkdir(outdir)
-
-    for i, snap in enumerate(snaps):
-        fname = snap.split('/')[-1]
-        snapnr = fname.split('_')[-1]
-
-        if arguments.IC_only:
-            TimeBetSnapshot = 0
-            snapnr += "00-ICOnly"
-        else:
-            # For time counter
-            gadgetparms = parse_gadget_parms(snapdir+"gadget2.par")
-            TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
-
-        mass_filename = outdir+"{0}-mass-{1}.png".format(myRun, snapnr)
-        density_filename = outdir+"{0}-density-{1}.png".format(myRun, snapnr)
-        temperature_filename = outdir+"{0}-temperature-{1}.png".format(myRun, snapnr)
-
-        if (os.path.isfile(mass_filename) and os.path.exists(mass_filename)
-                and os.path.isfile(density_filename) \
-                and os.path.exists(density_filename)) \
-                and not arguments.replot:
-            print "Plots exist. Skipping", snap
-            continue
-
-        numerical = NumericalCluster(
-            icdir=icdir,
-            snapdir=snapdir,
-            logfile="runToycluster.log",
-            icfile="IC_single_0" if arguments.IC_only else "snapshot_"+snapnr)
-
-        """ TODO: can use cluster.py setup_analytical_cluster
-                  to obtain AnalyticalCluster from NumericalCluster"""
-        # Caution: parms[0] is number density! Caution: use unitsless numbers!
-        ne0 = convert.rho_to_ne(numerical.rho0gas.value_in(units.g/units.cm**3),
-            numerical.z)
-        parms = (ne0, numerical.rc.value_in(units.kpc),
-            numerical.R200.value_in(units.kpc))
-        # TODO: not use this, but if doing so then use halo0_sampling...
-        dm_parms = (numerical.Mass_in_DM, numerical.a)
-
-        analytical = AnalyticalCluster(parms, dm_parms, z=numerical.z)
-
-        # 295 for WC6, 50 for Cubic Spline kernel
-        numerical.get_gas_mass_via_density(
-            DESNNGB=50 if arguments.IC_only else 50)
-        numerical.get_dm_mass_via_number_density(log_binning=True)
-        numerical.set_dm_density()
-
-        plot_individual_cluster_density(numerical, analytical, observed)
-        pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot), y=1.03)
-        if arguments.save:
-            pyplot.savefig(density_filename)
-            pyplot.close()
-
-        plot_individual_cluster_mass(numerical, analytical)
-        pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot), y=1.03)
-        if arguments.save:
-            pyplot.savefig(mass_filename)
-            pyplot.close()
-
-        plot_individual_cluster_temperature(numerical, analytical)
-        pyplot.title("Time = {0:1.2f} Gyr".format(i*TimeBetSnapshot), y=1.03)
-        if arguments.save:
-            pyplot.savefig(temperature_filename)
-            pyplot.close()
-        else:
-            pyplot.show()
-
-        # break
-
-        print "Done checking snapshot:", snap
+    generate_plots(arguments)
