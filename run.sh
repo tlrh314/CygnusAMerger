@@ -114,7 +114,7 @@ parse_options() {
                 echo "Rotate snapnr   = ${ROTATESNAPNR}"
                 ;;
             t|timestamp)
-                timestamp="${OPTARG}"
+                TIMESTAMP="${OPTARG}"
                 echo "timestamp       = ${timestamp}"
                 ;;
             u|use)
