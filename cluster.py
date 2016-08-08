@@ -137,16 +137,17 @@ class ObservedCluster(object):
 
 
 class NumericalCluster(object):
-    def __init__(self, icdir, snapdir, logfile=None, icfile=None):
+    def __init__(self, icdir, snapdir, logfile=None, icfile=None, verbose=True):
         # Output of runToycluster writes files with these filename
         if logfile is None:
             logfile="runToycluster.log"
         if icfile is None:
             icfile="IC_single_0"
+        self.verbose = verbose
 
         # Read runtime output of Toycluster 2.0. Parse runtime output
         self.toyclusterlog = Toycluster2RuntimeOutputParser(filename=icdir+logfile)
-        self.raw_data = Gadget2BinaryF77UnformattedType2Parser(snapdir+icfile)
+        self.raw_data = Gadget2BinaryF77UnformattedType2Parser(snapdir+icfile, verbose=self.verbose)
 
         # if the mass ratio is 0.0 we only have one cluster in the box
         if (-2**-14 < self.toyclusterlog.systemsetup['Mass_Ratio'] < 2**-14):
@@ -291,7 +292,8 @@ class NumericalCluster(object):
         # TODO: find out if this method can also be used for sph mass
         # should we take into account the kernel, and if so how?
 
-        print "Counting particles for which radii < r to obtain M(<r)"
+        if self.verbose:
+            print "Counting particles for which radii < r to obtain M(<r)"
 
         if log_binning:
             radii = numpy.power(10, numpy.linspace(numpy.log(1), numpy.log(1e5), 1001))
@@ -305,7 +307,7 @@ class NumericalCluster(object):
         particles = numpy.zeros(N)
         for i, r in enumerate(radii):
             particles[i] = ((numpy.where(self.dm.r.value_in(units.kpc) < r)[0]).size)
-            if i==(N-1) or i%100 == 0:
+            if self.verbose and (i==(N-1) or i%100 == 0):
                 print_progressbar(i, N)
 
             # print i, r, particles[i]
