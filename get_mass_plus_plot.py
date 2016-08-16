@@ -17,16 +17,16 @@ import pandas
 # Anaconda python gives annoying "setCanCycle: is deprecated" when using Tk
 # matplotlib.use("TkAgg")
 import matplotlib
-matplotlib.use("Qt4Agg")
+matplotlib.use("Agg")
 from matplotlib import pyplot
 pyplot.rcParams.update({"font.size": 28})
 pyplot.rcParams.update({"xtick.major.size": 8})
 pyplot.rcParams.update({"xtick.minor.size": 4})
 pyplot.rcParams.update({"ytick.major.size": 8})
 pyplot.rcParams.update({"ytick.minor.size": 4})
-pyplot.rcParams.update({"xtick.major.width": 4})
+pyplot.rcParams.update({"xtick.major.width": 2})
 pyplot.rcParams.update({"xtick.minor.width": 2})
-pyplot.rcParams.update({"ytick.major.width": 4})
+pyplot.rcParams.update({"ytick.major.width": 2})
 pyplot.rcParams.update({"ytick.minor.width": 2})
 pyplot.rcParams.update({"xtick.major.pad": 8})
 pyplot.rcParams.update({"xtick.minor.pad": 8})
@@ -918,17 +918,17 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.axvline(rs_over_r200, ls="dashed", c=accent_colour,
                        lw=3 if poster_style else 1)
 
-        pyplot.xlabel(r"Radius $r/r_{200}$")
-        pyplot.ylabel(r"Density $\rho/\rho_{\rm crit}$")
+        pyplot.xlabel(r"Radius $r/r_{200}$", fontsize=28)
+        pyplot.ylabel(r"Density $\rho/\rho_{\rm crit}$", fontsize=28)
 
         pyplot.xlim(3e-3, 2.5)
         pyplot.ylim(1, 1e6)
-        pyplot.xticks([0.01, 0.10, 1.0], ["0.01", "0.10", "1.0"])
+        pyplot.xticks([0.01, 0.10, 1.0], ["0.01", "0.10", "1.0"], fontsize=28)
         pyplot.yticks([1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6],
                       ["$10^{0}$", "$10^{1}$", "$10^{2}$", "$10^{3}$",
-                       "$10^{4}$", "$10^{5}$", "$10^{6}$"])
+                       "$10^{4}$", "$10^{5}$", "$10^{6}$"], fontsize=28)
 
-        pyplot.legend(loc=3)
+        pyplot.legend(loc=3, fontsize=28)
         pyplot.savefig("out/NFW_consistency_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
                     "_800ksec" if oldICs else "_900ksec",
@@ -946,16 +946,16 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.axvline(parms["r200"]*cm2kpc, ls="dashed", c=accent_colour,
                        lw=3 if poster_style else 1)
 
-        pyplot.xlabel(r"Radius [kpc]")
-        pyplot.ylabel(r"Mass [MSun]")
-        pyplot.legend(loc=2)
+        pyplot.xlabel(r"Radius [kpc]", fontsize=28)
+        pyplot.ylabel(r"Mass [MSun]", fontsize=28)
+        pyplot.legend(loc=2, fontsize=28)
 
         #pyplot.xlim(3e-3, 2.5)
         #pyplot.ylim(1, 1e6)
-        #pyplot.xticks([0.01, 0.10, 1.0], ["0.01", "0.10", "1.0"])
-        #pyplot.yticks([1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6],
-        #              ["$10^{0}$", "$10^{1}$", "$10^{2}$", "$10^{3}$",
-        #               "$10^{4}$", "$10^{5}$", "$10^{6}$"])
+        pyplot.xticks([1e1, 1e2, 1e3], ["10", "100", "1000"], fontsize=28)
+        pyplot.yticks([1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15],
+                      ["$10^{9}$", "$10^{10}$", "$10^{11}$", "$10^{12}$",
+                       "$10^{13}$", "$10^{14}$", "$10^{15}$"], fontsize=28)
 
         pyplot.savefig("out/NFW_consistency_mass_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
@@ -1071,6 +1071,10 @@ def new_argument_parser():
     parser.add_argument("-c", "--cygafix", dest="fix_cygA",
         action="store_true", default=False,
         help="Fix CygA's rho0, rc to bestfit freebeta values, but do use beta=2/3. Default is False")
+    parser.add_argument("-m", "--mode", dest="mode", default=None,
+        choices=["ratio", "rhomassboth","massboth", "rhoboth", "masssameplot",
+                 "rhosingle", "bfsingle", "nfwsingle", "all"],
+        help="Select plot to generate. Pick one of the valid options, or none")
     parser.add_argument("-d", "--delta", dest="delta",
         action="store_false", default=True,
         help="Use Overdensity_Parameter instead of delta=200. This changes the halo definition to delta*rho_crit instead of 200*rho_crit. Default is True.")
@@ -1208,36 +1212,42 @@ if __name__ == "__main__":
     print
 
     print 80*"-"
-    import sys; sys.exit(0)
     print "Plotting the results..."
     print 80*"-"
 
-    make_plot(cygA, None, cygA_observed, None,
-              mode="nfwsingle", poster_style=poster_style)
-    make_plot(None, cygB, None, cygB_observed,
-              mode="nfwsingle", poster_style=poster_style)
+    if arguments.mode == "nfwsingle":
+        make_plot(cygA, None, cygA_observed, None,
+                  mode="nfwsingle", poster_style=poster_style)
+        make_plot(None, cygB, None, cygB_observed,
+                  mode="nfwsingle", poster_style=poster_style)
     # raw_input("Press enter to continue...\n")
 
     # Plot density+mass profiles (gas + dm in same plot); density left, mass right
-    make_plot(cygA, cygB, mode="massboth", poster_style=poster_style)
-    make_plot(cygA, cygB, mode="rhoboth", poster_style=poster_style)
-    make_plot(cygA, cygB, mode="masssameplot", poster_style=poster_style)
+    if arguments.mode == "massboth" or arguments.mode == "all":
+        make_plot(cygA, cygB, mode="massboth", poster_style=poster_style)
+    if arguments.mode == "rhoboth" or arguments.mode == "all":
+        make_plot(cygA, cygB, mode="rhoboth", poster_style=poster_style)
+    if arguments.mode == "masssameplot" or arguments.mode == "all":
+        make_plot(cygA, cygB, mode="masssameplot", poster_style=poster_style)
 
-    make_plot(cygA, None, cygA_observed, None, mode="rhosingle",
-        poster_style=poster_style, fix_cygA=fix_cygA)
-    make_plot(None, cygB, None, cygB_observed, mode="rhosingle",
-        poster_style=poster_style)
+    if arguments.mode == "rhosingle" or arguments.mode == "all":
+        make_plot(cygA, None, cygA_observed, None, mode="rhosingle",
+            poster_style=poster_style, fix_cygA=fix_cygA)
+        make_plot(None, cygB, None, cygB_observed, mode="rhosingle",
+            poster_style=poster_style)
 
     # Plot mass ratio
-    make_plot(cygA, cygB, mode="ratio", poster_style=poster_style)
+    if arguments.mode == "ratio" or arguments.mode == "all":
+        make_plot(cygA, cygB, mode="ratio", poster_style=poster_style)
 
     # Plot baryon fraction
-    make_plot(cygA, None, cygA_observed, None,
-              mode="bfsingle", poster_style=poster_style)
-    make_plot(None, cygB, None, cygB_observed,
-              mode="bfsingle", poster_style=poster_style)
+    if arguments.mode == "bfsingle" or arguments.mode == "all":
+        make_plot(cygA, None, cygA_observed, None,
+                  mode="bfsingle", poster_style=poster_style)
+        make_plot(None, cygB, None, cygB_observed,
+                  mode="bfsingle", poster_style=poster_style)
 
-    pyplot.show()
+    # pyplot.show()
 
     print 80*"-"
     print "End of pipeline."
