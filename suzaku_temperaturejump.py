@@ -17,9 +17,7 @@ pyplot.rcParams.update({"ytick.minor.pad": 8})
 pyplot.rcParams.update({"legend.loc": "best"})
 pyplot.rcParams.update({"figure.autolayout": True})
 
-if __name__ == "__main__":
-    pyplot.figure(figsize=(12,9))
-
+def plot_sarazin_suzaku():
     # Eyeballed from Sarazin, Finoguenov & Wik (2012) Fig. 4. Black points.
     r_arcmin_Suzaku = [-2, -0.1, 2, 4, 5.9, 8, 10, 12.3]
     r_error_plus = [1, 1, 1, 1, 1, 1, 1, 1.5]
@@ -43,6 +41,11 @@ if __name__ == "__main__":
         xerr=[r_error_min, r_error_plus],
         yerr=[T_error_min, T_error_plus],
         c="grey", fmt="+", elinewidth=4, capsize=0)
+
+if __name__ == "__main__":
+    pyplot.figure(figsize=(12,9))
+
+    plot_sarazin_suzaku()
 
     pyplot.text(0, 4, "center", fontsize=36, ha="center", va="top")
     pyplot.text(4.7, 4, "merger\nshock", fontsize=36, ha="left", va="bottom")
