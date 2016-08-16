@@ -30,6 +30,9 @@ def helix_tables(module, flag, inv=False, values=None):
         Cubehelix parameters: [ start, rots, hue, gamma]
         returns a cubehelix colormap ready to use in e.g. pyplot :-) """
 
+    if type(module) != int: module = int(module)
+    if type(flag) != "int": flag = int(flag)
+
     nModule = 15
     nFlag = 15
     setup = numpy.zeros((4, nModule, nFlag), dtype=numpy.float)

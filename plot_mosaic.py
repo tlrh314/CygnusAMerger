@@ -8,7 +8,23 @@ from deco import concurrent, synchronized
 import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
-pyplot.rcParams.update({"font.size": 28})
+pyplot.rcParams.update({"font.size": 18})
+pyplot.rcParams.update({"xtick.major.size": 8})
+pyplot.rcParams.update({"xtick.minor.size": 4})
+pyplot.rcParams.update({"ytick.major.size": 8})
+pyplot.rcParams.update({"ytick.minor.size": 4})
+pyplot.rcParams.update({"xtick.major.width": 4})
+pyplot.rcParams.update({"xtick.minor.width": 2})
+pyplot.rcParams.update({"ytick.major.width": 4})
+pyplot.rcParams.update({"ytick.minor.width": 2})
+pyplot.rcParams.update({"xtick.major.pad": 8})
+pyplot.rcParams.update({"xtick.minor.pad": 8})
+pyplot.rcParams.update({"ytick.major.pad": 8})
+pyplot.rcParams.update({"ytick.minor.pad": 8})
+pyplot.rcParams.update({"legend.loc": "best"})
+pyplot.rcParams.update({"figure.autolayout": True})
+
+
 from astropy.io import fits
 
 
@@ -113,18 +129,43 @@ def unsharp_mask(mosaic):
     #     for amount in numpy.arange(0.5, 1.5, 0.5):
     #         plot_usm(original, sigma, amount)
 
-core = True
+
+core = False
 usm = False
+radio = False
 
 obsdir = "../runs/ChandraObservation/"
 # radio = obsdir+"radio5GHz.fits"
 radio = obsdir+"StruisMosaics/radio/radio5GHz.fits"
 mosaic = obsdir+"StruisMosaics/mosaic/cygnus_tot_flux.fits"
 
-if usm:
-    unsharp_mask(mosaic)
-    import sys
-    sys.exit(0)
+#if usm:
+#    unsharp_mask(mosaic)
+#    import sys
+#    sys.exit(0)
+#
+#if radio:
+#    gc = aplpy.FITSFigure(radio)
+#    gc.show_colorscale(vmin=0.002, vmax=0.1, stretch="log", cmap="gray")
+#    gc.recenter(299.43385841180134, 40.596767959019161,
+#                width=0.037, height=0.018)
+#
+#    from astropy import units
+#    from cosmology import CosmologyCalculator
+#    cc = CosmologyCalculator(0.0562)
+#    kpc2arcsec = 1/cc.kpc_DA
+#    gc.add_scalebar(30 * kpc2arcsec * units.arcsecond)
+#    gc.scalebar.set_corner("bottom right")
+#    gc.scalebar.set_linewidth(4)
+#    gc.scalebar.set_label("30 kpc")
+#    gc.scalebar.set_color("white")
+#
+#    gc.tick_labels.set_xformat("hh:mm:ss")
+#    gc.tick_labels.set_yformat("dd:mm:ss")
+#
+#    gc.save("out/CygA_Radio_5GHz.pdf", dpi=300)
+#
+#    import sys; sys.exit(0)
 
 
 gc = aplpy.FITSFigure(mosaic)
@@ -141,8 +182,6 @@ else:
     gc.show_colorscale(vmin=7.0e-10, vmax=4.0e-8, stretch="log",
                        cmap="spectral", smooth=9)
 
-gc.tick_labels.set_font(size=11, family="Times New Roman")
-gc.axis_labels.set_font(size=14, family="Times New Roman")
 gc.tick_labels.set_xformat("hh:mm:ss")
 gc.tick_labels.set_yformat("dd:mm:ss")
 
@@ -156,21 +195,24 @@ if core:
     kpc2arcsec = 1/cc.kpc_DA
     gc.add_scalebar(30 * kpc2arcsec * units.arcsecond)
     gc.scalebar.set_corner("bottom right")
+    gc.scalebar.set_linewidth(4)
     gc.scalebar.set_label("30 kpc")
     gc.scalebar.set_color("black")
-    gc.scalebar.set_font(size=24)
 else:
     gc.add_scalebar(0.13227513)
     gc.scalebar.set_corner("bottom right")
     gc.scalebar.set_length(0.1)
+    gc.scalebar.set_linewidth(4)
     gc.scalebar.set_label("500 kpc")
     gc.scalebar.set_color("white")
-    gc.scalebar.set_font(family="Times New Roman", size=24)
 
 if core:
     gc.show_contour(radio, vmin=0.002, vmax=0.1, levels=15, smooth=1,
                     colors="black", lw=8)
     gc.recenter(299.86652, 40.734496,
-                width=0.035694445, height=0.018194445)
+                width=0.037, height=0.018)
+    pyplot.gca().tick_params(axis="both", which="both", colors="k", reset=True)
+
+pyplot.show()
 
 gc.save("out/cygnus{0}_5GHz_xray.pdf".format("_core" if core else ""), dpi=300)
