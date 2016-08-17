@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# File: ./inventory.sh
+# File: inventory.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Thu May 19, 2016 10:31 am
-# Last modified: Fri May 27, 2016 08:34 pm
+# Last modified: Tue Aug 09, 2016 03:05 pm
 #
 # Description: Make table of all run simulation parameters
 
@@ -24,7 +24,8 @@ setup_system() {
         BASEDIR="/scratch/timo"
     elif [ "$(uname -s)" == "Darwin" ]; then
         SYSTYPE="MBP"
-        BASEDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code"
+        #BASEDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code"
+        BASEDIR="/Volumes/Taurus"
     else
         echo "Unknown system. Exiting."
         exit 1
@@ -71,7 +72,7 @@ get_gadget_parm() {
 setup_system
 
 echo -n "SimID, " >> "${INVENTORY}"
-echo -n "Ntotal, Mtotal, Mass_Ratio, ImpactParam, Redshift, c_nfw_0, v_com_0, rc_0, c_nfw_1, v_com_1, rc_1, " >> "${INVENTORY}"
+echo -n "Ntotal, Mtotal, Mass_Ratio, ImpactParam, Redshift, ZeroEOrbitFrac, c_nfw_0, v_com_0, rc_0, c_nfw_1, v_com_1, rc_1, " >> "${INVENTORY}"
 echo "TimeBegin, TimeMax, TimeBetSnapshot, BoxSize" >> "${INVENTORY}"
 
 for RUN in "${DATADIR}"/*
@@ -79,7 +80,28 @@ do
     if [ -d "${RUN}" ]; then
         DIRNAME="${RUN##*/}"
         TOYCLUSTERPARAMETERS="${RUN}/ICs/toycluster.par"
+
+        if [ ! -f "${TOYCLUSTERPARAMETERS}" ]; then
+            # Try
+            { 
+                MODEL_TO_USE=$(ls "${RUN}/ICs" | grep par) 
+                TOYCLUSTERPARAMETERS="${RUN}/ICs/${MODEL_TO_USE}"
+            } || { # except
+                echo "Error: TOYCLUSTERPARAMETERS not found for ${DIRNAME}"
+                echo "run = ${RUN}"
+                # ls "${RUN}/ICs" | grep par
+                echo "${TOYCLUSTERPARAMETERS}"
+                continue
+            }
+        fi
+
         GADGETPARAMETERS="${RUN}/snaps/gadget2.par"
+        echo "${GADGETPARAMETERS}"
+
+        if [ ! -f "${GADGETPARAMETERS}" ]; then
+            echo "Error: GADGETPARAMETERS not found for ${DIRNAME}"
+            continue
+        fi
 
         echo "${DIRNAME}"
         echo -n "${DIRNAME}, " >> "${INVENTORY}"
@@ -97,6 +119,8 @@ do
             #Cuspy
             Redshift=$(get_toycluster_parm "Redshift")
             echo "    Redshift        : $Redshift"
+            ZeroEOrbitFrac=$(get_toycluster_parm "ZeroEOrbitFrac")
+            echo "    ZeroEOrbitFrac  : $ZeroEOrbitFrac"
             #Bfld_Norm
             #Bfld_Eta
             #Bfld_Scale
@@ -118,10 +142,10 @@ do
             rc_1=$(get_toycluster_parm "rc_1")
             echo "    rc_1            : $rc_1"
 
-            echo -n "${Ntotal}, ${Mtotal}, ${Mass_Ratio}, ${ImpactParam}, ${Redshift}, ${c_nfw_0}, ${v_com_0}, ${rc_0}, ${c_nfw_1}, ${v_com_1}, ${rc_1}, " >> "${INVENTORY}"
+            echo -n "${Ntotal}, ${Mtotal}, ${Mass_Ratio}, ${ImpactParam}, ${Redshift}, ${ZeroEOrbitFrac}, ${c_nfw_0}, ${v_com_0}, ${rc_0}, ${c_nfw_1}, ${v_com_1}, ${rc_1}, " >> "${INVENTORY}"
         else
             echo "  ICs generated   : no"
-            echo -n ", , , , , , , , , , , " >> "${INVENTORY}"
+            echo -n ", , , , , , , , , , , , " >> "${INVENTORY}"
         fi
 
         if [ -d "${RUN}/snaps" ]; then
