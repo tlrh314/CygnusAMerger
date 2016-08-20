@@ -30,12 +30,19 @@ LISADIR="/home/timoh/runs/"
 # On Taurus
 if [ "${SYSTYPE}" == "taurus" ]; then
     NICE=19
+    # THREADS=8
+    # for dir in "${TAURUSDIR}"*; do
+    #     SRCDIR="lisa:${LISADIR}$(basename $dir)/"
+    #     DESTDIR="${dir}/"
+    #     echo $SRCDIR $DESTDIR
+    #     nice -n $NICE rsync -az $SRCDIR $DESTDIR &
+    # done
     #nice -n $NICE rsync -auHxz --progress "${TAURUSDIR}" lisa:"${LISADIR}"
     nice -n $NICE rsync -auHxz --progress lisa:"${LISADIR}" "${TAURUSDIR}"
-elif [ "${SYSTYPE}" == "*.lisa.surfsara.nl" ]; then
+elif [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
     # On Lisa
     NICE=0  # default is 0
-    nice -n $NICE rsync -auHxz --progress taurus:"${TAURUSDIR}" "${LISADIR}"
+    #nice -n $NICE rsync -auHxz --progress taurus:"${TAURUSDIR}" "${LISADIR}"
     nice -n $NICE rsync -auHxz --progress "${LISADIR}" taurus:"${TAURUSDIR}"
 elif [ "$(uname -s)" == "Darwin" ]; then
     echo "Running at MBP"
