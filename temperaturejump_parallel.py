@@ -31,10 +31,11 @@ from astropy.io import fits
 from ioparser import parse_gadget_parms
 from rotate import helix_tables
 from macro import *
+from suzaku_temperaturejump import plot_sarazin_suzaku
 
 
-@concurrent(processes=4)
-def plot_snapshot(rundir, data, n, scale, cmap, TimeBetSnapshot, plot=True):
+#@concurrent(processes=8)
+def plot_snapshot(rundir, data, n, scale, cmap, TimeBetSnapshot, plot=False):
     if plot:
         print "Plotting xray surface brightness for snapshot", n
 
@@ -96,10 +97,10 @@ def plot_snapshot(rundir, data, n, scale, cmap, TimeBetSnapshot, plot=True):
         pyplot.savefig(rundir+"out/distance_{0:03d}.png".format(n))
         pyplot.close()
 
-    return distance*pixelscale
+    return distance*pixelscale, x, y
 
 
-@synchronized
+#@synchronized
 def generate_distance_plots(rundir):
     # For time counter
     gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
@@ -130,15 +131,18 @@ def generate_distance_plots(rundir):
 
     number_of_snapshots = header['NAXIS3']
     distance = numpy.zeros(number_of_snapshots)
+    x = numpy.zeros(number_of_snapshots, dtype=object)
+    y = numpy.zeros(number_of_snapshots, dtype=object)
 
     for n in range(number_of_snapshots):
-        distance[n] = plot_snapshot(rundir, data[n], n, scale, cmap, TimeBetSnapshot)
+        distance[n], x[n], y[n] = plot_snapshot(rundir, data[n], n, scale, cmap, TimeBetSnapshot)
 
-    return distance, scale
+    return distance, x, y, scale
 
 
-@concurrent(processes=4)
-def plot_temperature_along_merger_axis(bestsnap, distance, sigma=None):
+#@concurrent(processes=8)
+def plot_temperature_along_merger_axis(rundir, bestsnap, distance,
+                                       TimeBetSnapshot, sigma=None):
     if sigma:
         print "Plotting 2D Gaussian convolved (sigma = {0}) temperature for snapshot {1}"\
             .format(sigma, bestsnap)
@@ -200,25 +204,129 @@ def plot_temperature_along_merger_axis(bestsnap, distance, sigma=None):
     pyplot.close()
     #pyplot.show()
 
-    # Sarazin 2012 Figure with Suzaku temperature jump
-    # arcmin, keV
-    # x, y         error x    error y
-    # -2, 5        -1 +1      -1 +1
-    # 0, 5.6       -1 +1      -0.7 +0.3
-    # 2, 6.2       -1 +1      -1 +1
-    # 4, 7         -1 +1      -2 +2
-    # 6, 8.2       -1 +1      -1, 1.5
-    # 8, 8.5       -1 +1      -1.3 +1.6
-    # 10, 7.2      -1 +1      - 1.3 +1.1
-    # 12, 6.4      -1 +1      -0.8 +0.7
 
-@synchronized
+#@synchronized
 def generate_temperature_plot(rundir, distance, scale, sigma=None):
-    print "Distance matrix:\n", distance
-    bestsnap = numpy.intersect1d(numpy.where(distance > 650), numpy.where(distance < 750))[0]
+    gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
+    TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
 
-    for bestsnap in range(bestsnap+3):
-        plot_temperature_along_merger_axis(bestsnap, distance[bestsnap], sigma)
+    print "Distance matrix:\n", distance
+    # bestsnap = numpy.intersect1d(numpy.where(distance > 650), numpy.where(distance < 750))[0]
+    bestsnap = numpy.nanargmin(numpy.abs(distance-701))
+    print "Bestsnap, distance =", bestsnap, distance[bestsnap]
+
+    # snaprange = len(distance)
+    snaprange = bestsnap+3 if bestsnap+3 < len(distance) else bestsnap
+    for snap in range(snaprange):
+        plot_temperature_along_merger_axis(rundir, snap, distance[snap], scale,
+                                           TimeBetSnapshot, sigma)
+
+
+#@concurrent(processes=8)
+def plot_temperature_along_merger_axis_2(rundir, n, distance, xcenter, ycenter,
+        scale, TimeBetSnapshot, vel, fig, ax0, ax1):
+    print "Plotting temperature for snapshot", n
+
+    option = "temperature-emission-weighted"
+    temcube = rundir+"analysis/"+option+"_projection-z.fits.fz"
+    with fits.open(temcube) as f:
+        temheader = f[0].header
+        temdata = f[0].data[n]
+
+    kB_kev_per_kelvin = 8.6173427909e-08
+    xlen, ylen = temdata.shape
+    pixelscale = float(scale)/int(xlen)
+
+    # temdata = numpy.log10(temdata.clip(min=1e-12))
+    # temdata = temdata[int(0.125*xlen):int(0.875*xlen),
+    #                    int(0.125*ylen):int(0.875*ylen)]
+
+    # print xcenter
+    # print ycenter
+
+    # ycut = int((ycenter[0]+ycenter[1])/2)
+    # tem_mergeraxis = temdata[ycut-1:ycut+1,xcenter[0]-20:xcenter[1]+20]
+    tem_mergeraxis = temdata[ylen/2-1:ylen/2+1,
+                             int((2**-3)*ylen):int((1-(2**-3))*ylen)]
+    ax0.plot(tem_mergeraxis[0]*kB_kev_per_kelvin,
+            #label="{0:3.1f}".format(vel))
+            label="{0:3.1f} -> t={1:04.2f}; r={2:03.1f}"\
+                  .format(vel, n*TimeBetSnapshot, distance))
+
+    sigma=120
+    sigma = sigma/pixelscale
+    temdata = scipy.ndimage.filters.gaussian_filter(
+        temdata, order=0, sigma=sigma)
+
+    # tem_mergeraxis = temdata[ycut-1:ycut+1,xcenter[0]-20:xcenter[1]+20]
+    tem_mergeraxis = temdata[ylen/2-1:ylen/2+1,
+                             int((2**-3)*ylen):int((1-(2**-3))*ylen)]
+    ax1.plot(tem_mergeraxis[0]*kB_kev_per_kelvin)
+    #        label="{0:3.1f} -> t={1:4.1f} Gyr; r={2:3.1f} kpc"\
+    #              .format(vel, n*TimeBetSnapshot, distance))
+
+    return pixelscale
+
+
+#@synchronized
+def plot_temperaturejump_bestsnap_vs_velocity():
+    fig, (ax0, ax1) = pyplot.subplots(1, 2, figsize=(16, 8))
+
+    velocity = numpy.arange(0, 1.4, 0.1)
+    for i,run in enumerate(["20160727T1105", "20160727T1108", "20160727T1112"]):#,
+                            #"20160727T1116", "20160727T1120", "20160727T1124",
+                            #"20160727T1128"]):#, "20160727T1132", "20160727T1303",
+                            #"20160727T1307", "20160727T1312", "20160727T1316",
+                            #"20160727T1321", "20160727T1325"]):
+        print velocity[i]
+
+        rundir = "../runs/{0}/".format(run)
+
+        if not (os.path.isdir(rundir+"out") or os.path.exists(rundir+"out")):
+            os.mkdir(rundir+"out")
+
+        # gadgetparms = parse_gadget_parms(rundir+"snaps/gadget2.par")
+        # TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
+        TimeBetSnapshot = 0.1
+
+        distance, x, y, scale = generate_distance_plots(rundir)
+        print "Distance matrix:\n", distance
+        bestsnap = numpy.nanargmin(numpy.abs(distance-701))
+        print "Bestsnap, distance =", bestsnap, distance[bestsnap]
+        pixelscale = plot_temperature_along_merger_axis_2(
+            rundir, bestsnap, distance[bestsnap], x[bestsnap], y[bestsnap], scale,
+            TimeBetSnapshot, velocity[i], fig, ax0, ax1)
+
+    pyplot.show()
+
+
+    pyplot.sca(ax0)
+    ax0.set_title(r"unconvolved")
+    ax0.set_xlabel("Mpc")
+    ax0.set_ylabel(r"$T_{\rm em}$ (keV)")
+    ax0.set_ylim(0, 10)
+    pyplot.xticks([x for x in range(0, 800, 100)],
+        ["{0:.1f}".format(x*pixelscale/1000) for x in range(0, 800, 100)])
+    ax0.legend(loc="upper left", fontsize=10)
+
+    pyplot.sca(ax1)
+    ax1.set_title(r"120 arcsec convolved")
+    ax1.set_xlabel("Mpc")
+    ax1.set_ylabel(r"$T_{\rm em}$ (keV)")
+    ax1.set_ylim(0, 10)
+    ax1.legend(loc="upper right")
+    pyplot.xticks([x for x in range(0, 800, 100)],
+        ["{0:.1f}".format(x*pixelscale/1000) for x in range(0, 800, 100)])
+    pyplot.tight_layout()
+    pyplot.setp(ax0.xaxis.get_majorticklabels(), rotation=45)
+    pyplot.setp(ax1.xaxis.get_majorticklabels(), rotation=45)
+
+    pyplot.sca(ax1)
+    plot_sarazin_suzaku(convert_to_mpc=True, pixelscale=pixelscale/800)
+
+    pyplot.savefig("out/jump_vs_ZeroEOrbitFrac.png")
+    # pyplot.close()
+    #pyplot.show()
 
 
 def new_argument_parser():
@@ -234,14 +342,15 @@ def new_argument_parser():
 
 
 if __name__ == "__main__":
-    arguments = new_argument_parser().parse_args()
-    simulationID = arguments.simulationID[0]
-    sigma = int(arguments.sigma[0]) if arguments.sigma else None
+    # arguments = new_argument_parser().parse_args()
+    # simulationID = arguments.simulationID[0]
+    # sigma = int(arguments.sigma[0]) if arguments.sigma else None
 
-    rundir = "../runs/{0}/".format(simulationID)
+    # rundir = "../runs/{0}/".format(simulationID)
 
-    if not (os.path.isdir(rundir+"out") or os.path.exists(rundir+"out")):
-        os.mkdir(rundir+"out")
+    # if not (os.path.isdir(rundir+"out") or os.path.exists(rundir+"out")):
+    #     os.mkdir(rundir+"out")
 
-    distance, scale = generate_distance_plots(rundir)
-    generate_temperature_plot(rundir, distance, scale, sigma)
+    #distance, x, y scale = generate_distance_plots(rundir)
+    #generate_temperature_plot(rundir, distance, scale, sigma)
+    plot_temperaturejump_bestsnap_vs_velocity()
