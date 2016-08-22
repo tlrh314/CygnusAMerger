@@ -3,7 +3,7 @@
 # File: inventory.sh
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Thu May 19, 2016 10:31 am
-# Last modified: Tue Aug 09, 2016 03:05 pm
+# Last modified: Mon Aug 22, 2016 04:26 pm
 #
 # Description: Make table of all run simulation parameters
 
@@ -80,85 +80,85 @@ do
     if [ -d "${RUN}" ]; then
         DIRNAME="${RUN##*/}"
         TOYCLUSTERPARAMETERS="${RUN}/ICs/toycluster.par"
-
-        if [ ! -f "${TOYCLUSTERPARAMETERS}" ]; then
-            # Try
-            { 
-                MODEL_TO_USE=$(ls "${RUN}/ICs" | grep par) 
-                TOYCLUSTERPARAMETERS="${RUN}/ICs/${MODEL_TO_USE}"
-            } || { # except
-                echo "Error: TOYCLUSTERPARAMETERS not found for ${DIRNAME}"
-                echo "run = ${RUN}"
-                # ls "${RUN}/ICs" | grep par
-                echo "${TOYCLUSTERPARAMETERS}"
-                continue
-            }
-        fi
-
         GADGETPARAMETERS="${RUN}/snaps/gadget2.par"
-        echo "${GADGETPARAMETERS}"
-
-        if [ ! -f "${GADGETPARAMETERS}" ]; then
-            echo "Error: GADGETPARAMETERS not found for ${DIRNAME}"
-            continue
-        fi
+        # echo "${GADGETPARAMETERS}"
 
         echo "${DIRNAME}"
         echo -n "${DIRNAME}, " >> "${INVENTORY}"
 
         if [ -d "${RUN}/ICs" ]; then
-            echo "  ICs generated   : yes"
-            Ntotal=$(get_toycluster_parm "Ntotal")
-            echo "    Ntotal          : $Ntotal"
-            Mtotal=$(get_toycluster_parm "Mtotal")
-            echo "    Mtotal          : $Mtotal"
-            Mass_Ratio=$(get_toycluster_parm "Mass_Ratio")
-            echo "    Mass_Ratio      : $Mass_Ratio"
-            ImpactParam=$(get_toycluster_parm "ImpactParam")
-            echo "    ImpactParam     : $ImpactParam"
-            #Cuspy
-            Redshift=$(get_toycluster_parm "Redshift")
-            echo "    Redshift        : $Redshift"
-            ZeroEOrbitFrac=$(get_toycluster_parm "ZeroEOrbitFrac")
-            echo "    ZeroEOrbitFrac  : $ZeroEOrbitFrac"
-            #Bfld_Norm
-            #Bfld_Eta
-            #Bfld_Scale
-            #bf
-            #h_100
-            #UnitLength_in_cm
-            #UnitMass_in_g
-            #UnitVelocity_in_cm_per_s
-            c_nfw_0=$(get_toycluster_parm "c_nfw_0")
-            echo "    c_nfw_0         : $c_nfw_0"
-            v_com_0=$(get_toycluster_parm "v_com_0")
-            echo "    v_com_0         : $v_com_0"
-            rc_0=$(get_toycluster_parm "rc_0")
-            echo "    rc_0            : $rc_0"
-            c_nfw_1=$(get_toycluster_parm "c_nfw_1")
-            echo "    c_nfw_1         : $c_nfw_1"
-            v_com_1=$(get_toycluster_parm "v_com_1")
-            echo "    v_com_1         : $v_com_1"
-            rc_1=$(get_toycluster_parm "rc_1")
-            echo "    rc_1            : $rc_1"
+            if [ ! -f "${TOYCLUSTERPARAMETERS}" ]; then
+                { # Try
+                    MODEL_TO_USE=$(ls "${RUN}/ICs" | grep par) 
+                    TOYCLUSTERPARAMETERS="${RUN}/ICs/${MODEL_TO_USE}"
+                } || # Except
+                {
+                    echo "  ICs generated   : unkown. TOYCLUSTERPARAMETERS not found!"
+                    echo -n ", , , , , , , , , , , , " >> "${INVENTORY}"
+                }
+            fi
+            if [ -f "${TOYCLUSTERPARAMETERS}" ]; then
+                echo "  ICs generated   : yes"
+                Ntotal=$(get_toycluster_parm "Ntotal")
+                echo "    Ntotal          : $Ntotal"
+                Mtotal=$(get_toycluster_parm "Mtotal")
+                echo "    Mtotal          : $Mtotal"
+                Mass_Ratio=$(get_toycluster_parm "Mass_Ratio")
+                echo "    Mass_Ratio      : $Mass_Ratio"
+                ImpactParam=$(get_toycluster_parm "ImpactParam")
+                echo "    ImpactParam     : $ImpactParam"
+                #Cuspy
+                Redshift=$(get_toycluster_parm "Redshift")
+                echo "    Redshift        : $Redshift"
+                ZeroEOrbitFrac=$(get_toycluster_parm "ZeroEOrbitFrac")
+                echo "    ZeroEOrbitFrac  : $ZeroEOrbitFrac"
+                #Bfld_Norm
+                #Bfld_Eta
+                #Bfld_Scale
+                #bf
+                #h_100
+                #UnitLength_in_cm
+                #UnitMass_in_g
+                #UnitVelocity_in_cm_per_s
+                c_nfw_0=$(get_toycluster_parm "c_nfw_0")
+                echo "    c_nfw_0         : $c_nfw_0"
+                v_com_0=$(get_toycluster_parm "v_com_0")
+                echo "    v_com_0         : $v_com_0"
+                rc_0=$(get_toycluster_parm "rc_0")
+                echo "    rc_0            : $rc_0"
+                c_nfw_1=$(get_toycluster_parm "c_nfw_1")
+                echo "    c_nfw_1         : $c_nfw_1"
+                v_com_1=$(get_toycluster_parm "v_com_1")
+                echo "    v_com_1         : $v_com_1"
+                rc_1=$(get_toycluster_parm "rc_1")
+                echo "    rc_1            : $rc_1"
 
-            echo -n "${Ntotal}, ${Mtotal}, ${Mass_Ratio}, ${ImpactParam}, ${Redshift}, ${ZeroEOrbitFrac}, ${c_nfw_0}, ${v_com_0}, ${rc_0}, ${c_nfw_1}, ${v_com_1}, ${rc_1}, " >> "${INVENTORY}"
+                echo -n "${Ntotal}, ${Mtotal}, ${Mass_Ratio}, ${ImpactParam}, ${Redshift}, ${ZeroEOrbitFrac}, ${c_nfw_0}, ${v_com_0}, ${rc_0}, ${c_nfw_1}, ${v_com_1}, ${rc_1}, " >> "${INVENTORY}"
+            else
+                echo "  ICs generated   : unkown. TOYCLUSTERPARAMETERS not found!"
+                echo -n ", , , , , , , , , , , , " >> "${INVENTORY}"
+            fi
         else
             echo "  ICs generated   : no"
             echo -n ", , , , , , , , , , , , " >> "${INVENTORY}"
         fi
 
         if [ -d "${RUN}/snaps" ]; then
-            echo "  snaps generated : yes"
-            TimeBegin=$(get_gadget_parm "TimeBegin")
-            echo "    TimeBegin       : $TimeBegin"
-            TimeMax=$(get_gadget_parm "TimeMax")
-            echo "    TimeMax         : $TimeMax"
-            TimeBetSnapshot=$(get_gadget_parm "TimeBetSnapshot")
-            echo "    TimeBetSnapshot : $TimeBetSnapshot"
-            BoxSize=$(get_gadget_parm "BoxSize")
-            echo "    BoxSize         : $BoxSize"
-            echo "${TimeBegin}, ${TimeMax}, ${TimeBetSnapshot}, ${BoxSize}" >> "${INVENTORY}"
+            if [ ! -f "${GADGETPARAMETERS}" ]; then
+                echo "  snaps generated : unknown. GADGETPARAMETERS not found!" 
+                echo ", , , " >> "${INVENTORY}"
+            else
+                echo "  snaps generated : yes"
+                TimeBegin=$(get_gadget_parm "TimeBegin")
+                echo "    TimeBegin       : $TimeBegin"
+                TimeMax=$(get_gadget_parm "TimeMax")
+                echo "    TimeMax         : $TimeMax"
+                TimeBetSnapshot=$(get_gadget_parm "TimeBetSnapshot")
+                echo "    TimeBetSnapshot : $TimeBetSnapshot"
+                BoxSize=$(get_gadget_parm "BoxSize")
+                echo "    BoxSize         : $BoxSize"
+                echo "${TimeBegin}, ${TimeMax}, ${TimeBetSnapshot}, ${BoxSize}" >> "${INVENTORY}"
+            fi
         else
             echo "  snaps generated : no"
             echo ", , , " >> "${INVENTORY}"
@@ -173,4 +173,6 @@ do
     fi
 done
 
-open -a /Applications/Microsoft\ Office\ 2008/Microsoft\ Excel.app/ "${INVENTORY}"
+if [ "$(uname -s)" == "Darwin" ]; then
+    open -a /Applications/Microsoft\ Office\ 2008/Microsoft\ Excel.app/ "${INVENTORY}"
+fi
