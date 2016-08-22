@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -lnodes=8:ppn=16:cores16
-#PBS -l walltime=08:00:00
+#PBS -l walltime=11:00:00
 
 # Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 # Date created: Wed Apr 27, 2016 06:40 PM
@@ -159,18 +159,51 @@ setup_system() {
         # TODO: check how multiple threas/nodes works on Lisa?
         # TODO: is the PBS situation the scheduler that also sets nodes/threads?
         # THREADS=$(grep -c ^processor /proc/cpuinfo)
-        THREADS=128 # set based on the nr of nodes requested
+        THREADS=128  # set based on the nr of nodes requested
         NICE=0  # default is 0
-        BASEDIR="$HOME"  # TODO: look into the faster disk situation @Lisa?
-        #TIMESTAMP="20160704T1337"  # qsub no parse options..
+        BASEDIR="$HOME"
+        #BASEDIR="${TMPDIR}/timoh"  # TODO: look into the faster disk situation @Lisa?
+        TIMESTAMP="20160820T0032"  # qsub no parse options..
         RUNSMAC=true
-        EFFECT="all"
+        EFFECT="xraytem"
         MAIL=true
+        #MODEL_TO_USE="ic_both_free_0.par"
         # TODO: I think home should not be used, instead use scratch??
         module load c/intel
         module load fftw2/sp/intel
         module load fftw2/dp/intel
         module load openmpi/intel
+
+        # TODO: requires mpiexec'd executable (Gadget2) on every node?
+        # cd $HOME
+        # if [ ! -d "${TMPDIR}/timoh" ]; then
+        #     mkdir "${TMPDIR}/timoh"
+        #     chmod 700 "${TMPDIR}/timoh"
+        # fi
+
+        # if [ ! -d "${TMPDIR}/timoh/Toycluster" ]; then
+        #     cp -i -r Toycluster "${TMPDIR}/timoh"
+        # fi
+        # if [ ! -d "${TMPDIR}/timoh/Gadget-2.0.7" ]; then
+        #     cp -i -r Gadget-2.0.7 "${TMPDIR}/timoh"
+        # fi
+        # if [ ! -d "${TMPDIR}/timoh/P-Smac2" ]; then
+        #     cp -i -r P-Smac2 "${TMPDIR}/timoh"
+        # fi
+        # if [ ! -d "${TMPDIR}/timoh/runs" ]; then
+        #     mkdir "${TMPDIR}/timoh/runs"
+        # fi
+        # if [ ! -d "${TMPDIR}/timoh/CygnusAMerger" ]; then
+        #     mkdir "${TMPDIR}/timoh/CygnusAMerger"
+        #     cp -i "${HOME}/CygnusAMerger/${MODEL_TO_USE}" "${TMPDIR}/timoh/CygnusAMerger"
+        #     cp -i "${HOME}/CygnusAMerger/gadget2.par" "${TMPDIR}/timoh/CygnusAMerger"
+        #     cp -i "${HOME}/CygnusAMerger/smac2.par" "${TMPDIR}/timoh/CygnusAMerger"
+        #     cp -i "${HOME}/CygnusAMerger/Makefile_Toycluster" "${TMPDIR}/timoh/CygnusAMerger"
+        #     cp -i "${HOME}/CygnusAMerger/Makefile_Gadget2" "${TMPDIR}/timoh/CygnusAMerger"
+        #     cp -i "${HOME}/CygnusAMerger/Makefile_PSmac2" "${TMPDIR}/timoh/CygnusAMerger"
+        #     cp -i "${HOME}/CygnusAMerger/Config_PSmac2" "${TMPDIR}/timoh/CygnusAMerger"
+        # fi
+        
 
         # Send mail once jobs starts.. it could queue god knows how long
         msg="Dear Timo,\n\n\
@@ -180,7 +213,9 @@ Cheers,\n${SYSTYPE}"
 
         SUBJECT="Job @ ${SYSTYPE} has started :-)!"
     
-        (echo -e $msg | mail $USER -s "${SUBJECT}") 
+        if [ "$MAIL" = true ]; then
+            (echo -e $msg | mail $USER -s "${SUBJECT}") 
+        fi
     elif [ "${SYSTYPE}" == "taurus" ]; then
         THREADS=4
         NICE=19
@@ -222,30 +257,62 @@ setup_toycluster() {
     TOYCLUSTERDIR="${BASEDIR}/Toycluster"
     TOYCLUSTERLOGFILENAME="runToycluster.log"
 
+    if [ -z "${MODEL_TO_USE}" ]; then
+        echo "WARNING: MODEL_TO_USE not set!"
+        exit 1
+    fi
+
     # If TIMESTAMP is not given we assume no initial conditions exist!
     if [ -z $TIMESTAMP ]; then
         TIMESTAMP=$(date +"%Y%m%dT%H%M")
-        # TIMESTAMP="20160704T1335"
+        #TIMESTAMP="20160819T1330"
         echo "No timestamp  --> generating new ICs"
         echo "Timestamp       : ${TIMESTAMP}"
 
         SIMULATIONDIR="${DATADIR}/${TIMESTAMP}"
         ICOUTDIR="${SIMULATIONDIR}/ICs"
 
-        if [ ! -d "${SIMULATIONDIR}" ]; then
-            mkdir "${SIMULATIONDIR}"
-            echo "Created         : ${SIMULATIONDIR}"
-        fi
+        # To prevent race condition (two different scripts /w same timestamp
+        # however, this does not work because it will only work after
+        # script has finished...
+        while true; do
+            if [ ! -d "${SIMULATIONDIR}" ]; then
+                mkdir "${SIMULATIONDIR}"
+                echo "Created         : ${SIMULATIONDIR}"
+                break
+            else
+                echo "Dir exists      : ${SIMULATIONDIR}"
+                sleep 60
+                TIMESTAMP=$(date +"%Y%m%dT%H%M")
+                SIMULATIONDIR="${DATADIR}/${TIMESTAMP}"
+                ICOUTDIR="${SIMULATIONDIR}/ICs"
+                echo "Trying timestamp: ${TIMESTAMP}"
+            fi
+        done
 
         if [ ! -d "${ICOUTDIR}" ]; then
             mkdir "${ICOUTDIR}"
             echo "Created         : ${ICOUTDIR}"
         fi
 
-        set_toycluster_compile_files
-        # echo "Press enter to continue" && read enterKey
-        compile_toycluster
-        set_toycluster_runtime_files
+        # Queued jobs start at random times. Could conflict in code directories
+        # at compile time. Lock directory when setting compile settings,
+        # compiling and moving compiled files to runs/SimulationID dir.
+        while true; do
+            if [ -f "${TOYCLUSTERDIR}/compiling.lock" ]; then
+                echo "LOCKED. WAITING.."
+                sleep 60
+            else
+                touch "${TOYCLUSTERDIR}/compiling.lock"
+                set_toycluster_compile_files
+                # echo "Press enter to continue" && read enterKey
+                compile_toycluster
+                set_toycluster_runtime_files
+                rm -f "${TOYCLUSTERDIR}/compiling.lock"
+                break
+            fi
+        done
+
         run_toycluster
 
         ICFILENAME=$(grep "Output_file" "${TOYCLUSTERPARAMETERS}" | cut -d' ' -f2)
@@ -266,6 +333,7 @@ setup_toycluster() {
         if [ ! -f "${TOYCLUSTERPARAMETERS}" ]; then
             TOYCLUSTERPARAMETERS=$(ls "${ICOUTDIR}" | grep par)
             MODEL_TO_USE="${TOYCLUSTERPARAMETERS}"
+            TOYCLUSTERPARAMETERS="${ICOUTDIR}/${MODEL_TO_USE}"
         fi
         TOYCLUSTERLOGFILE="${ICOUTDIR}/${TOYCLUSTERLOGFILENAME}"
         ICFILENAME=$(grep "Output_file" "${TOYCLUSTERPARAMETERS}" | cut -d' ' -f2)
@@ -393,10 +461,19 @@ setup_gadget() {
         mkdir "${SIMOUTDIR}"
         echo "Created         : ${SIMOUTDIR}"
 
-        set_gadget_compile_files
-        # echo "Press enter to continue" && read enterKey
-        compile_gadget
-        set_gadget_runtime_files
+        while true; do
+            if [ -f "${GADGETDIR}/compiling.lock" ]; then
+                echo "LOCKED. WAITING.."
+                sleep 60
+            else
+                touch "${GADGETDIR}/compiling.lock" 
+                set_gadget_compile_files
+                compile_gadget
+                set_gadget_runtime_files
+                rm -f "${GADGETDIR}/compiling.lock" 
+                break
+            fi
+        done
         run_gadget
     else
         GADGETMAKEFILE="${SIMOUTDIR}/Makefile_Gadget2"
@@ -602,23 +679,38 @@ setup_psmac2() {
             echo "Error: ${PSMAC2MAKEFILE_GIT} does not exist!"
             exit 1
         fi
-        cp "${PSMAC2MAKEFILE_GIT}" "${PSMAC2DIR}/Makefile"
-        PSMAC2CONFIG_GIT="${GITHUBDIR}/Config_PSmac2"
-        if [ ! -f "${PSMAC2CONFIG_GIT}" ]; then
-            echo "Error: ${PSMAC2CONFIG_GIT} does not exist!"
-            exit 1
-        fi
-        cp "${PSMAC2CONFIG_GIT}" "${PSMAC2DIR}/Config"
 
-        compile_psmac2
-        PSMAC2MAKEFILE="${ANALYSISDIR}/Makefile_PSmac2"
-        mv "${PSMAC2DIR}/Makefile" "${PSMAC2MAKEFILE}"
-        PSMAC2CONFIG="${ANALYSISDIR}/Config_PSmac2"
-        mv "${PSMAC2DIR}/Config" "${PSMAC2CONFIG}"
+        # TODO: do not loop ad infinitum?
+        #x=1
+        #while [ $x -le 5 ]; do
+        while true; do
+            if [ -f "${PSMAC2DIR}/compiling.lock" ]; then
+                echo "LOCKED. WAITING.."
+                sleep 60
+                #x=$(( $x + 1 ))
+            else
+                touch "${PSMAC2DIR}/compiling.lock"
+                cp "${PSMAC2MAKEFILE_GIT}" "${PSMAC2DIR}/Makefile"
+                PSMAC2CONFIG_GIT="${GITHUBDIR}/Config_PSmac2"
+                if [ ! -f "${PSMAC2CONFIG_GIT}" ]; then
+                    echo "Error: ${PSMAC2CONFIG_GIT} does not exist!"
+                    exit 1
+                fi
+                cp "${PSMAC2CONFIG_GIT}" "${PSMAC2DIR}/Config"
 
-        PSMAC2EXECNAME=$(grep "EXEC =" "${PSMAC2MAKEFILE}" | cut -d' ' -f3)
-        mv "${PSMAC2DIR}/${PSMAC2EXECNAME}" "${ANALYSISDIR}"
-        PSMAC2EXEC="${ANALYSISDIR}/${PSMAC2EXECNAME}"
+                compile_psmac2
+                PSMAC2MAKEFILE="${ANALYSISDIR}/Makefile_PSmac2"
+                mv "${PSMAC2DIR}/Makefile" "${PSMAC2MAKEFILE}"
+                PSMAC2CONFIG="${ANALYSISDIR}/Config_PSmac2"
+                mv "${PSMAC2DIR}/Config" "${PSMAC2CONFIG}"
+
+                PSMAC2EXECNAME=$(grep "EXEC =" "${PSMAC2MAKEFILE}" | cut -d' ' -f3)
+                mv "${PSMAC2DIR}/${PSMAC2EXECNAME}" "${ANALYSISDIR}"
+                PSMAC2EXEC="${ANALYSISDIR}/${PSMAC2EXECNAME}"
+                rm -f "${PSMAC2DIR}/compiling.lock"
+                break
+            fi
+        done
     else
         PSMAC2MAKEFILE="${ANALYSISDIR}/Makefile_PSmac2"
         PSMAC2CONFIG="${ANALYSISDIR}/Config_PSmac2"
@@ -836,7 +928,7 @@ run_psmac2_for_given_module() {
 
         if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
             # the pee-bee-es situation fixes nodes/threads?
-            mpiexec "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
+            OMP_NUM_THREADS=$THREADS mpiexec -np 1 "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
         elif [ "${SYSTYPE}" == "taurus" ]; then
             OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1 
         elif [ "${SYSTYPE}" == "MBP" ]; then
@@ -964,37 +1056,22 @@ rotate() {
 
 
 # Main
+echo -e "\nStart of program at $(date)\n"
+
+
+MODEL_TO_USE="ic_both_free.par"  # default
+
+
 # Uncomment if options are required
 # if [ $# = 0 ]; then _usage && exit 2; fi
-
 if [[ ! "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
     parse_options $@
 fi
 
-echo -e "\nStart of program at $(date)\n"
 
 setup_system
 setup_toycluster
 
-#MODEL_TO_USE="ic_cyga_fixed.par"
-#MODEL_TO_USE="ic_cygb_fixed.par"
-#MODEL_TO_USE="ic_both_fixed.par"
-
-#MODEL_TO_USE="ic_cyga_hybrid.par"
-#MODEL_TO_USE="ic_both_hybrid.par"
-
-#MODEL_TO_USE="ic_cyga_free.par"
-#MODEL_TO_USE="ic_cygb_free.par"
-#MODEL_TO_USE="ic_both_free.par"
-
-#MODEL_TO_USE="ic_cyga_free_delta.par"
-#MODEL_TO_USE="ic_cygb_free_delta.par"
-#MODEL_TO_USE="ic_both_free_delta.par"
-
-if [ -z "${MODEL_TO_USE}" ]; then
-    echo "WARNING: MODEL_TO_USE not set!"
-    exit 1
-fi
 
 if [ ! "$ONLY_TOYCLUSTER" = true ]; then
     setup_gadget
@@ -1015,34 +1092,29 @@ case "${EFFECT}" in
         echo "Running P-Smac2 for physical density."
         #  0 - Physical Density [g/cm^2]; no Flag
         run_psmac2_for_given_module "physical-density" "0" "0"
-        exit 0
         ;;
     "xray")
         # 2 - X-Ray Surface Brightness; no Flag
         echo "Running P-Smac2 for X-Ray Surface Brightness."
         run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
-        exit 0
         ;;
     "Tem")
         # 4 - Temperature
         #     2 - Emission Weighted
         echo "Running P-Smac2 for Emission Weighted Temperature."
         run_psmac2_for_given_module "temperature-emission-weighted" "4" "2"
-        exit 0
         ;;
     "Tspec")
         # 4 - Temperature
         #     3 - Spectroscopic - Chandra, XMM (Mazotta+ 04)
         echo "Running P-Smac2 for Spectroscopic Temperature (Chandra)."
         run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
-        exit 0
         ;;
     "Pth")
         # 5 - Pressure
         #     0 - Thermal
         echo "Running P-Smac2 for Thermal Pressure."
         run_psmac2_for_given_module "presssure" "5" "0"
-        exit 0
         ;;
     "SZy")
         # 7 - SZ Effect
@@ -1062,13 +1134,17 @@ case "${EFFECT}" in
         echo "Running P-Smac2 for Dark Matter density."
         # 10 - DM Density; no Flag
         run_psmac2_for_given_module "dm-density" "10" "0"
-        exit 0
         ;;
     "DMan")
         # 11 - DM Annihilation Signal (rho^2); no Flag
         echo "Running P-Smac2 for Dark Matter Annihilation."
         run_psmac2_for_given_module "dm-annihilation" "11" "0"
-        exit 0
+        ;;
+    "xraytem")
+        echo "Running P-Smac2 for X-Ray Surface Brightness."
+        run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
+        echo "Running P-Smac2 for Emission Weighted Temperature."
+        run_psmac2_for_given_module "temperature-emission-weighted" "4" "2"
         ;;
     "all")
         echo "Running P-Smac2 for physical density."
@@ -1103,4 +1179,10 @@ if [ "$MAIL" = true ]; then
     send_mail
 fi
 
+#if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+#    #rsync -auHxz --progress "${TMPDIR}/timoh/runs/" "${HOME}/runs/"
+#    cp -r "${TMPDIR}/timoh/runs/${TIMESTAMP}" "${HOME}/runs/"
+#fi
+
+wait
 echo -e "\nEnd of program at $(date)\n"
