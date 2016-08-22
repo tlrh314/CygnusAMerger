@@ -734,6 +734,7 @@ class SampledBox(object):
         and `simulation' where two clusters live in the box. """
 
         icdir = "../runs/{0}/ICs/".format(timestamp)
+        outdir = "../runs/{0}/out/".format(timestamp)
         simulation = NumericalCluster(
             icdir=icdir,
             snapdir=icdir,
@@ -772,11 +773,12 @@ class SampledBox(object):
         if debug:
             pyplot.figure()
             pyplot.plot((edges[1:]+edges[:-1])/2, hist)
-            pyplot.show()
+            pyplot.savefig(outdir+"world_01.png")
+            #pyplot.show()
         # Domain contains indices of x values between -750 and 750
         # somewhere in this range there is a minimum x-value, which
         # is the center that we need to shift back the haloes.
-        domain = numpy.where(numpy.logical_and(edges>=-1000, edges<=1000))
+        domain = numpy.where(numpy.logical_and(edges>=-1300, edges<=1300))
         ymin_index = numpy.argmin(hist[domain])
         center = edges[domain][ymin_index]
         if debug:
@@ -786,13 +788,15 @@ class SampledBox(object):
             ymin = hist[domain][ymin_index]
             pyplot.axhline(ymin)
             pyplot.axvline(center)
-            pyplot.show()
+            pyplot.savefig(outdir+"world_02.png")
+            #pyplot.show()
 
         # Histogram of gas x-values is beautifully bimodal (y, z aint)
         if debug:
             pyplot.figure(figsize=(12, 12))
             amuse_plot.hist(gas.x, bins=int(numpy.sqrt(len(gas.x))))
-            pyplot.show()
+            #pyplot.show()
+            pyplot.savefig(outdir+"world_03.png")
 
 
         """ Third, split up particles in two haloes. Shift back to (0,0,0) """
@@ -840,11 +844,13 @@ class SampledBox(object):
             # Bimodality is gone; cluster now centered around x=0
             pyplot.figure(figsize=(12, 12))
             amuse_plot.hist(halo0gas.x, bins=int(numpy.sqrt(len(halo0gas.x))))
-            pyplot.show()
+            pyplot.savefig(outdir+"world_04.png")
+            #pyplot.show()
 
             pyplot.figure(figsize=(12, 12))
             amuse_plot.hist(halo1gas.x, bins=int(numpy.sqrt(len(halo1gas.x))))
-            pyplot.show()
+            pyplot.savefig(outdir+"world_05.png")
+            #pyplot.show()
 
         # recalculate r because now it is calculated with uncentered x, y values
         print "Recalculating halo radii."

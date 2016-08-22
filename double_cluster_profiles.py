@@ -4,7 +4,7 @@ import scipy
 import argparse
 
 import matplotlib
-matplotlib.use("Qt4Agg")
+matplotlib.use("Agg")
 matplotlib.rcParams.update({'font.size': 22})
 matplotlib.rc('text', usetex=True)
 from matplotlib import pyplot
@@ -47,6 +47,7 @@ if __name__ == "__main__":
 
     arguments = new_argument_parser().parse_args()
     myRun = arguments.simulationID[0]
+    print myRun
 
     print 80*'-'
     print "Parsing Toycluster output: double cluster (Xm != 0)"
