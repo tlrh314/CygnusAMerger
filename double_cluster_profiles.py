@@ -4,10 +4,10 @@ import scipy
 import argparse
 
 import matplotlib
-matplotlib.use("Agg")
+from matplotlib import pyplot
+matplotlib.use("Agg", warn=False)
 matplotlib.rcParams.update({'font.size': 22})
 matplotlib.rc('text', usetex=True)
-from matplotlib import pyplot
 
 from amuse.units import units
 from amuse.units import constants

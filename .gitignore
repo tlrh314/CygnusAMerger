@@ -203,7 +203,6 @@ ENV/
 # Something??
 ._*
 
-IC_single_0
 data
 *.dat
 out
@@ -212,3 +211,4 @@ NoParticles.txt
 ToyclusterTrial.par
 NoParticles_cygA.txt
 NoParticles_cygB.txt
+.DS_Store

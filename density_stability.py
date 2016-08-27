@@ -6,8 +6,8 @@ import argparse
 from deco import concurrent, synchronized
 
 import matplotlib
-matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+matplotlib.use("Agg", warn=False)
 pyplot.rcParams.update({"font.size": 28})
 pyplot.rcParams.update({"xtick.major.size": 8})
 pyplot.rcParams.update({"xtick.minor.size": 4})
@@ -69,28 +69,34 @@ class Run(object):
             self.TimeBetSnapshot = gadgetparms['TimeBetSnapshot']
 
 
-def plot_individual_cluster_density(numerical, analytical, observed=None):
+def plot_individual_cluster_density(numerical, analytical, observed=None,
+                                    poster_style=False):
     """ Plot the particles' density radial profile and compare to model """
     pyplot.figure(figsize=(16, 12))
-    pyplot.style.use(["dark_background"])
-    # magenta, dark blue, orange, green, light blue (?)
+    if poster_style:
+        pyplot.style.use(["dark_background"])
+        pyplot.rcParams.update({"font.weight": "bold"})
+        # magenta, dark blue, orange, green, light blue (?)
+        fit_colour = "white"
+    else:
+        fit_colour = "k"
     data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
                    (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
                    (41./255, 239./255, 239./255)]
-    fit_colour = "white"
 
     if observed:
-        pyplot.errorbar(observed.radius+observed.binsize/2,
-                        observed.density, xerr=observed.binsize/2,
-                        yerr=observed.density_std, marker="o",
-                        ms=7, elinewidth=5, ls="", c=data_colour[3],
-                        label=observed.name)
-
+        obs_colour = "g" if observed.name == "cygA" else "b"
+        pyplot.errorbar(observed.radius+observed.binsize/2, observed.density,
+                        xerr=observed.binsize/2, yerr=observed.density_std,
+                        marker="o", ms=7 if poster_style else 3, alpha=0.2,
+                        elinewidth=5 if poster_style else 1, ls="",
+                        c=obs_colour, label=observed.name)
 
     # Gas RHO and RHOm from Toycluster living in AMUSE datamodel
     # cut = numpy.where(numerical.gas.r < numerical.R200)
     amuse_plot.scatter(numerical.gas.r, numerical.gas.rho,
-        c=data_colour[0], edgecolor="face", s=1, label=r"Gas, sampled")
+        c=data_colour[0], edgecolor="face", s=10 if poster_style else 4,
+        label=r"Gas, sampled")
 
     # amuse_plot.scatter(numerical.gas.r,
     #    numerical.gas.rhom,
@@ -98,22 +104,25 @@ def plot_individual_cluster_density(numerical, analytical, observed=None):
 
     # DM density obtained from mass profile (through number density)
     amuse_plot.scatter(numerical.dm_radii, numerical.rho_dm_below_r,
-       c=data_colour[2], edgecolor="face", s=10, label=r"DM, sampled")
+       c=data_colour[2], edgecolor="face", s=10 if poster_style else 4,
+       label=r"DM, sampled")
 
     # Analytical solutions.
 
     # Plot analytical cut-off beta model (Donnert 2014) for the gas density
-    amuse_plot.plot(analytical.radius, analytical.gas_density(), c=fit_colour, lw=1, ls="dotted",
+    amuse_plot.plot(analytical.radius, analytical.gas_density(), c=fit_colour,
+            lw=5 if poster_style else 1, ls="dotted",
         label="Gas: "+analytical.modelname)#+"\n"+\
             #r"$\rho_0$ = {0:.3e} g/cm$^3$; $rc = ${1:.2f} kpc"\
             #.format(analytical.rho0.number, analytical.rc.number))
 
     # Plot analytical Hernquist model for the DM density
-    amuse_plot.plot(analytical.radius, analytical.dm_density(), c=fit_colour, lw=1, ls="solid",
+    amuse_plot.plot(analytical.radius, analytical.dm_density(), c=fit_colour,
+            lw=5 if poster_style else 1, ls="solid",
         label=r"DM: Hernquist")# "\n" r"$M_{{\rm dm}}= ${0:.2e} MSun; $a = $ {1} kpc".format(
         #analytical.M_dm.number, analytical.a.number))
 
-    amuse_plot.ylabel(r"Density [g/cm$**$3]")
+    amuse_plot.ylabel(r"Density [g/cm$^3$]")
     amuse_plot.xlabel(r"Radius [kpc]")
 
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
@@ -131,20 +140,26 @@ def plot_individual_cluster_density(numerical, analytical, observed=None):
     # pyplot.savefig("out/actuallyran.png")
     pyplot.legend(loc=3)#, prop={"size": 22})
 
-def plot_individual_cluster_mass(numerical, analytical):
+def plot_individual_cluster_mass(numerical, analytical, poster_style=False):
     pyplot.figure(figsize=(16, 12))
-    pyplot.style.use(["dark_background"])
+    if poster_style:
+        pyplot.style.use(["dark_background"])
+        pyplot.rcParams.update({"font.weight": "bold"})
+        fit_colour = "white"
+    else:
+        fit_colour = "k"
     # magenta, dark blue, orange, green, light blue (?)
     data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
                    (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
                    (41./255, 239./255, 239./255)]
-    fit_colour = "white"
 
     amuse_plot.scatter(numerical.gas_radii, numerical.M_gas_below_r,
-        c=data_colour[0], edgecolor="face", s=1, label="Gas, sampled")
+        c=data_colour[0], edgecolor="face", s=4 if poster_style else 1,
+        label="Gas, sampled")
 
     amuse_plot.scatter(numerical.dm_radii, numerical.M_dm_below_r,
-        c=data_colour[2], edgecolor="face", s=1, label="DM, sampled")
+        c=data_colour[2], edgecolor="face", s=4 if poster_style else 1,
+        label="DM, sampled")
 
     pyplot.gca().set_xscale("log")
     pyplot.gca().set_yscale("log")
@@ -152,11 +167,12 @@ def plot_individual_cluster_mass(numerical, analytical):
     # Analytical solutions. Sample radii and plug into analytical expression.
 
     # Plot analytical Hernquist model for the DM mass M(<r)
-    amuse_plot.plot(analytical.radius, analytical.dm_cummulative_mass(), ls="solid", c=fit_colour, lw=2, label="DM: Hernquist")
+    amuse_plot.plot(analytical.radius, analytical.dm_cummulative_mass(),
+        ls="solid", c=fit_colour, lw=5 if poster_style else 1, label="DM: Hernquist")
 
     # Plot analytical cut-off beta model (Donnert 2014) for the gas mass M(<r)
-    amuse_plot.plot(analytical.radius, analytical.gas_mass(),
-        ls="dotted", c=fit_colour, lw=2, label="Gas: "+analytical.modelname)
+    amuse_plot.plot(analytical.radius, analytical.gas_mass(), ls="dotted",
+            c=fit_colour, lw=5 if poster_style else 1, label="Gas: "+analytical.modelname)
 
     pyplot.xlabel(r"Radius [kpc]")
     pyplot.ylabel(r"Cummulative Mass [MSun]")
@@ -166,19 +182,23 @@ def plot_individual_cluster_mass(numerical, analytical):
     pyplot.gca().set_xlim(xmin=1, xmax=1e4)
     pyplot.legend(loc=4)
 
-def plot_individual_cluster_temperature(numerical, analytical):
+def plot_individual_cluster_temperature(numerical, analytical, poster_style=False):
     pyplot.figure(figsize=(16, 12))
-    pyplot.style.use(["dark_background"])
+    if poster_style:
+        pyplot.style.use(["dark_background"])
+        pyplot.rcParams.update({"font.weight": "bold"})
+        fit_colour = "white"
+    else:
+        fit_colour = "k"
     # magenta, dark blue, orange, green, light blue (?)
     data_colour = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
                    (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
                    (41./255, 239./255, 239./255)]
-    fit_colour = "white"
 
     numerical.set_gas_temperature()
     pyplot.scatter(numerical.gas.r.value_in(units.kpc),
-        numerical.gas.T.value_in(units.K),
-        c=data_colour[0], edgecolor="face", s=1, label="Gas, sampled")
+        numerical.gas.T.value_in(units.K), c=data_colour[0], edgecolor="face",
+        s=5 if poster_style else 1, label="Gas, sampled")
 
     # Analytical solutions. Sample radii and plug into analytical expression.
 
@@ -186,8 +206,8 @@ def plot_individual_cluster_temperature(numerical, analytical):
     # NB the temperature is set by both gas and dark matter
     # because it follows from hydrostatic equation, which contains M(<r),
     # where M(<r) is the total gravitating mass delivered by gas+dm!
-    amuse_plot.plot(analytical.radius, analytical.temperature(),
-        ls="dotted", c=fit_colour, lw=2, label="Analytical")
+    amuse_plot.plot(analytical.radius, analytical.temperature(), ls="dotted",
+        c=fit_colour, lw=5 if poster_style else 1, label="Analytical")
     pyplot.axhline(analytical.characteristic_temperature().value_in(units.K))
     pyplot.axvline(analytical.rc.value_in(units.kpc))
 
