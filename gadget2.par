@@ -15,7 +15,7 @@ OutputListFilename output_list.txt
 
 % CPU time -limit
 
-TimeLimitCPU      19800  % 428400 = 119 hours: 5 days minus 1 hour. Lisa max: 5 days.
+TimeLimitCPU      46800 % 428400 = 119 hours: 5 days minus 1 hour. Lisa max: 5 days.
 ResubmitOn        0
 ResubmitCommand   my-scriptfile
 
@@ -34,7 +34,7 @@ PeriodicBoundariesOn     1
 % Characteristics of run
 
 TimeBegin                0.0
-TimeMax                  5.0  % in units of Gyr
+TimeMax                  2.5  % in units of Gyr
 
 Omega0                   0.3
 OmegaLambda              0.7
@@ -44,10 +44,10 @@ BoxSize                  18965  % kpc
 
 % Output frequency
 
-TimeBetSnapshot          0.1  % in code units of time (Gyr)
+TimeBetSnapshot          0.025  % in code units of time (Gyr)
 TimeOfFirstSnapshot      0.0
 
-CpuTimeBetRestartFile    21600 % here in seconds (21600 = 6 hours)
+CpuTimeBetRestartFile    43200  % here in seconds (21600 = 6 hours)
 TimeBetStatistics        0.05
 
 NumFilesPerSnapshot       1

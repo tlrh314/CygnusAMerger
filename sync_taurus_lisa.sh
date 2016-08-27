@@ -37,13 +37,13 @@ if [ "${SYSTYPE}" == "taurus" ]; then
     #     echo $SRCDIR $DESTDIR
     #     nice -n $NICE rsync -az $SRCDIR $DESTDIR &
     # done
-    #nice -n $NICE rsync -auHxz --progress "${TAURUSDIR}" lisa:"${LISADIR}"
-    nice -n $NICE rsync -auHxz --progress lisa:"${LISADIR}" "${TAURUSDIR}"
+    # nice -n $NICE rsync -auHxz --progress "${TAURUSDIR}" lisa:"${LISADIR}"
+    # nice -n $NICE rsync -auHxz --progress lisa:"${LISADIR}" "${TAURUSDIR}"
 elif [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
     # On Lisa
-    NICE=0  # default is 0
-    #nice -n $NICE rsync -auHxz --progress taurus:"${TAURUSDIR}" "${LISADIR}"
-    nice -n $NICE rsync -auHxz --progress "${LISADIR}" taurus:"${TAURUSDIR}"
+    NICE=19  # default is 0
+    nice -n $NICE rsync -auHxz --progress taurus:"${TAURUSDIR}" "${LISADIR}"
+    # nice -n $NICE rsync -auHxz --progress "${LISADIR}" taurus:"${TAURUSDIR}"
 elif [ "$(uname -s)" == "Darwin" ]; then
     echo "Running at MBP"
 

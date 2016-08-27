@@ -4,15 +4,16 @@ Cosmology 0         % set to 0 for non-cosmological sims.  Cosmo.h = 1
 
 %% Image Properties, comoving %%
 
-Center_X 1500       % kpc
-Center_Y 1500
-Center_Z 1500
+Center_X 5052.5       % kpc
+Center_Y 5052.5
+Center_Z 5052.5
 
-Use_Barycenter 1    % 1 - set to, 2 - set relative to barycenter
+
+Use_Barycenter 0    % 1 - set to, 2 - set relative to barycenter
 
 XYSize 0    % set these two ==0 to project whole box
 ZDepth 0
-XYPix 256
+XYPix 2048
 
 %% Projection, see description at EOF %%
 Euler_Angle_0 0 

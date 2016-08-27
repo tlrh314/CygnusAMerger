@@ -159,14 +159,15 @@ setup_system() {
         # TODO: check how multiple threas/nodes works on Lisa?
         # TODO: is the PBS situation the scheduler that also sets nodes/threads?
         # THREADS=$(grep -c ^processor /proc/cpuinfo)
-        THREADS=128  # set based on the nr of nodes requested
+        THREADS=16  # set based on the nr of nodes requested
         NICE=0  # default is 0
+        NODES=$(( $THREADS/16 ))
         BASEDIR="$HOME"
         #BASEDIR="${TMPDIR}/timoh"  # TODO: look into the faster disk situation @Lisa?
-        TIMESTAMP="20160820T0032"  # qsub no parse options..
-        RUNSMAC=true
-        EFFECT="xraytem"
-        MAIL=true
+        #TIMESTAMP="20160820T0438"  # qsub no parse options..
+        #RUNSMAC=true
+        #EFFECT="xraytem"
+        #MAIL=true
         #MODEL_TO_USE="ic_both_free_0.par"
         # TODO: I think home should not be used, instead use scratch??
         module load c/intel
@@ -225,9 +226,11 @@ Cheers,\n${SYSTYPE}"
         #BASEDIR="/Users/timohalbesma/Documents/Educatie/UvA/Master of Science Astronomy and Astrophysics/Jaar 3 (20152016)/Masterproject MScProj/Code"
         BASEDIR="/usr/local/mscproj"
         THREADS=$(sysctl -n hw.ncpu)  # OSX *_*
+        NODES=1
         NICE=10
     elif [[ "${SYSTYPE}" == *".uwp.science.uva.nl" ]]; then
         THREADS=4
+        NODES=1
         NICE=19
         BASEDIR="/net/glados2.science.uva.nl/api/thalbes1"
     else
@@ -237,7 +240,6 @@ Cheers,\n${SYSTYPE}"
 
     # TODO match regex '/(?!-lnodes=)(?:\d*\.)?\d+/'
     # NODES=$(head $0 | grep "(?!-lnodes=)(?:\d*\.)?\d+")
-    NODES=1
     GITHUBDIR="${BASEDIR}/CygnusAMerger"
     DATADIR="${BASEDIR}/runs"
 
@@ -401,6 +403,7 @@ run_toycluster() {
 
     SECONDS=0
     if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+        # Toycluster is OpenMP parallel only.
         OMP_NUM_THREADS=16 "${TOYCLUSTEREXEC}" "${TOYCLUSTERPARAMETERS}" 2>&1 >> "${TOYCLUSTERLOGFILE}"
     else
         OMP_NUM_THREADS=$THREADS nice -n $NICE "${TOYCLUSTEREXEC}" "${TOYCLUSTERPARAMETERS}" 2>&1 >> "${TOYCLUSTERLOGFILE}"
@@ -596,7 +599,7 @@ run_gadget() {
     cd "${SIMOUTDIR}"
 
     if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
-        # the pee-bee-es situation fixes nodes/threads?
+        # Gadget2 is MPI only. PBS fixes the correct number of MPI ranks
         mpiexec "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
     elif [ "${SYSTYPE}" == "taurus" ]; then
         nice -n $NICE mpiexec.hydra -np $THREADS "${GADGETEXEC}" "${GADGETPARAMETERS}" # 2&1> "${GADGETLOGFILE}"
@@ -927,8 +930,10 @@ run_psmac2_for_given_module() {
         SECONDS=0
 
         if [[ "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
-            # the pee-bee-es situation fixes nodes/threads?
-            OMP_NUM_THREADS=$THREADS mpiexec -np 1 "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
+            # P-Smac2 is OpenMP/MPI parallel.
+            export IPATH_NO_CPUAFFINITY=1
+            export OMP_NUM_THREADS=16
+            mpiexec -np 1 "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}"
         elif [ "${SYSTYPE}" == "taurus" ]; then
             OMP_NUM_THREADS=$THREADS nice --adjustment=$NICE mpiexec.hydra -np $NODES "${PSMAC2EXEC}" "${PSMAC2PARAMETERS}" >> "${PSMAC2LOGFILE}" 2>&1 
         elif [ "${SYSTYPE}" == "MBP" ]; then
@@ -1064,9 +1069,9 @@ MODEL_TO_USE="ic_both_free.par"  # default
 
 # Uncomment if options are required
 # if [ $# = 0 ]; then _usage && exit 2; fi
-if [[ ! "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
-    parse_options $@
-fi
+#if [[ ! "${SYSTYPE}" == *".lisa.surfsara.nl" ]]; then
+parse_options $@
+#fi
 
 
 setup_system
@@ -1140,11 +1145,19 @@ case "${EFFECT}" in
         echo "Running P-Smac2 for Dark Matter Annihilation."
         run_psmac2_for_given_module "dm-annihilation" "11" "0"
         ;;
+    "vel")
+        echo "Running P-Smac2 for velocity"
+        run_psmac2_for_given_module "velocity" "1" "0"
+        ;;
     "xraytem")
         echo "Running P-Smac2 for X-Ray Surface Brightness."
         run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
         echo "Running P-Smac2 for Emission Weighted Temperature."
         run_psmac2_for_given_module "temperature-emission-weighted" "4" "2"
+        echo "Running P-Smac2 for physical density."
+        run_psmac2_for_given_module "physical-density" "0" "0"
+        echo "Running P-Smac2 for velocity"
+        run_psmac2_for_given_module "velocity" "1" "0"
         ;;
     "all")
         echo "Running P-Smac2 for physical density."

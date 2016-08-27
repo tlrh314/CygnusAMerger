@@ -4,8 +4,9 @@ import argparse
 
 import numpy
 import matplotlib
+matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
-matplotlib.use("Agg", warn=False)
+pyplot.rcParams.update({"font.size": 22})
 
 from deco import concurrent, synchronized
 import amuse.plot as amuse_plot
@@ -13,7 +14,7 @@ from cluster import NumericalCluster
 from ioparser import parse_gadget_parms
 
 
-@concurrent(processes=8)
+@concurrent(processes=4)
 def plot_hist_gasvx(rundir, snapnr, TimeBetSnapshot, ic=False):
     simulation = NumericalCluster(
         icdir=rundir+"ICs/",
@@ -29,8 +30,10 @@ def plot_hist_gasvx(rundir, snapnr, TimeBetSnapshot, ic=False):
     pyplot.ylabel("normalized count")
     pyplot.xlim(-2000, 1200)
     pyplot.suptitle("T = {0:04.2f} Gyr".format(TimeBetSnapshot*int(snapnr)),
-                color="black", size=18, y=0.95)
+                color="black", size=32, y=1.01)
+    pyplot.tight_layout()
     pyplot.savefig(rundir+"out/gasvx_"+snapnr)
+    pyplot.close()
 
 @synchronized
 def make_all_hists(timestamp):
@@ -46,7 +49,8 @@ def make_all_hists(timestamp):
     for snap in snaps:
         # e.g. "../runs/20160727T1112/snaps/snapshot_051"
         snapnr = snap.split('/')[-1].split('_')[-1]  # gets the 051
-        plot_hist_gasvx(rundir, snapnr, TimeBetSnapshot)
+        if snapnr == "000" or snapnr == "033":
+            plot_hist_gasvx(rundir, snapnr, TimeBetSnapshot)
 
 def new_argument_parser():
     description="Plot histogram of gas vx for all simulation snapshots"
