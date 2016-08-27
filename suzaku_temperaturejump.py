@@ -1,6 +1,6 @@
 import matplotlib
-matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
 pyplot.rcParams.update({"font.size": 22})
 pyplot.rcParams.update({"xtick.major.size": 8})
 pyplot.rcParams.update({"xtick.minor.size": 4})

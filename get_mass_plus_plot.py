@@ -17,8 +17,8 @@ import pandas
 # Anaconda python gives annoying "setCanCycle: is deprecated" when using Tk
 # matplotlib.use("TkAgg")
 import matplotlib
-matplotlib.use("Agg")
 from matplotlib import pyplot
+matplotlib.use("Agg", warn=False)
 pyplot.rcParams.update({"font.size": 28})
 pyplot.rcParams.update({"xtick.major.size": 8})
 pyplot.rcParams.update({"xtick.minor.size": 4})

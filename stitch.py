@@ -1,8 +1,8 @@
 import os
 import numpy
 import matplotlib
-matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
 import matplotlib.gridspec as gridspec
 # pyplot.rcParams.update({'font.size': 22})
 # pyplot.rcParams.update({"text.usetex": True})

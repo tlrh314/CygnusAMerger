@@ -7,9 +7,9 @@ from scipy import stats
 from collections import OrderedDict
 
 import matplotlib
-matplotlib.use("Qt4Agg")
-matplotlib.rc("text", usetex=True)
 from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
+matplotlib.rc("text", usetex=True)
 pyplot.rcParams.update({"font.size": 42})
 pyplot.rcParams.update({"xtick.major.size": 8})
 pyplot.rcParams.update({"xtick.minor.size": 4})

@@ -1,7 +1,7 @@
 import numpy
 import matplotlib
-matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
 
 def p2(a):
     return (a)*(a)

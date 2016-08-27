@@ -1,8 +1,8 @@
 import matplotlib
-matplotlib.use("Qt4Agg")
+from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
 matplotlib.rcParams.update({'font.size': 22})
 matplotlib.rc('text', usetex=True)
-from matplotlib import pyplot
 import numpy
 
 # For kernels it is important that:

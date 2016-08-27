@@ -7,8 +7,8 @@ import numpy
 from deco import concurrent, synchronized
 
 import matplotlib
-matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
 from astropy.io import fits
 
 # http://www.ifweassume.com/2014/04/cubehelix-colormap-for-python.html

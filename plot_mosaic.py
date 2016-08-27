@@ -6,8 +6,8 @@ from scipy import ndimage
 from deco import concurrent, synchronized
 
 import matplotlib
-matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
 pyplot.rcParams.update({"font.size": 18})
 pyplot.rcParams.update({"xtick.major.size": 8})
 pyplot.rcParams.update({"xtick.minor.size": 4})

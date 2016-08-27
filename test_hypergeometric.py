@@ -1,6 +1,6 @@
 import matplotlib
-matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+matplotlib.use("Qt4Agg", warn=False)
 pyplot.rcParams.update({'font.size': 22})
 from scipy import special
 import numpy

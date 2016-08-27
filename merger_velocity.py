@@ -4,8 +4,8 @@ import argparse
 
 import numpy
 import matplotlib
-matplotlib.use("Agg")
 from matplotlib import pyplot
+matplotlib.use("Agg", warn=False)
 
 from deco import concurrent, synchronized
 import amuse.plot as amuse_plot
@@ -27,7 +27,7 @@ def plot_hist_gasvx(rundir, snapnr, TimeBetSnapshot, ic=False):
                     bins=int(numpy.sqrt(simulation.raw_data.Ngas)))
     pyplot.xlabel("gas velocity x-direction")
     pyplot.ylabel("normalized count")
-    pyplot.xlim(-1000, 600)
+    pyplot.xlim(-2000, 1200)
     pyplot.suptitle("T = {0:04.2f} Gyr".format(TimeBetSnapshot*int(snapnr)),
                 color="black", size=18, y=0.95)
     pyplot.savefig(rundir+"out/gasvx_"+snapnr)
