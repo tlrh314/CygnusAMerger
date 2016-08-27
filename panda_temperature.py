@@ -102,8 +102,36 @@ pyplot.errorbar(merger_radii, merger_kT, yerr=[merger_kT_loerr, merger_kT_hierr]
 #                elinewidth=2, label="cold")
 pyplot.axvline(72, ls="dashed", c="k")
 
+# Fourth, Sarazin Suzaku observation
+# --------------------------------------------------------------------------- #
+suzaku = True
+if suzaku:
+    # Eyeballed from Sarazin, Finoguenov & Wik (2012) Fig. 4. Black points.
+    r_arcmin_Suzaku = numpy.array([-2, -0.1, 2, 4, 5.9, 8, 10, 12.3])
+    r_error_plus = numpy.array([1, 1, 1, 1, 1, 1, 1, 1.5])
+    r_error_min = numpy.array([1, 1, 1, 1, 1, 1, 1, 1.5])
+    T_kev_Suzaku = numpy.array([5, 5.5, 6.2, 7, 8.2, 8.5, 7.2, 6.4])
+    T_error_plus = numpy.array([1, 0.3, 1, 2, 1.5, 1.6, 1.1, 0.7])
+    T_error_min = numpy.array([1, 0.7, 1, 2, 1, 1.3, 1.3, 0.8])
+    pyplot.errorbar(r_arcmin_Suzaku*60, T_kev_Suzaku,
+        xerr=[r_error_min*60, r_error_plus*60],
+        yerr=[T_error_min, T_error_plus],
+        c="k", fmt="+", elinewidth=4, capsize=0)
 
-# Third, simulation: merger wedge and everything but merger wedge
+    # Eyeballed from Sarazin, Finoguenov & Wik (2012) Fig. 4. Grey points.
+    r_arcmin_Suzaku = numpy.array([0.1, 6.1, 11.1])
+    r_error_plus = numpy.array([3.5, 1.8, 3])
+    r_error_min = numpy.array([3.1, 2.8, 3.2])
+    T_kev_Suzaku = numpy.array([5.6, 8.8, 7])
+    T_error_plus = numpy.array([0.3, 0.7, 0.5])
+    T_error_min = numpy.array([0.4, 0.7, 0.4])
+    pyplot.errorbar(r_arcmin_Suzaku*60, T_kev_Suzaku,
+        xerr=[r_error_min*60, r_error_plus*60],
+        yerr=[T_error_min, T_error_plus],
+        c="grey", fmt="+", elinewidth=4, capsize=0)
+
+
+# Finally, simulation: merger wedge and everything but merger wedge
 # --------------------------------------------------------------------------- #
 # data files creates using ds9, region/panda centered on CygA,
 # MergerAxis has angles -45 to 45; NotMergerAxis has angles 45 to -45
@@ -130,15 +158,15 @@ NotMergerAxis = pandas.read_csv(sim+"_NotMergerAxis.dat", delimiter=" ",
         header=None, names=["Radius", "Temperature", "TemperatureErr"])
 pyplot.plot(NotMergerAxis["Radius"]*pixelscale,
             NotMergerAxis["Temperature"]*kB_kev_per_kelvin, ls="dashed",
-            lw=2, label="Simulation {0:1.1f}: Average".format(vel))
+            c="k", lw=2, label="Simulation {0:1.1f}: Average".format(vel))
 #pyplot.xlabel("Distance Along Merger Axis [kpc]")
 #pyplot.ylabel("Temperature [K]")
 pyplot.xlabel("Radius [kpc]")
 pyplot.ylabel("kT [keV]")
-pyplot.xscale("log")
+#pyplot.xscale("log")
 pyplot.xlim(5, 1000)
 pyplot.ylim(2, 11)
 pyplot.xticks([10, 100, 1000], [r"$10^1$", r"$10^2$", r"$10^3$"])
-pyplot.legend(loc="upper left", fontsize=12)
+#pyplot.legend(loc="upper left", fontsize=12)
 pyplot.show()
 # --------------------------------------------------------------------------- #
