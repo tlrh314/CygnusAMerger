@@ -2,7 +2,7 @@
 File: ioparser.py
 Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
 Date created: Mon Apr 18, 2016 02:19 pm
-Last modified: Tue Jul 26, 2016 05:43 pm
+Last modified: Mon Aug 29, 2016 08:37 pm
 
 Parse output of Julius Donnert's Toycluster 2.0 IC generator.
 
@@ -14,9 +14,11 @@ Class Toycluster2RuntimeOutputParser
     - Can eat raw output of Sun Grid Engine (qsub); the footer is ignored.
 """
 
+import os
 from collections import OrderedDict
 
 import numpy
+from astropy.io import fits
 
 from amuse.units import units
 
@@ -622,6 +624,86 @@ def parse_gadget_parms(filename):
 
     return parameters
 
+
+class SimulationOutputParser(object):
+    def __init__(self, base, timestamp):
+        print "Simulation :", timestamp
+        self.timestamp = timestamp
+        self.rundir = "{0}/runs/{1}/".format(base, self.timestamp)
+        self.outdir = self.rundir+"out/"
+        self.icsdir = self.rundir+"ICs/"
+        self.simdir = self.rundir+"snaps/"
+        self.analysisdir = self.rundir+"analysis/"
+
+        print "  rundir     :", self.rundir
+        print "  outdir     :", self.outdir
+        print "  icsdir     :", self.icsdir
+        print "  simdir     :", self.simdir
+        print "  analysisdir:", self.analysisdir
+
+        if not (os.path.isdir(self.outdir) or os.path.exists(self.outdir)):
+            os.mkdir(self.outdir)
+            print "  outdir created!"
+
+    def read_ics(self, verbose):
+        from cluster import NumericalCluster
+        numerical = NumericalCluster(
+            icdir=self.icsdir,
+            snapdir=self.icdir,
+            logfile="runToycluster.log",
+            icfile="IC_single_0",
+            verbose=verbose)
+        print "Succesfully loaded ICs of '{0}'".format(self.timestamp)
+
+    def read_gadget(self, snapnr, verbose=False):
+        self.parms = parse_gadget_parms(self.simdir+"gadget2.par")
+        from cluster import NumericalCluster
+        self.numerical = NumericalCluster(
+            icdir=self.icsdir,
+            snapdir=self.simdir,
+            logfile="runToycluster.log",
+            icfile="snapshot_{0:03d}".format(snapnr),
+            verbose=verbose)
+        print "Succesfully loaded snapshot '{0}' of '{1}'"\
+            .format(snapnr, self.timestamp)
+
+    def read_smac(self, cube):
+        """ Read fits data cube. """
+        attributes = {
+            "physical-density": "rhogas", "dm-density": "rhodm",
+            "temperature-spectroscopic": "tspec",
+            "temperature-emission-weighted": "tem",
+            "xray-surface-brightness": "xray",
+            "velocity": "vel"
+        }
+        for filename, attr in attributes.iteritems():
+            if filename in cube:
+                break
+        else:
+            print "ERROR: unknown fits filename"
+            exit(0)
+
+        with fits.open(self.analysisdir+cube) as f:
+            setattr(self, attr+"header", f[0].header)
+            setattr(self, attr+"data", f[0].data)
+            for line in repr(getattr(self, attr+"header")).split("\n"):
+                # if "Effect_Module" in line:
+                #     self.module = line.strip().split("=")[-1].strip().split("/")[0]
+                # if "Effect_Flag" in line:
+                #     self.flag = line.strip().split("=")[-1].strip().split("/")[0]
+                if "XYSize" in line:  # Could also be obtained from gadgetparms
+                    self.scale = line.strip().split("=")[-1].strip().split("/")[0]
+            #from stitch.py import helix_tables
+            #self.cmap = helix_tables(int(module.strip()), int(flag.strip()))
+
+        if "pixelscale" not in dir(self):
+            self.nsnaps, self.xlen, self.ylen = getattr(self, attr+"data").shape
+            self.pixelscale = float(self.scale)/int(self.xlen)
+
+    def set_timebetsnap(self):
+        if "parms" not in dir(self):
+            self.parms = parse_gadget_parms(self.simdir+"gadget2.par")
+        self.dt = self.parms['TimeBetSnapshot']
 
 if __name__ == '__main__':
     print 80*'-'

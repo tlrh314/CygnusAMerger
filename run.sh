@@ -1152,10 +1152,13 @@ case "${EFFECT}" in
     "xraytem")
         echo "Running P-Smac2 for X-Ray Surface Brightness."
         run_psmac2_for_given_module "xray-surface-brightness" "2" "0"
-        echo "Running P-Smac2 for Emission Weighted Temperature."
-        run_psmac2_for_given_module "temperature-emission-weighted" "4" "2"
-        echo "Running P-Smac2 for physical density."
-        run_psmac2_for_given_module "physical-density" "0" "0"
+
+        echo "Running P-Smac2 for Spectroscopic Temperature (Chandra)."
+        run_psmac2_for_given_module "temperature-spectroscopic" "4" "3"
+
+        echo "Running P-Smac2 for Dark Matter density."
+        run_psmac2_for_given_module "dm-density" "10" "0"
+
         echo "Running P-Smac2 for velocity"
         run_psmac2_for_given_module "velocity" "1" "0"
         ;;

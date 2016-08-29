@@ -8,31 +8,14 @@ from scipy.ndimage import filters
 
 from deco import concurrent, synchronized
 
-import matplotlib
-from matplotlib import pyplot
-matplotlib.use("Qt4Agg", warn=False)
-pyplot.rcParams.update({"font.size": 18})
-pyplot.rcParams.update({"xtick.major.size": 8})
-pyplot.rcParams.update({"xtick.minor.size": 4})
-pyplot.rcParams.update({"ytick.major.size": 8})
-pyplot.rcParams.update({"ytick.minor.size": 4})
-pyplot.rcParams.update({"xtick.major.width": 4})
-pyplot.rcParams.update({"xtick.minor.width": 2})
-pyplot.rcParams.update({"ytick.major.width": 4})
-pyplot.rcParams.update({"ytick.minor.width": 2})
-pyplot.rcParams.update({"xtick.major.pad": 8})
-pyplot.rcParams.update({"xtick.minor.pad": 8})
-pyplot.rcParams.update({"ytick.major.pad": 8})
-pyplot.rcParams.update({"ytick.minor.pad": 8})
-pyplot.rcParams.update({"legend.loc": "best"})
-pyplot.rcParams.update({"figure.autolayout": True})
-
 from astropy.io import fits
 
 from ioparser import parse_gadget_parms
 from rotate import helix_tables
 from suzaku_temperaturejump import plot_sarazin_suzaku
 from macro import *
+from plotsettings import PlotSettings
+style = PlotSettings()
 
 
 @concurrent(processes=8)
