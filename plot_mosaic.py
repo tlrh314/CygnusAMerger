@@ -165,6 +165,49 @@ def plot_zoomin_of_core(mosaic, radio, cygA):
     gc.save("out/CygA_Radio_5GHz.pdf", dpi=300)
 
 
+def plot_mosaic_with_ruler(mosaic, cygA, cygB):
+    gc = aplpy.FITSFigure(mosaic)
+
+    # Add smoothed log-stretch of the entire mosaic
+    gc.show_colorscale(vmin=7.0e-10, vmax=1.0e-6, stretch="log",
+                       cmap="spectral", smooth=9)
+
+    # Add scale. Length is 500 kpc after unit conversions
+    gc.add_scalebar(0.13227513)
+    gc.scalebar.set_corner("bottom right")
+    gc.scalebar.set_length(0.1)
+    gc.scalebar.set_linewidth(4)
+    gc.scalebar.set_label("500 kpc")
+    gc.scalebar.set_color("white")
+
+    # Find the pixels of the centroids
+    cygA_x, cygA_y = gc.world2pixel(cygA[0], cygA[1])
+    cygB_x, cygB_y = gc.world2pixel(cygB[0], cygB[1])
+
+    ax = pyplot.gca()
+    ax.plot([cygA_x, cygB_x], [cygA_y, cygB_y], c="w", lw=1)
+
+    # Eyeballed coordinates in ds9 :-) ...
+    text_x, text_y = gc.world2pixel( 299.78952, 40.816273 )
+    ax.text(text_x, text_y, '700.621"', ha="center", va="center", color="white",
+            rotation=51, weight="bold", fontsize=22)
+
+    # Pretty notation on the axes
+    gc.tick_labels.set_xformat("hh:mm:ss")
+    gc.tick_labels.set_yformat("dd:mm:ss")
+
+    ax.tick_params(axis="both", which="minor", colors="k",
+                   pad=8, width=2, size=4, reset=True)
+    ax.tick_params(axis="both", which="major", colors="k",
+                   pad=8, width=2, size=8, reset=True)
+
+    # Zoom in a bit more on the merger region
+    gc.recenter(299.78952, 40.81, width=0.185, height=0.185)
+    pyplot.tight_layout()
+    pyplot.show()
+    gc.save("out/mosaic_xray_ruler.pdf", dpi=300)
+
+
 def plot_mosaic_with_wedges(mosaic, cygA):
     """ Plot the merger, hot, cold regions in smoothed mosaic
         @param mosaic: path to the Chandra x-ray mosaic fits file
@@ -243,15 +286,17 @@ def plot_mosaic_with_wedges(mosaic, cygA):
 
 if __name__ == "__main__":
     # Coordinates of the CygA centroid
-    cygA = (299.86652, 40.734496)
+    cygA = ( 299.8669, 40.734496 )
+    cygB = ( 299.7055, 40.884849 )
 
     # Data directory and radio/xray observation fits files
     obsdir = "../runs/ChandraObservation/"
     radio = obsdir+"StruisMosaics/radio/radio5GHz.fits"
     xray = obsdir+"StruisMosaics/mosaic/cygnus_tot_flux.fits"
 
-    plot_zoomin_of_core(xray, radio, cygA)
-    plot_mosaic_with_wedges(xray, cygA)
+    # plot_zoomin_of_core(xray, radio, cygA)
+    # plot_mosaic_with_wedges(xray, cygA)
+    plot_mosaic_with_ruler(xray, cygA, cygB)
 
     # Experimental
     # unsharp_mask(mosaic)
