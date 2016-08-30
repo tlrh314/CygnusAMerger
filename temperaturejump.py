@@ -157,10 +157,10 @@ def create_panda(xlen, ylen, xc, yc, r, a1, a2):
                            obtaining the masked values works as array[mask]
     """
 
-    # Thickness of the spherical wedge shell section is three pixels now
+    # Thickness of the spherical wedge shell section is one pixel now
     dr = 1
 
-    # Center mask shape of (xlen, ylen) around (xc, yc)
+    # Create mask at center (xc, yc) for array.shape = (xlen, ylen)
     y,x = numpy.ogrid[-yc:ylen-yc, -xc:xlen-xc]
 
     # Convert degrees to radians
@@ -320,7 +320,7 @@ def add_chandra_sector(merger=True, hot=True, cold=True, wedges=False):
 def add_ds9_wedge(sim, vel, i):
     # data files creates using ds9, region/panda centered on CygA,
     # MergerAxis has angles -45 to 45; NotMergerAxis has angles 45 to -45
-    # Annuli in range(0, 200, 42), centered at (1004, 1024) in cubenumber 78
+    # Annuli in range(0, 200, 42), centered at CygA in cube where d=700 kpc
 
     timestamp = "data/ds9wedges/"+sim.timestamp
     MergerAxis = pandas.read_csv(timestamp+"_MergerAxis.dat", delimiter=" ",
@@ -337,7 +337,7 @@ def add_ds9_wedge(sim, vel, i):
                 ls="dashed", lw=4, label="Simulation {0:1.1f}: Average".format(vel))
 
 
-def add_own_wedge(sim, snapnr, i, wedges=False):
+def add_own_wedge(sim, snapnr, vel, i, wedges=False, save_individual=False):
     """ Add own wedge using the create_panda method """
 
     # Quick 'n' Dirty find peaks in X-ray surface brightness
@@ -348,20 +348,27 @@ def add_own_wedge(sim, snapnr, i, wedges=False):
     # xpeakright = peakutils.indexes(xsumright)[0] + sim.xlen/2+200
     # ypeak = peakutils.indexes(ysum)[0]
 
-    # x1, x2, y = find_centroids(sim, snapnr, method="DMmedian")
-    peaks = {0: (985, 1217, 1024), 3: (1004, 1134, 1024), 8: (1000, 1138, 1024)}
+    # xpeak1, xpeak2, ypeak = find_centroids(sim, snapnr, method="DMmedian")
 
+    peaks = {0: (982, 1124, 1024), 3: (981, 1106, 1024), 8: (977, 1113, 1024)}
     xpeak1, xpeak2, ypeak = peaks.get(i)
 
-    radii = numpy.arange(1, 200, 200./42)
-    quiescent_temperature = numpy.zeros(len(radii))
-    quiescent_temperature_std = numpy.zeros(len(radii))
-    merger_temperature = numpy.zeros(len(radii))
-    merger_temperature_std = numpy.zeros(len(radii))
+    radii = numpy.arange(0, 200, 200./42)[1:]  # skip 0 to avoid empty slice
+    N = len(radii)
+    quiescent_temperature = numpy.zeros(N)
+    quiescent_temperature_std = numpy.zeros(N)
+    merger_temperature = numpy.zeros(N)
+    merger_temperature_std = numpy.zeros(N)
+
+    c = {0: "c", 3: "m", 8: "y"}
+
+    if "tspecdata" not in dir(sim):
+        print "ERROR: please load spectroscopic temperature to sim instance"
+        return
+    snap = sim.tspecdata[snapnr]
 
     fig = pyplot.gcf()
     if wedges:
-        snap = sim.temdata[snapnr]
         fig2 = pyplot.figure()
         pyplot.imshow(snap*kB_kev_per_kelvin, vmin=0.1, vmax=9,
                       origin="lower", cmap="afmhot")
@@ -371,19 +378,19 @@ def add_own_wedge(sim, snapnr, i, wedges=False):
         pyplot.ylim(ypeak-300, ypeak+300)
 
     for j, r in enumerate(radii):
-        print r
+        print_progressbar(j, N)
         quiescent_mask = create_panda(sim.xlen, sim.ylen, xpeak1, ypeak, r, 45, -45)
         quiescent_temperature[j] = numpy.median(snap[quiescent_mask])
         quiescent_temperature_std[j] = numpy.std(snap[quiescent_mask])
         if wedges:
             y, x = numpy.where(quiescent_mask)
-            pyplot.scatter(x, y, s=1, c="r", edgecolor="face", alpha=1)
+            pyplot.scatter(x, y, s=1, c="r", edgecolor="face", alpha=0.2)
         merger_mask = create_panda(sim.xlen, sim.ylen, xpeak1, ypeak, r, -45, 45)
         merger_temperature[j] = numpy.median(snap[merger_mask])
         merger_temperature_std[j] = numpy.std(snap[merger_mask])
         if wedges:
             y, x = numpy.where(merger_mask)
-            pyplot.scatter(x, y, s=1, c="w", edgecolor="face", alpha=1)
+            pyplot.scatter(x, y, s=1, c="w", edgecolor="face", alpha=0.2)
             pyplot.xlabel("x [pixel]")
             pyplot.ylabel("y [pixel]")
             pyplot.gca().set_aspect("equal")
@@ -396,14 +403,26 @@ def add_own_wedge(sim, snapnr, i, wedges=False):
     quiescent_temperature_std*=kB_kev_per_kelvin
     merger_temperature*=kB_kev_per_kelvin
     merger_temperature_std*=kB_kev_per_kelvin
-    pyplot.errorbar(radii, quiescent_temperature, yerr=quiescent_temperature_std,
-                    c="k", lw=4, label="quiescent")
-    pyplot.errorbar(radii, merger_temperature, yerr=merger_temperature_std,
-                    c="k", lw=4, label="merger")
+    if save_individual:
+        pyplot.errorbar(radii, merger_temperature,
+                        yerr=merger_temperature_std,
+                        c="g", lw=2, label="Simulation: Merger")
+        pyplot.errorbar(radii, quiescent_temperature,
+                        yerr=quiescent_temperature_std,
+                        c="b", lw=2, label="Simulation: Average")
+        pyplot.axvline(x=(xpeak2-xpeak1)*sim.pixelscale, c="k", ls="dashed")
+    else:
+        pyplot.plot(radii, merger_temperature, lw=4, c=c.get(i, "k"),
+            label=r"Simulation: Merger, $\epsilon$ = {0}".format(vel))
+    if not save_individual and i==8:
+        pyplot.plot(radii, quiescent_temperature, c=c.get(i, "k"), lw=4, ls="dashed",
+            label=r"Simulation: Average, $\epsilon$ = {0}".format(vel))
+        pyplot.axvline(x=(xpeak2-xpeak1)*sim.pixelscale,
+                       c=c.get(i, "k"), lw=4, ls="dashed")
 
 
 
-def plot_temperature_profile(xscale="log"):
+def plot_temperature_profile(save_individual=False, xscale=None):
     #if "dt" not in dir(self):
     #    self.set_timebetsnap()
 
@@ -411,31 +430,46 @@ def plot_temperature_profile(xscale="log"):
                   "20160820T0107", "20160820T0142", "20160820T0218",
                   "20160820T0252", "20160820T0328", "20160820T0403",
                   "20160820T0438", "20160820T0513"]
-    bestsnaps = numpy.array([78, 77, 68, 60, 53, 47, 43, 39, 35, 33])
+    bestsnaps = numpy.array([91, 77, 68, 60, 53, 47, 43, 39, 35, 33])
     ZeroEOrbitFrac = numpy.arange(0.0, 1.1, 0.1)
-    MergerVelocity = numpy.array([])  # km/s
+    MergerVelocity = numpy.array([1400, 1400, 1600, 1700, 1650, 1700, 1900,
+                                  1950, 2050, 2200])  # km/s
 
-
+    if not save_individual:
+        pyplot.figure()
+        # add_suzaku()
+        add_chandra_sector(merger=True, hot=True, cold=True)
+        add_chandra_average()
     for i, timestamp in enumerate(timestamps):
         if i not in [0, 3, 8]:
             continue
-        print i
 
-        pyplot.figure()
-
-        # add_suzaku()
-        add_chandra_average()
-        add_chandra_sector(merger=True, hot=True, cold=True)
+        if save_individual:
+            pyplot.figure()
+            # add_suzaku()
+            add_chandra_sector(merger=True, hot=True, cold=True)
+            add_chandra_average()
 
         sim = SimulationOutputParser("/Volumes/SURFlisa", timestamp)
-        sim.read_smac("temperature-emission-weighted_projection-z.fits.fz")
+        sim.read_smac("temperature-spectroscopic_projection-z.fits.fz")
 
-        add_ds9_wedge(sim, ZeroEOrbitFrac[i], i)
-        add_own_wedge(sim, bestsnaps[i], i, wedges=True)
-
-        pyplot.axvline(72, ls="dashed", c="k")
-        #pyplot.xlabel("Distance Along Merger Axis [kpc]")
-        #pyplot.ylabel("Temperature [K]")
+        #add_ds9_wedge(sim, ZeroEOrbitFrac[i], i)
+        add_own_wedge(sim, bestsnaps[i], ZeroEOrbitFrac[i], i, wedges=False,
+                      save_individual=save_individual)
+        if save_individual:
+            pyplot.xlabel("Radius [kpc]")
+            pyplot.ylabel("kT [keV]")
+            pyplot.xlim(5, 1000)
+            pyplot.ylim(2, 11)
+            if xscale=="log":
+                pyplot.xscale("log")
+                #pyplot.xticks([10, 100, 1000], [r"$10^1$", r"$10^2$", r"$10^3$"])
+                pyplot.legend(loc="upper left", fontsize=16)
+            else:
+                pyplot.legend(loc="upper right", fontsize=16)
+            pyplot.tight_layout()
+            pyplot.savefig(sim.outdir+"temperature.png", dpi=300)
+    if not save_individual:
         pyplot.xlabel("Radius [kpc]")
         pyplot.ylabel("kT [keV]")
         pyplot.xlim(5, 1000)
@@ -443,9 +477,11 @@ def plot_temperature_profile(xscale="log"):
         if xscale=="log":
             pyplot.xscale("log")
             pyplot.xticks([10, 100, 1000], [r"$10^1$", r"$10^2$", r"$10^3$"])
-        pyplot.legend(loc="upper left", fontsize=12)
+            pyplot.legend(loc="upper left", fontsize=16)
+        else:
+            pyplot.legend(loc="upper right", fontsize=16)
         pyplot.tight_layout()
-        pyplot.savefig(sim.outdir+"temperature.png", dpi=300)
+        pyplot.savefig("out/temperature_comparison.png", dpi=300)
     pyplot.show()
 
 
@@ -467,5 +503,5 @@ if __name__ == "__main__":
     # sim.ylen = 2048
     # find_centroids(sim, 0, method="DMrho")
 
-    #sim.read_smac("temperature-emission-weighted_projection-z.fits.fz")
-    plot_temperature_profile()
+    #sim.read_smac("temperature-spectroscopic_projection-z.fits.fz")
+    plot_temperature_profile(save_individual=True, xscale="log")

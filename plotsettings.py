@@ -9,9 +9,9 @@ matplotlib.use("Qt4Agg", warn=False)
 class PlotSettings(object):
     def __init__(self, poster_style=False):
         # magenta, dark blue, orange, green, light blue
-        self.data = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
-                     (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
-                     (41./255, 239./255, 239./255)]
+        self.c = [(255./255, 64./255, 255./255), (0./255, 1./255, 178./255),
+                  (255./255, 59./255, 29./255), (45./255, 131./255, 18./255),
+                  (41./255, 239./255, 239./255)]
 
         # use the same colour for CygA and CygB observation
         self.CygA= "green"
