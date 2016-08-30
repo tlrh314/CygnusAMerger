@@ -8,26 +8,13 @@ from deco import concurrent, synchronized
 import matplotlib
 from matplotlib import pyplot
 matplotlib.use("Qt4Agg", warn=False)
-pyplot.rcParams.update({"font.size": 18})
-pyplot.rcParams.update({"xtick.major.size": 8})
-pyplot.rcParams.update({"xtick.minor.size": 4})
-pyplot.rcParams.update({"ytick.major.size": 8})
-pyplot.rcParams.update({"ytick.minor.size": 4})
-pyplot.rcParams.update({"xtick.major.width": 4})
-pyplot.rcParams.update({"xtick.minor.width": 2})
-pyplot.rcParams.update({"ytick.major.width": 4})
-pyplot.rcParams.update({"ytick.minor.width": 2})
-pyplot.rcParams.update({"xtick.major.pad": 8})
-pyplot.rcParams.update({"xtick.minor.pad": 8})
-pyplot.rcParams.update({"ytick.major.pad": 8})
-pyplot.rcParams.update({"ytick.minor.pad": 8})
-pyplot.rcParams.update({"legend.loc": "best"})
-pyplot.rcParams.update({"figure.autolayout": True})
-
+from matplotlib import rc
+matplotlib.rc("font", **{"size":16})
 
 from astropy.io import fits
 
 
+# Experimental
 @concurrent(processes=4)
 def plot_usm(original, sigma, amount, threshold):
     """ Unsharp mask: sharpened = original + (original - blurred) * amount """
@@ -88,6 +75,7 @@ def plot_usm(original, sigma, amount, threshold):
     return
 
 
+# Experimental
 @synchronized
 def unsharp_mask(mosaic):
     with fits.open(mosaic) as f:
@@ -130,65 +118,22 @@ def unsharp_mask(mosaic):
     #         plot_usm(original, sigma, amount)
 
 
-core = False
-usm = False
-radio = False
+def plot_zoomin_of_core(mosaic, radio, cygA):
+    """ Zoomin of the AGN feedback core region where FR-II interacts with gas
+        @param mosaic: path to the Chandra x-ray mosaic fits file
+        @param cygA  : tuple with RA, dec of CygA centroid
+    """
+    gc = aplpy.FITSFigure(mosaic)
 
-obsdir = "../runs/ChandraObservation/"
-# radio = obsdir+"radio5GHz.fits"
-radio = obsdir+"StruisMosaics/radio/radio5GHz.fits"
-mosaic = obsdir+"StruisMosaics/mosaic/cygnus_tot_flux.fits"
-
-#if usm:
-#    unsharp_mask(mosaic)
-#    import sys
-#    sys.exit(0)
-#
-#if radio:
-#    gc = aplpy.FITSFigure(radio)
-#    gc.show_colorscale(vmin=0.002, vmax=0.1, stretch="log", cmap="gray")
-#    gc.recenter(299.43385841180134, 40.596767959019161,
-#                width=0.037, height=0.018)
-#
-#    from astropy import units
-#    from cosmology import CosmologyCalculator
-#    cc = CosmologyCalculator(0.0562)
-#    kpc2arcsec = 1/cc.kpc_DA
-#    gc.add_scalebar(30 * kpc2arcsec * units.arcsecond)
-#    gc.scalebar.set_corner("bottom right")
-#    gc.scalebar.set_linewidth(4)
-#    gc.scalebar.set_label("30 kpc")
-#    gc.scalebar.set_color("white")
-#
-#    gc.tick_labels.set_xformat("hh:mm:ss")
-#    gc.tick_labels.set_yformat("dd:mm:ss")
-#
-#    gc.save("out/CygA_Radio_5GHz.pdf", dpi=300)
-#
-#    import sys; sys.exit(0)
-
-
-gc = aplpy.FITSFigure(mosaic)
-
-# aplpy.wcs_util(equinox="J2000")
-# gc.pixel2world(BoxSize/XYPix)  for simulations?
-
-if core:
+    # Show xray observation with stretch to highlight the core
     gc.show_colorscale(vmin=8.0e-10, vmax=2.0e-6,
                        stretch="log", cmap="spectral")
-else:
-    # gc.show_colorscale(vmin=9.0e-10, vmax=4.0e-8,
-    #     stretch="log", cmap="spectral", smooth=9)
-    gc.show_colorscale(vmin=7.0e-10, vmax=4.0e-8, stretch="log",
-                       cmap="spectral", smooth=9)
 
-gc.tick_labels.set_xformat("hh:mm:ss")
-gc.tick_labels.set_yformat("dd:mm:ss")
+    # Add the famous 5GHz radio contours
+    gc.show_contour(radio, vmin=0.002, vmax=0.1, levels=15, smooth=1,
+                    colors="black", lw=8)
 
-# gc.add_colorbar()
-# gc.colorbar.set_pad(0.1)
-
-if core:
+    # Show a scale bar of 30 kpc after unit conversions
     from astropy import units
     from cosmology import CosmologyCalculator
     cc = CosmologyCalculator(0.0562)
@@ -198,7 +143,40 @@ if core:
     gc.scalebar.set_linewidth(4)
     gc.scalebar.set_label("30 kpc")
     gc.scalebar.set_color("black")
-else:
+
+    # Zoom in on the central region
+    gc.recenter(cygA[0], cygA[1], width=0.037, height=0.018)
+    pyplot.gca().tick_params(axis="both", which="both", colors="k", reset=True)
+
+    # Pretty notation on the axes
+    gc.tick_labels.set_xformat("hh:mm:ss")
+    gc.tick_labels.set_yformat("dd:mm:ss")
+
+    ax = pyplot.gca()
+    ax.tick_params(axis="both", which="minor", colors="k",
+                   pad=8, width=2, size=4, reset=True)
+    ax.tick_params(axis="both", which="major", colors="k",
+                   pad=8, width=2, size=8, reset=True)
+
+    # gc.add_colorbar()
+    # gc.colorbar.set_pad(0.1)
+
+    pyplot.tight_layout()
+    gc.save("out/CygA_Radio_5GHz.pdf", dpi=300)
+
+
+def plot_mosaic_with_wedges(mosaic, cygA):
+    """ Plot the merger, hot, cold regions in smoothed mosaic
+        @param mosaic: path to the Chandra x-ray mosaic fits file
+        @param cygA  : tuple with RA, dec of CygA centroid
+    """
+    gc = aplpy.FITSFigure(mosaic)
+
+    # Add smoothed log-stretch of the entire mosaic
+    gc.show_colorscale(vmin=7.0e-10, vmax=4.0e-8, stretch="log",
+                       cmap="spectral", smooth=9)
+
+    # Add scale. Length is 500 kpc after unit conversions
     gc.add_scalebar(0.13227513)
     gc.scalebar.set_corner("bottom right")
     gc.scalebar.set_length(0.1)
@@ -206,13 +184,74 @@ else:
     gc.scalebar.set_label("500 kpc")
     gc.scalebar.set_color("white")
 
-if core:
-    gc.show_contour(radio, vmin=0.002, vmax=0.1, levels=15, smooth=1,
-                    colors="black", lw=8)
-    gc.recenter(299.86652, 40.734496,
-                width=0.037, height=0.018)
-    pyplot.gca().tick_params(axis="both", which="both", colors="k", reset=True)
+    # Find the pixels of the centroids
+    x_pix, y_pix = gc.world2pixel(cygA[0], cygA[1])
 
-pyplot.show()
+    # Cut-out angles: 6, 96, 225 and 315 degrees.
+    radii = numpy.linspace(0, 4500, 100)
+    x6 = numpy.zeros(len(radii))
+    x96 = numpy.zeros(len(radii))
+    x225 = numpy.zeros(len(radii))
+    x315 = numpy.zeros(len(radii))
+    y6 = numpy.zeros(len(radii))
+    y96 = numpy.zeros(len(radii))
+    y225 = numpy.zeros(len(radii))
+    y315 = numpy.zeros(len(radii))
+    for i, r in enumerate(radii):
+        x6[i] = r*numpy.cos(9*numpy.pi/180)
+        y6[i] = r*numpy.sin(6*numpy.pi/180)
 
-gc.save("out/cygnus{0}_5GHz_xray.pdf".format("_core" if core else ""), dpi=300)
+        x96[i] = r*numpy.cos(96*numpy.pi/180)
+        y96[i] = r*numpy.sin(96*numpy.pi/180)
+
+        x225[i] = r*numpy.cos(225*numpy.pi/180)
+        y225[i] = r*numpy.sin(225*numpy.pi/180)
+
+        x315[i] = r*numpy.cos(315*numpy.pi/180)
+        y315[i] = r*numpy.sin(315*numpy.pi/180)
+
+    ax = pyplot.gca()
+    ax.plot(x6+x_pix, y6+y_pix, c="w", lw=2)
+    ax.plot(x96+x_pix, y96+y_pix, c="w", lw=2)
+    ax.plot(x225+x_pix, y225+y_pix, c="w", lw=2)
+    ax.plot(x315+x_pix, y315+y_pix, c="w", lw=2)
+    ax.text(0.65, 0.85, "MERGER", ha="center", va="center", color="white",
+            bbox=dict(facecolor="green", edgecolor="green", pad=6),
+            weight="bold", transform=pyplot.gca().transAxes, fontsize=16)
+    ax.text(0.1, 0.5, "HOT", ha="center", va="center", color="white",
+            bbox=dict(facecolor="red", edgecolor="red", pad=6),
+            weight="bold", transform=pyplot.gca().transAxes, fontsize=16)
+    ax.text(0.65, 0.4, "HOT", ha="center", va="center", color="white",
+            bbox=dict(facecolor="red", edgecolor="red", pad=6),
+            weight="bold", transform=pyplot.gca().transAxes, fontsize=16)
+    ax.text(0.3, 0.05, "COLD", ha="center", va="center", color="white",
+            bbox=dict(facecolor="purple", edgecolor="purple", pad=6),
+            weight="bold", transform=pyplot.gca().transAxes, fontsize=16)
+
+    # Pretty notation on the axes
+    gc.tick_labels.set_xformat("hh:mm:ss")
+    gc.tick_labels.set_yformat("dd:mm:ss")
+
+    ax.tick_params(axis="both", which="minor", colors="k",
+                   pad=8, width=2, size=4, reset=True)
+    ax.tick_params(axis="both", which="major", colors="k",
+                   pad=8, width=2, size=8, reset=True)
+
+    pyplot.tight_layout()
+    gc.save("out/mosaic_xray_wedges.pdf", dpi=300)
+
+
+if __name__ == "__main__":
+    # Coordinates of the CygA centroid
+    cygA = (299.86652, 40.734496)
+
+    # Data directory and radio/xray observation fits files
+    obsdir = "../runs/ChandraObservation/"
+    radio = obsdir+"StruisMosaics/radio/radio5GHz.fits"
+    xray = obsdir+"StruisMosaics/mosaic/cygnus_tot_flux.fits"
+
+    plot_zoomin_of_core(xray, radio, cygA)
+    plot_mosaic_with_wedges(xray, cygA)
+
+    # Experimental
+    # unsharp_mask(mosaic)
