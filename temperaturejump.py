@@ -209,7 +209,7 @@ def add_suzaku():
         c="grey", fmt="+", elinewidth=4, capsize=0)
 
 
-def add_chandra_average():
+def add_chandra_average(alpha=0.2):
     # Average profile is over all wedges but the merger wedge. Obtained from
     # /scratch/martyndv/cygnus/combined/spectral/maps/radial/sn100_new/plots_cygA
     # Last edit of Martijn's fitfile was August 20, 2016 at 21:12
@@ -235,10 +235,10 @@ def add_chandra_average():
     pyplot.errorbar(average_radii, average_kT,
                     yerr=[average_kT_loerr, average_kT_hierr],
                     xerr=average_binsize/2, marker="o", ls="", c="b", ms=4,
-                    alpha=0.2, elinewidth=2, label="Observation: Average")
+                    alpha=alpha, elinewidth=2, label="Observation: Average")
 
 
-def add_chandra_sector(merger=True, hot=True, cold=True, wedges=False):
+def add_chandra_sector(merger=True, hot=True, cold=True, wedges=False, alpha=0.2):
     # Hot, cold and merger wedges sector radial profiles, T-fit to Chandra
     # observation. Data analysis was done by Martijn de Vries. Files obtained
     # from /scratch/martyndv/cygnus/combined/spectral/maps/sector/
@@ -281,17 +281,17 @@ def add_chandra_sector(merger=True, hot=True, cold=True, wedges=False):
     if merger:
         pyplot.errorbar(merger_radii, merger_kT, xerr=merger_binsize/2,
                         yerr=[merger_kT_loerr, merger_kT_hierr],
-                        marker="o", ls="", c="g", ms=4, alpha=0.2,
+                        marker="o", ls="", c="g", ms=4, alpha=alpha,
                         elinewidth=2, label="Chandra: Merger")
     if hot:
         pyplot.errorbar(hot_radii, hot_kT, xerr=hot_binsize/2,
                         yerr=[hot_kT_loerr, hot_kT_hierr],
-                        marker="o", ls="", c="r", ms=6, alpha=0.2,
+                        marker="o", ls="", c="r", ms=6, alpha=alpha,
                         elinewidth=2, label="Chandra: Hot")
     if cold:
         pyplot.errorbar(cold_radii, cold_kT, xerr=cold_binsize/2,
                         yerr=[cold_kT_loerr, cold_kT_hierr],
-                        marker="o", ls="", c="purple", ms=6, alpha=0.2,
+                        marker="o", ls="", c="purple", ms=6, alpha=alpha,
                         elinewidth=2, label="Chandra: Cold")
 
     # Plot that shows the wedges and the extraction radii
@@ -485,6 +485,22 @@ def plot_temperature_profile(save_individual=False, xscale=None):
     pyplot.show()
 
 
+def plot_observed_wedges():
+    pyplot.figure()
+    # add_suzaku()
+    add_chandra_average(alpha=1)
+    add_chandra_sector(merger=True, hot=True, cold=True, alpha=1)
+    pyplot.xlabel("Radius [kpc]")
+    pyplot.ylabel("kT [keV]")
+    pyplot.xlim(5, 1000)
+    pyplot.ylim(2, 11)
+    pyplot.xscale("log")
+    pyplot.xticks([10, 100, 1000], [r"$10^1$", r"$10^2$", r"$10^3$"])
+    pyplot.legend(loc="upper left", fontsize=16)
+    pyplot.tight_layout()
+    pyplot.savefig("out/ObservedTemperatureStructure.pdf", dpi=300)
+
+
 def new_argument_parser():
     parser = argparse.ArgumentParser(
         description="Plot Temperature Jump")
@@ -504,4 +520,5 @@ if __name__ == "__main__":
     # find_centroids(sim, 0, method="DMrho")
 
     #sim.read_smac("temperature-spectroscopic_projection-z.fits.fz")
-    plot_temperature_profile(save_individual=True, xscale="log")
+    #plot_temperature_profile(save_individual=True, xscale="log")
+    plot_observed_wedges()
