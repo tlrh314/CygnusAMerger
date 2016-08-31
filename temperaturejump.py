@@ -311,10 +311,12 @@ def add_chandra_sector(merger=True, hot=True, cold=True, wedges=False, alpha=0.2
                     pyplot.plot(r*x, r*y, c=colors[i])
             pyplot.xlim(-lim, lim)
             pyplot.ylim(-lim, lim)
-            pyplot.savefig("out/chandra_adaptivebinning_regions_{0}.png"\
+            pyplot.xlabel("x [kpc]")
+            pyplot.ylabel("y [kpc]")
+            pyplot.savefig("out/chandra_adaptivebinning_regions_{0}.pdf"\
                 .format(lim), dpi=300)
             pyplot.close(2)
-        pyplot.scf(fig)
+        pyplot.figure(fig.number)
 
 
 def add_ds9_wedge(sim, vel, i):
@@ -521,4 +523,5 @@ if __name__ == "__main__":
 
     #sim.read_smac("temperature-spectroscopic_projection-z.fits.fz")
     #plot_temperature_profile(save_individual=True, xscale="log")
-    plot_observed_wedges()
+    # plot_observed_wedges()
+    add_chandra_sector(wedges=True)
