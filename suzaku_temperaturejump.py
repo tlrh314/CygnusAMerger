@@ -1,21 +1,8 @@
 import matplotlib
 from matplotlib import pyplot
-matplotlib.use("Qt4Agg", warn=False)
-pyplot.rcParams.update({"font.size": 22})
-pyplot.rcParams.update({"xtick.major.size": 8})
-pyplot.rcParams.update({"xtick.minor.size": 4})
-pyplot.rcParams.update({"ytick.major.size": 8})
-pyplot.rcParams.update({"ytick.minor.size": 4})
-pyplot.rcParams.update({"xtick.major.width": 2})
-pyplot.rcParams.update({"xtick.minor.width": 2})
-pyplot.rcParams.update({"ytick.major.width": 2})
-pyplot.rcParams.update({"ytick.minor.width": 2})
-pyplot.rcParams.update({"xtick.major.pad": 8})
-pyplot.rcParams.update({"xtick.minor.pad": 8})
-pyplot.rcParams.update({"ytick.major.pad": 8})
-pyplot.rcParams.update({"ytick.minor.pad": 8})
-pyplot.rcParams.update({"legend.loc": "best"})
-pyplot.rcParams.update({"figure.autolayout": True})
+from plotsettings import PlotSettings
+style = PlotSettings()
+
 
 def plot_sarazin_suzaku():
     # Eyeballed from Sarazin, Finoguenov & Wik (2012) Fig. 4. Black points.
@@ -49,14 +36,15 @@ if __name__ == "__main__":
 
     pyplot.text(0, 4, "center", fontsize=36, ha="center", va="top")
     pyplot.text(4.7, 4, "merger\nshock", fontsize=36, ha="left", va="bottom")
-    pyplot.text(9, 4, "subcluster", fontsize=36, ha="left", va="bottom")
+    pyplot.text(8.9, 4, "subcluster", fontsize=36, ha="left", va="bottom")
 
     pyplot.xlim(-3, 13.5)
-    pyplot.xlabel("Distance Along Merger Axis (arcmin)")
+    pyplot.xlabel("Radius [arcmin]")
     pyplot.xticks([0, 5, 10], ["0", "5", "10"])
     pyplot.minorticks_on()
     pyplot.ylim(0, 10.1)
-    pyplot.ylabel(r"$T$ (keV)")
+    pyplot.ylabel(r"Temperature [keV]")
 
-    pyplot.savefig("out/suzaku_temperaturejump.png", dpi=300)
+    pyplot.tight_layout()
+    pyplot.savefig("out/suzaku_temperaturejump.pdf", dpi=300)
     # pyplot.show()
