@@ -18,22 +18,8 @@ import pandas
 # matplotlib.use("TkAgg")
 import matplotlib
 from matplotlib import pyplot
-matplotlib.use("Agg", warn=False)
-pyplot.rcParams.update({"font.size": 28})
-pyplot.rcParams.update({"xtick.major.size": 8})
-pyplot.rcParams.update({"xtick.minor.size": 4})
-pyplot.rcParams.update({"ytick.major.size": 8})
-pyplot.rcParams.update({"ytick.minor.size": 4})
-pyplot.rcParams.update({"xtick.major.width": 2})
-pyplot.rcParams.update({"xtick.minor.width": 2})
-pyplot.rcParams.update({"ytick.major.width": 2})
-pyplot.rcParams.update({"ytick.minor.width": 2})
-pyplot.rcParams.update({"xtick.major.pad": 8})
-pyplot.rcParams.update({"xtick.minor.pad": 8})
-pyplot.rcParams.update({"ytick.major.pad": 8})
-pyplot.rcParams.update({"ytick.minor.pad": 8})
-pyplot.rcParams.update({"legend.loc": "best"})
-pyplot.rcParams.update({"figure.autolayout": True})
+from plotsettings import PlotSettings
+style = PlotSettings()
 
 from cluster import ObservedCluster
 from cluster import AnalyticalCluster
@@ -649,19 +635,26 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
 
         pyplot.figure(figsize=(12, 9))
         pyplot.plot(r, ratio, c=fit_colour, lw=3 if poster_style else 1)
-        pyplot.plot(r, ratio_min, c="k")
-        pyplot.plot(r, ratio_plus, c="r")
+        # pyplot.plot(r, ratio_min, c="k")
+        # pyplot.plot(r, ratio_plus, c="r")
         pyplot.fill_between(r, ratio_min, ratio_plus,
-            facecolor=accent_colour if poster_style else "green",
-            edgecolor=accent_colour if poster_style else "green",
+            facecolor=accent_colour if poster_style else "grey",
+            edgecolor=accent_colour if poster_style else "grey",
             alpha=1 if poster_style else 0.2)
         pyplot.gca().set_xscale("log")
-        pyplot.axvline(cygA["r200"]*cm2kpc, lw=3 if poster_style else 1, c=accent_colour)
-        pyplot.xlabel(r"$r$ [kpc]")
-        pyplot.ylabel(r"Mass Ratio [Cyg$_{\rm A}$/Cyg$_{\rm B}$]")
-        pyplot.xlim(1, 4000)
+        pyplot.axvline(cygA["r200"]*cm2kpc, lw=3 if poster_style else 1, c=style.cygA)
+        pyplot.axvline(cygB["r200"]*cm2kpc, lw=3 if poster_style else 1, c=style.cygB)
+        # Smith et al. quote a mass at 500 kpc, assuming H0 = 50.
+        # So converting back to arcsec, and then assuming H0 = 70 to kpc
+        pyplot.axvline(500/1.527*1.091, c="k",
+                       lw=3 if poster_style else 1, ls="dashed")
+        pyplot.xlabel(r"Radius [kpc]", fontsize=28)
+        pyplot.ylabel(r"Mass Ratio", fontsize=28)
+        pyplot.xticks(fontsize=28)
+        pyplot.yticks(fontsize=28)
+        pyplot.xlim(5, 3000)
         pyplot.ylim(numpy.min(ratio_plus)-0.3, numpy.max(ratio_min)+0.3)
-        pyplot.savefig("out/cygA_cygB_massRatio{0}{1}{2}.png"\
+        pyplot.savefig("out/cygA_cygB_massRatio{0}{1}{2}.pdf"\
             .format("_freebeta" if free_beta else "",
                     "_800ksec" if oldICs else "_900ksec",
                     "_dark" if poster_style else ""), dpi=300)
@@ -740,35 +733,37 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         fig = pyplot.figure(figsize=(12, 9))
 
         pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="CygA total",
-                      c=accent_colour, lw=3 if poster_style else 1)
+                      c=style.cygA, lw=3 if poster_style else 1)
         # pyplot.loglog(r, cygA_dm_mass, label="dm", c=fit_colour,
         #               lw=3 if poster_style else 1, ls="dotted")
-        pyplot.loglog(r, cygA_gas_mass, label="CygA gas", c=accent_colour,
+        pyplot.loglog(r, cygA_gas_mass, label="CygA gas", c=style.cygA,
                       lw=3 if poster_style else 1, ls="dashed")
-        pyplot.axvline(cygA["r200"]*cm2kpc, c=accent_colour,
-                       lw=3 if poster_style else 1, ls="dotted")
+        pyplot.axvline(cygA["r200"]*cm2kpc, c=style.cygA,
+                       lw=3 if poster_style else 1, ls="solid")
 
         pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygB total",
-                      c=fit_colour, lw=3 if poster_style else 1)
+                      c=style.cygB, lw=3 if poster_style else 1)
         # pyplot.loglog(r, cygB_dm_mass, label="dm", c=fit_colour,
         #               lw=3 if poster_style else 1, ls="dotted")
-        pyplot.loglog(r, cygB_gas_mass, label="CygB gas", c=fit_colour,
+        pyplot.loglog(r, cygB_gas_mass, label="CygB gas", c=style.cygB,
                       lw=3 if poster_style else 1, ls="dashed")
-        pyplot.axvline(cygB["r200"]*cm2kpc, c=fit_colour,
-                       lw=3 if poster_style else 1, ls="dashed")
+        pyplot.axvline(cygB["r200"]*cm2kpc, c=style.cygB,
+                       lw=3 if poster_style else 1, ls="solid")
 
         # Smith et al. quote a mass at 500 kpc, assuming H0 = 50.
         # So converting back to arcsec, and then assuming H0 = 70 to kpc
-        pyplot.axvline(500/1.527*1.091, c=accent_colour,
-                       lw=3 if poster_style else 1, ls="solid")
+        pyplot.axvline(500/1.527*1.091, c="k",
+                       lw=3 if poster_style else 1, ls="dashed")
 
+        pyplot.xticks(fontsize=28)
+        pyplot.yticks(fontsize=28)
         pyplot.xlim(5, 3000)
         pyplot.ylim(1e10, 5e14)
-        pyplot.xlabel(r"$r$ [kpc]")
-        pyplot.legend(loc=2, fontsize=12)
+        pyplot.xlabel(r"Radius [kpc]", fontsize=28)
+        pyplot.legend(loc=2, fontsize=28)
 
-        pyplot.ylabel(r"$M(<r)$ [$M_{\odot}$]")
-        pyplot.savefig("out/cygA_cygB_mass_sameplot{0}{1}{2}.png"\
+        pyplot.ylabel(r"Cummulative Mass [MSun]", fontsize=28)
+        pyplot.savefig("out/cygA_cygB_mass_sameplot{0}{1}{2}.pdf"\
             .format("_freebeta" if free_beta else "",
                     "_800ksec" if oldICs else "_900ksec",
                     "_dark" if poster_style else ""), dpi=300)

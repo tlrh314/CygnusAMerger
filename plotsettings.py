@@ -14,8 +14,8 @@ class PlotSettings(object):
                   (41./255, 239./255, 239./255)]
 
         # use the same colour for CygA and CygB observation
-        self.CygA= "green"
-        self.CygB = "blue"
+        self.cygA= "green"
+        self.cygB = "blue"
 
         if not poster_style:
             self.fit = "black"
