@@ -121,10 +121,19 @@ def plot_individual_cluster_density(numerical, analytical, observed=None,
     pyplot.axvline(x=numerical.R200.value_in(units.kpc),
                    lw=1, c=fit_colour)
     # pyplot.text(numerical.R200.value_in(units.kpc), 3e-24, r"r200 = {0:.2f} kpc".format(numerical.rcut.value_in(units.kpc)))
-    ymin = analytical.gas_density(numerical.rc.as_quantity_in(units.kpc))
-    pyplot.axvline(x=numerical.rc.value_in(units.kpc),
-                   ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
-                   lw=1, c=fit_colour)
+    # ymin = analytical.gas_density(numerical.rc.as_quantity_in(units.kpc))
+    # pyplot.vlines(x=numerical.rc.value_in(units.kpc),
+    #               ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
+    #               lw=1, linestyles="dashed", color=fit_colour)
+    # ymin = analytical.dm_density(numerical.a.as_quantity_in(units.kpc))
+    # pyplot.vlines(x=numerical.a.value_in(units.kpc),
+    #               ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
+    #               lw=1, linestyles="solid", color=fit_colour)
+
+    # Maximum value in histogram of numerical.gas.h
+    ymin = analytical.gas_density(107.5 | units.kpc)
+    pyplot.vlines(x=107.5, ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
+                  lw=4, linestyles="dashed", color=data_colour[3])
 
     # pyplot.text(numerical.rc.value_in(units.kpc), 1e-24, r"rc = {0:.2f} kpc".format(numerical.rc.value_in(units.kpc)))
     # pyplot.axvline(x=numerical.a.value_in(units.kpc), lw=1, c=fit_colour)
@@ -133,7 +142,8 @@ def plot_individual_cluster_density(numerical, analytical, observed=None,
     # pyplot.savefig("out/actuallyran.png")
     pyplot.legend(loc=3, fontsize=28)
     pyplot.tight_layout()
-    pyplot.savefig("out/no_wvt_relax.pdf", dpi=300)
+    # pyplot.show()
+    # pyplot.savefig("out/no_wvt_relax.pdf", dpi=300)
 
 def plot_individual_cluster_mass(numerical, analytical, poster_style=False):
     pyplot.figure(figsize=(16, 12))
