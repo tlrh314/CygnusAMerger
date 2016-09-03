@@ -27,9 +27,17 @@ import convert
 
 
 class Run(object):
-    def __init__(self, arguments):
+    def __init__(self, arguments, discard_firstbins=True):
         self.timestamp = arguments.simulationID[0]
         self.observed = ObservedCluster(arguments.clustername) if arguments.clustername else None
+        if arguments.clustername and arguments.clustername == "cygA" and discard_firstbins:
+            print "WARNING: Discarding first three CygA bins.\n"
+            self.observed.radius = self.observed.radius[3:]
+            self.observed.binsize = self.observed.binsize[3:]
+            self.observed.density = self.observed.density[3:]
+            self.observed.density_std = self.observed.density_std[3:]
+            self.observed.number_density = self.observed.number_density[3:]
+            self.observed.number_density_std = self.observed.number_density_std[3:]
         if arguments.IC_only:
             # TODO: there is something different in the Toycluster rho
             # than in the Gadget output :(
@@ -73,10 +81,10 @@ def plot_individual_cluster_density(numerical, analytical, observed=None,
                    (41./255, 239./255, 239./255)]
 
     if observed:
-        obs_colour = "g" if observed.name == "cygA" else "b"
+        obs_colour = "k" if observed.name == "cygA" else "k"
         pyplot.errorbar(observed.radius+observed.binsize/2, observed.density,
                         xerr=observed.binsize/2, yerr=observed.density_std,
-                        marker="o", ms=7 if poster_style else 3, alpha=0.2,
+                        marker="o", ms=7 if poster_style else 3, alpha=1,
                         elinewidth=5 if poster_style else 1, ls="",
                         c=obs_colour, label=observed.name)
 
@@ -120,27 +128,36 @@ def plot_individual_cluster_density(numerical, analytical, observed=None,
 
     pyplot.axvline(x=numerical.R200.value_in(units.kpc),
                    lw=1, c=fit_colour)
-    # pyplot.text(numerical.R200.value_in(units.kpc), 3e-24, r"r200 = {0:.2f} kpc".format(numerical.rcut.value_in(units.kpc)))
-    # ymin = analytical.gas_density(numerical.rc.as_quantity_in(units.kpc))
-    # pyplot.vlines(x=numerical.rc.value_in(units.kpc),
-    #               ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
-    #               lw=1, linestyles="dashed", color=fit_colour)
-    # ymin = analytical.dm_density(numerical.a.as_quantity_in(units.kpc))
-    # pyplot.vlines(x=numerical.a.value_in(units.kpc),
-    #               ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
-    #               lw=1, linestyles="solid", color=fit_colour)
+    pyplot.text(numerical.R200.value_in(units.kpc)+100, 4e-24, r"$r_{200}$",
+                ha="left", fontsize=22)
+    pyplot.fill_between(numpy.arange(numerical.R200.value_in(units.kpc), 1e4, 0.01),
+            1e-32, 9e-24, facecolor="grey", edgecolor="grey", alpha=0.1)
+
+    ymin = analytical.gas_density(numerical.rc.as_quantity_in(units.kpc))
+    pyplot.vlines(x=numerical.rc.value_in(units.kpc),
+                  ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
+                  lw=1, linestyles="dashed", color=fit_colour)
+    pyplot.text(numerical.rc.value_in(units.kpc)+25
+                if (observed and observed.name == "cygB") else
+                numerical.rc.value_in(units.kpc), 4e-24, r"$r_c$",
+                ha="left", fontsize=22)
+
+    ymin = analytical.dm_density(numerical.a.as_quantity_in(units.kpc))
+    pyplot.vlines(x=numerical.a.value_in(units.kpc),
+                  ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
+                  lw=1, linestyles="solid", color=fit_colour)
+    pyplot.text(numerical.a.value_in(units.kpc)-25, 4e-24, r"$a$",
+                ha="right", fontsize=22)
 
     # Maximum value in histogram of numerical.gas.h
     ymin = analytical.gas_density(107.5 | units.kpc)
     pyplot.vlines(x=107.5, ymin=ymin.value_in(units.g/units.cm**3), ymax=9e-24,
                   lw=4, linestyles="dashed", color=data_colour[3])
-
-    # pyplot.text(numerical.rc.value_in(units.kpc), 1e-24, r"rc = {0:.2f} kpc".format(numerical.rc.value_in(units.kpc)))
-    # pyplot.axvline(x=numerical.a.value_in(units.kpc), lw=1, c=fit_colour)
-    # pyplot.text(numerical.a.value_in(units.kpc), 1e-24, r"$a =$ {0}".format(numerical.a))
+    pyplot.text(107.5-10, 4e-24, r"$2h_{\rm sml}$", color=data_colour[3],
+                ha="right", fontsize=22)
 
     # pyplot.savefig("out/actuallyran.png")
-    pyplot.legend(loc=3, fontsize=28)
+    # pyplot.legend(loc=3, fontsize=28)
     pyplot.tight_layout()
     # pyplot.show()
     # pyplot.savefig("out/no_wvt_relax.pdf", dpi=300)
@@ -300,6 +317,8 @@ def generate_plots(arguments):
     run = Run(arguments)
 
     for i, snap in enumerate(run.snaps):
+        if i != 5:
+            continue
         make_all_plots(run, snap, i, replot=arguments.replot)
 
 
