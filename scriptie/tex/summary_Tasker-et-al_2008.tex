@@ -1,0 +1,70 @@
+% File: tex/99_summary_Tasker-et-al_2008.tex
+% Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
+% Version: 0.01 (Initial)
+% Date created: Thu Jan 21, 2016 10:28 am
+% Last modified: Mon Jan 25, 2016 03:14 PM
+%
+% Description: Literature Summary
+
+\documentclass[MScProj_TLRH_ClusterEnergy.tex]{subfiles}
+% Allow to compile this document on itself using the preamble of ../MScProj_TLRH_ClusterEnergy.tex
+
+\begin{document}
+\section*{A test suite for quantitative comparison of hydrodynamic codes in astrophysics}
+\label{sec:Tasker2008}
+Summary of \citet{2008MNRAS.390.1267T}.
+\\
+\textbf{Abstract}
+Four numerical hydrodynamic codes are tested: ENZO, FLASH, GADGET, and HYDRA. The problems have initial and final states that can be solved analytically to test the numerical codes against. The test suite consists of the Sod Shock Tube, the Sedov Point Blast, and both the static and translating King Sphere. It is important in astronomy to be able to resolve shocks, to resolve sound waves, model supernova explosions and simulate collapsing haloes. These four physical phenomena may be tested using the aforementioned tests. It is concluded that both Eulerian and Lagrangian methods perform equivalently. The former is (in adaptive form) better-suited for problems with swiftly varying densities, whereas the latter is best-suited for problems with large contrast in the density and the physical problem at hand is related to the local density rather than its gradient.
+\\
+\textbf{Introduction}
+Numerical simulations are gaining importance as a tool to study astrophysical systems spanning a wide variety of energy and size scales. The underlying goal of different codes is to solve the equations of motion to track time-evolution of matter in the system, though several different methods exist. Understanding the differences between methods is needed to interpret the results and differentiate between numerical artefacts and physical processes. The authors quantitatively estimate systematical errors by comparing the numerical results to analytic solutions of four tests, two shock tests (of the hydro code): the Sod Shock Tube, and the Sedov Point Blast, and two tests that also include gravity.
+\\
+\textbf{Description of the codes}
+Adaptive Mesh Refinement (AMR) is compared to Smoothed Particle Hydrodynamics (SPH). AMR uses hierarchical meshes and tracks movement of gas between cells to calculate the time evolution, whereas SPH uses particles following the Lagrangian description. The following four codes are compared: Enzo, Gadget2, Hydra, and Flash.
+
+Enzo is an Eulerian AMR code using the Piecewise Parabolic Method (PPM), specifically Godunov's PPM method but with higher-order spatial interpolation which is excellent at resolving shocks and outflow. In addition, instead of PPM the Zeus code can be selected which is faster and allows high resolution simulations at the cost of requiring artificial viscosity to model the shocks and causes dissipation of the shock front.
+
+Gadget2 is a Lagrangian SPH code using a Barnes-Hut tree or the Tree-PM method to calculate the gravitational forces. For the SPH code it uses the entropy-conserving formulation described by Springel \& Hernquist (1003). The difference with Monaghan (1992) (the standard SPH formulation) is that specific entropy describes the thermodynamic state of a fluid element instead of the specific thermal energy. As a result this formulation conserves both entropy and energy if the system has no dissipation. There is also artificial viscosity. Finally, the code uses a leapfrog integration scheme because it is symplectic when using a constant time step, but is capable of using adaptive time steps for each particle which is used in this paper.
+
+Hydra is an entropy-conserving SPH code combined with an adaptive particle-particle, particle-mesh scheme. The public release is the only code in the selection unable to run in parallel, and it does not have adaptive individual time steps. Instead, the time steps are adaptive but equal for all particles.
+
+Flash is an Eulerian AMR code using an oct-tree for gravitational force calculations, where Poisson's equations are solved using to obtain the gravitational potential at each time step by means of the modified hybrid Fast Fourier Transform in the Wild (FFTW) method. The AMR method is a combined PPM and Riemann solver. Adaptive time stepping is available and the integrator is a leapfrog.
+
+\\
+\textbf{Hydro: Sod Shock Tube}
+The Sod Shock Tube and the Seldov Point Blast allow to test the resolution of shock jumps and compare this with analytical solutions because, you now, the universe is a violent place (e.g.\ supernova, galaxy mergers, AGN blast the intergalactic medium without any remorse).
+
+The Sod test is executed in 3D with $\rho_1 = 4, p_1 = 1, \rho_2 = 1, p_2 = 0.1795$ and $gamma = 5/3$ until $t=0.12$. The AMR codes use a $100^3$ initial grid$^2$, and the SPH codes use 1 million particles formed from two glasses of 1.6 million and 400.000 particles
+
+\textbf{Hydro: Sedov Blast Wave}
+This is a nice tests because it helps us understand how well we are able to model supernova explosions.
+
+The SPH code has the disadvantage that the SPH smoothing of particles (in the radial direction) causes broadening of the shock front, which in turn leads to inferring a lower maximum density. The location of the peak density is obtained correctly. GADGET-2 has the problem of increasing the gas velocity before the shock front as a result of entropy scattering. The scattering causes the SPH particles to have a temperature higher than their surroundings which lead to forming of small bubbles visible as a grainy `noisy' appearance.
+
+AMR, on the other hand has some difficulties due to the alignment of the grid with respect to the spherical blast wave. The location and of the maximum density, and the density increase itself are perfectly modelled. This is because the AMR places extra grid cells at regions of changing density, so the resolution at the shock is extremely good in contrast to the SPH which has great contrast in regions of high but uniform density.
+
+In order to compare AMR with SPH codes, it should be noted that requiring one SPH particle per AMR cell should yield similar resolutions.
+
+GADGET-2 users are warned that the generation of spurious entropy scatter (?) can occur when extreme shocks are modelled.
+
+\\
+\textbf{Hydro+Gravity: Translating King Sphere}
+Initially a King (stellar) cluster sits in equilibrium. Self-gravity exerts an inwards force on the gas while pressure prevents the cluster from collapsing. The main interest is how well the core of high density is modelled, and how well the density profile is maintained (since the cluster should stay at rest). All codes behave according to expectation, but the SPH codes show deviations at the tidal radius where the particle density is too low.
+
+Another test is to move the static cluster trough space (using periodic boundaries). The cluster should be found at the initial position after 1 Gyr as the velocity is chosen such that one period occurs in that time. The AMR codes fail to produce correct results. The SPH codes do better, but I am unsure how much better and what is acceptable as the article does not seem to mention this.
+
+AMR has the disadvantage that zero density and energy cells cause some numerical problems. For this reason it is required to have a low-density, low-temperature gas surrounding the cluster.
+\\
+\textbf{Discussion and conclusion}
+\begin{itemize}
+    \item The codes pass the tests
+    \item GADGET-2 shows entropy-drive bubbles for strong shocks
+    \item AMR and SPH have comparable resolution when one particle is required per grid cell
+    \item Strong shocks are better modelled with AMR than with SPH.
+\end{itemize}
+
+
+\SubfileBibliography
+\end{document}
+

@@ -1,0 +1,80 @@
+% File: tex/discussion.tex
+% Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
+% Version: 0.01 (Initial)
+% Date created: Sat Oct 24, 2015 12:28 am
+% Last modified: Fri Aug 12, 2016 01:58 PM
+%
+% Description: Masterthesis, Discussion
+
+
+\documentclass[MScProj_TLRH_ClusterEnergy.tex]{subfiles}
+\begin{document}
+\chapter{Discussion}
+\label{sec:discussion}
+
+% TODO: \citet{1978A&A....70..677C} give that
+% \begin{align}
+%     r_c &= 3 \left[ \frac{<v_{\parallel}^2>_{M}}{4 \pi G \rho_{G0}} \right]^{1/2} \quad ,
+% \end{align}
+% where $<v_{\parallel}^2>$ is the velocity
+% dispersion of the galaxies parallel to the line of sight, and $\rho_{G0}$ is the 
+% galaxy density (??)
+% 
+% For example, $r_c = 250$  for the Coma Cluster. 
+% I believe this is derived from optical considerations
+% assuming the optical galaxies as well as the X-ray gas follows the potential well.
+% So if we take the optical Cygnus~A paper, then we should perhaps be able to infer the core 
+% radius of the cluster from the optical velocity dispersion measurements?
+% 
+% TODO: beta = 2/3
+% 
+% TODO: However, these numbers do not contain the systematic error. For instance,
+% for the haloes spherical symmetry is assumed. In particular for the dark matter
+% halo reality could be more complicated. The dark matter haloes are more likely
+% triaxial and elongated along a given axis. Estimates on the amount of elongation
+% varies, but could very well be a factor of two, which would imply that our dark
+% matter mass estimates have a systematic uncertainty of at least a factor four.
+% 
+% TODO: the baryon fraction at $r_{500}$ should be 14 \% (Planelles+ 2013).
+% We, however, infer different numbers (higher baryon fractions). This would
+% imply that we should perhaps calculate the concentration parameter using a
+% different function than given by Duffy+ 2008.
+% 
+% 
+% TODO: triaxiality of the DM haloes.
+% 
+% 
+% TODO: ``Depending on the sample selection, 30 to 75 \% of clusters have substructure (Burns+ 1994 423 94, Jones+ 1994 107 1637)''
+% 
+% 
+% 
+% 
+% We acknowledge a fourth model that could provide an even more accurate
+% description of the observed data. A double beta model could perhaps better
+% constrain the increased density observed in the inner three kpc of Cygnus~A.
+% We show the raw density profile including the innermost bins
+% in Figure~\ref{fig:raw_data} for completeness, but in the further analysis
+% we discard the first few data points corresponding to this region. We justify this
+% because, firstly, the data points have rather large error bars, thus, will have no
+% significant effect on the weighted least squares fit as the data points are weighted
+% with this large uncertainty, and secondly, we assume this feature arises as a result
+% of AGN activity in the central galaxy of the cluster but not from the diffuse intra
+% cluster gas component that we intent to constrain. Thirdly, the CCD suffers from an
+% effect known as pile-up. The source in the inner region is so bright that two photons
+% could hit the detector chip within the read-out time of 3.2 seconds. Pile-up is a
+% serious issue for trustworthiness of the observation. Moreover, the scale at which this
+% feature arises is around the same order of magnitude as the mean free path of the photons
+% so we worry that the fluid approximation breaks down at this scale length. Finally,
+% should a double beta model provide the best-fit it is not possible to model this feature
+% in a stable manner. Scales well below the typical smoothing lengths fall within the SPH
+% smoothing kernel, which means that the density is not smoothed over the full kernel radius
+% and can not be trusted. This numerical limitation might be overcome by significantly
+% increasing the number of particles in the inner region of three kpc, but as the particles
+% are sampled over three decades the total number of particles should be increased a lot
+% to obtain the required increase in the inner region. The resulting increased compute time
+% is likely not worth the results it might produce, certainly not given the other arguments
+% to discard the first bins, and we reject a double beta model. TODO: rephrase last argument.
+
+
+\SubfileBibliography
+\end{document}

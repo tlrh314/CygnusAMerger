@@ -1,0 +1,85 @@
+SHELL = /bin/bash    # This should always be present in a Makefile
+
+## Target Computer ##
+ifndef SYSTYPE
+	SYSTYPE := $(shell hostname)
+endif
+
+ifeq (lisa.surfsara.nl, $(findstring lisa.surfsara.nl, $(SYSTYPE)))
+  # Make sure env variables are set. They should contain the lib and include paths
+  ifndef SARA_INCLUDE_PATH
+    $(error SARA_INCLUDE_PATH not set.)
+  endif
+  ifndef SARA_LIBRARY_PATH
+    $(error SARA_LIBRARY_PATH not set.)
+  endif
+  
+  CC           = mpicc
+  OPTIMIZE     = -Wall -g -O3
+  MPI_INCL     = -I$(SARA_INCLUDE_PATH)
+  MPI_LIBS     = -L$(SARA_LIBRARY_PATH)
+  GSL_INCL     = -I$(SARA_INCLUDE_PATH)
+  GSL_LIBS     = -L$(SARA_LIBRARY_PATH)
+  CFITSIO_INCL = -I/home/timoh/MyCfitsIO/include
+  CFITSIO_LIBS = -L/home/timoh/MyCfitsIO/lib
+  HDF5INCL     = -I$(SARA_INCLUDE_PATH)
+  HDF5LIB      = -L$(SARA_LIBRARY_PATH) -lhdf5 -lz -lsz
+endif
+
+EXEC = P-Smac2
+
+SRCDIR = src
+
+SRCFILES := ${shell find $(SRCDIR) -name \*.c -print}
+
+ifeq (,$(wildcard $(SRCDIR)/print_settings.c)) # add if missing
+	SRCFILES += $(SRCDIR)/print_settings.c
+endif
+
+OBJFILES = $(SRCFILES:.c=.o)
+
+OBJS = $(addprefix $(SRCDIR),$(OBJFILES))
+
+INCLFILES := ${shell find src -name \*.h -print}
+INCLFILES += Config Makefile $(SRCDIR)/config.h
+
+CFLAGS = -fopenmp -std=c99 $(OPTIMIZE) $(CFITSIO_INCL) $(GSL_INCL) $(MPI_INCL)
+
+LIBS = -lm -lgsl -lgslcblas -lcfitsio $(MPI_LIBS) $(GSL_LIBS) $(CFITSIO_LIBS) 
+
+%.o : %.c
+	@echo [CC] $@
+	@$(CC) $(CFLAGS)  -o $@ -c $<
+
+
+$(EXEC): settings $(OBJFILES)
+	$(CC) $(CFLAGS)  $(OBJFILES)  $(LIBS) -o $(EXEC)
+	@ctags $(SRCFILES) $(INCLUDEFILES)
+
+$(OBJFILES): $(INCLFILES)
+
+$(SRCDIR)/config.h : Config 
+	@echo 'Config -> config.h'
+	@sed '/^#/d; /^$$/d; s/^/#define /g' Config > $(SRCDIR)/config.h
+
+$(SRCDIR)/print_settings.c : Config
+	@echo '-> print_settings.c'
+	@echo '#include "proto.h"' >  $(SRCDIR)/print_settings.c
+	@echo '#include "globals.h"' >>  $(SRCDIR)/print_settings.c
+	@echo 'void print_compile_time_settings(){' >> $(SRCDIR)/print_settings.c
+	@echo 'rprintf("Compiled with : \n"' >> $(SRCDIR)/print_settings.c
+	@sed '/^#/d; /^$$/d; s/^/"   /g; s/$$/ \\n"/g;' Config >> $(SRCDIR)/print_settings.c
+	@echo ');}' >> $(SRCDIR)/print_settings.c
+
+.PHONY : settings
+
+settings : 
+	@echo " "
+	@echo 'CC      = ' $(CC)
+	@echo 'CFLAGS  = ' $(CFLAGS)
+	@echo 'LDFLAGS = ' $(LIBS)
+	@echo 'EXEC    = ' $(EXEC)
+	@echo " "
+
+clean : 
+	rm -f  $(OBJFILES) $(EXEC) src/config.h src/print_settings.c
