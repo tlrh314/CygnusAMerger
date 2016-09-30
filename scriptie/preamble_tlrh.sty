@@ -1,0 +1,131 @@
+% File: preamble_tlrh.sty
+% Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
+% Version: 0.01 (Initial)
+% Date created: Sat Oct 24, 2015 12:28 am
+% Last modified: Mon Sep 05, 2016 07:20 PM
+%
+% Description: Thesis Preamble
+
+\ProvidesPackage{preamble_tlrh}
+
+% Packages and package settings.
+\usepackage[english]{babel}
+
+\usepackage{caption}
+\captionsetup{font=footnotesize}
+
+\usepackage{hyperref}
+\hypersetup{pdfborder=0 0 0, colorlinks=true, linkcolor=black, urlcolor=blue,
+citecolor=black}
+
+% Classic thesis template packages
+\usepackage[linedheaders,parts,pdfspacing]{classicthesis}
+\usepackage{acronym}
+
+% Math packages
+\usepackage{amssymb}
+\usepackage{amsmath}
+\numberwithin{equation}{chapter}
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+
+\usepackage{pdflscape}
+\usepackage{longtable}
+
+\usepackage{enumerate}
+
+% Spacing and formatting.
+\usepackage{a4wide}
+\linespread{1.3}
+% \setlength{\parindent}{0pt}
+
+% To enable subfiles such that sections can be rendered individually.
+\usepackage{subfiles}
+
+% To force location of figures
+\usepackage{float}
+% \usepackage{graphicx}
+\usepackage{subcaption}
+
+%\usepackage[linedheaders, parts, pdfspacing]{classicthesis}
+
+% Used for bachelorproject.
+% \usepackage{rotating}
+% \usepackage[toc,page]{appendix}
+% \usepackage{pdflscape}
+% \usepackage{longtable}
+% \usepackage{url}
+% \usepackage{fullpage}
+% \usepackage{etoolbox}  % Tools for programming
+
+% BibTeX settings.
+\usepackage{./tex/aas_macros}  % For BibTeX journal abbreviations.
+\usepackage{natbib}
+\citestyle{aa}
+\bibpunct{(}{)}{;}{a}{}{,}
+
+% Custom commands
+\renewcommand{\\}{\par\vspace{\baselineskip}}
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\newcommand{\mytilde}{\raise.17ex\hbox{$\scriptstyle\mathtt{\sim}$}}
+\newcommand{\Sun}[0]{\ensuremath{_{\odot}}}
+\renewcommand{\deg}{\ensuremath{^{\circ}}}
+% Fig. caption instead of Figure.
+%\renewcommand{\figurename}{Fig.}
+% Stolen from preamble RAMJ Wijers, v1.1
+\newcommand{\AU}{\mbox{\rm\,AU}}
+\newcommand{\etal}{et~al.}
+% \Sup{} for superscript; \Sub{} for subscript. Stolen from Nathan Grin v1.1
+\newcommand{\Sup}[1]{\ensuremath{^{{{#1}}}}}
+\newcommand{\Sub}[1]{\ensuremath{_{{#1}}}}
+% \newcommand*{\mystrut}{\rule[-.1\baselineskip]{0pt}{.7\baselineskip}}
+\newcommand*{\mybox}[1]{\framebox{\strut #1}}
+
+% According to MNRAS satellite names should be typeset italic.
+\newcommand{\satellite}[1]{\textit{#1}}
+% According to MNRAS code names should be typeset in small caps.
+\newcommand{\code}[1]{\textsc{#1}}
+
+\usepackage{color}
+\newcommand{\mycomment}[1]{\noindent \textcolor{red}{\emph{#1}} \newline}
+%\renewcommand{\comment}[1]{}
+
+% Set default title etc. -- Stolen from preamble Nathan Grin v1.1
+% \def \title{Default Title}
+% \def \subtitle{Default Subtitle}
+% \def \author{Timo L. R. Halbesma, BSc}
+% \def \instituteI{Astronomical Institute Anton Pannekoek}
+% \def \instituteII{~}
+% \def \abstract{Default abstract. Usually \mytilde 10 lines.}
+
+\usepackage{listings}
+\usepackage{color}
+\usepackage{textcomp}
+\definecolor{listinggray}{gray}{0.9}
+\definecolor{lbcolor}{rgb}{0.9,0.9,0.9}
+\lstset{
+        backgroundcolor=\color{lbcolor},
+        tabsize=4,
+        rulecolor=,
+        language=make,
+        basicstyle=\scriptsize,
+        upquote=true,
+        aboveskip={1.5\baselineskip},
+        columns=fixed,
+        showstringspaces=false,
+        extendedchars=true,
+        breaklines=true,
+        prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+        frame=single,
+        showtabs=false,
+        showspaces=false,
+        showstringspaces=false,
+        identifierstyle=\ttfamily,
+        keywordstyle=\color[rgb]{0,0,1},
+        commentstyle=\color[rgb]{0.133,0.545,0.133},
+        stringstyle=\color[rgb]{0.627,0.126,0.941},
+}
+% End of more than very awesome stuff to easily insert any piece of code with syntax highlight and indentation.
+% Usage \lstinputlisting[caption={REPLACE}]{../path/to/filename.x}
+
+% End of preamble

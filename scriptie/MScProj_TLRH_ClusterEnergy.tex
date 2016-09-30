@@ -1,0 +1,93 @@
+% Master thesis MSc Astronomy & Astrophysics
+% University of Amsterdam, Faculty of Science, Anton Pannekoek Instituut
+% Academic Year 2015/2016
+% Version: 0.01 (Initial)
+% TLRH, September 2015 - June 2016.
+
+% TODO: decide on format to write report in (A\&A)?
+% TODO: incorporate existing titlepage into LaTeX (this is a mandatory format presented by UvA physics dept.)
+%
+%
+% Main document. Sections split up using subfiles.
+% Subfiles can be rendered individually.
+% https://en.wikibooks.org/wiki/LaTeX/Modular_Documents
+
+\documentclass[
+  % Replace twoside with oneside if you are printing your thesis on a single side
+  % of the paper, or for viewing on screen.
+  oneside,
+  %twoside,
+  11pt, a4paper,
+  footinclude=true,
+  headinclude=true,
+  cleardoublepage=empty
+]{scrbook}
+
+\usepackage{graphicx}
+\usepackage{ifpdf}
+\ifpdf
+   % put here packages only for the PDF:
+   \DeclareGraphicsExtensions{.pdf,.png,.jpg,.mps}
+   \usepackage{hyperref}
+    % Tell LaTeX where to find images :-)
+    \graphicspath{{img/}}
+\else
+   % put here packages only for the DVI:
+\fi
+
+% put all the other packages here:
+
+\usepackage{preamble_tlrh}
+
+% Hack to enable bibliography in subfile, but disable in main document.
+\def\SubfileBibliography{\bibliographystyle{./tex/aa}\setlength{\bibsep}{0pt}\bibliography{MScProj_TLRH_ClusterEnergy}}
+
+
+\begin{document}
+\def\SubfileBibliography{}
+
+
+\frontmatter
+%\input{./tex/title.tex}
+%\maketitle
+\subfile{./tex/titlepage}
+\subfile{./tex/abstract}
+\subfile{./tex/contents}
+\subfile{./tex/popular_abstract}
+% \subfile{./tex/outline}
+
+
+\mainmatter
+\part{Literature Summary}
+\subfile{./tex/introduction}
+\subfile{./tex/cygnus}
+\subfile{./tex/ics}
+
+
+\part{Numerical Simulations}
+\subfile{./tex/methods}
+\subfile{./tex/simulations}
+\subfile{./tex/discussion}
+\subfile{./tex/conclusions}
+\subfile{./tex/acknowledgements}
+
+\subfile{./tex/appendix}
+
+
+
+% References
+\clearpage
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{./tex/aa}
+\setlength{\bibsep}{0pt}  % remove whitespace between bib entries.
+\bibliography{MScProj_TLRH_ClusterEnergy}
+
+\end{document}
+
+
+% \begin{figure}[h!]
+% \centering
+% \includegraphics[width=0.78\textwidth]{NAME} 
+% \caption{CAPTION}
+% \label{fig:LABEL}
+% \end{figure}

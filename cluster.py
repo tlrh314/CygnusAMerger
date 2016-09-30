@@ -471,6 +471,10 @@ class AnalyticalCluster(object):
         if len(parms) == 3 and free_beta:
             self.model = 3
             self.beta = parms[2]
+        if len(parms) == 4 and free_beta:
+            self.model = 4
+            self.rcut = parms[2] | units.kpc
+            self.beta = parms[3]
         if len(parms) == 5:
             self.model = 2
             ne0_fac = parms[3]
@@ -482,7 +486,8 @@ class AnalyticalCluster(object):
         modelnames = {0: r"$\beta=2/3$",
                       1: r"cut-off $\beta=2/3$",
                       2: r"cut-off double $\beta (2/3)$",
-                      3: r"free $\beta$"}
+                      3: r"free $\beta$",
+                      4: r"cut-off free $\beta$"}
         self.modelname = modelnames[self.model]
 
         if dm_parms:
@@ -496,9 +501,10 @@ class AnalyticalCluster(object):
 
             model    name                   reference
             0        beta-model             Donnert (2014)
-            1        cut-off beta           Donnert et al. (2016, in prep)
-            2        cut-off double beta    Donnert et al. (2016, in prep)
-            3        beta-model             Donnert (2014), beta free param
+            1        cut-off beta           Donnert+ (2016, in prep)
+            2        cut-off double beta    Donnert+ (2016, in prep)
+            3        beta-model             Donnert (2014), beta free
+            4        cut-off beta-model     Donnert+ (2016, in prep), beta free
         """
 
         if r is None:
@@ -508,7 +514,7 @@ class AnalyticalCluster(object):
         if self.free_beta:
             beta = self.beta
         rho_gas = self.rho0 * (1 + p2(r/self.rc))**(-3*beta/2.)  # model >= 0
-        if self.model >= 1 and not self.free_beta:
+        if self.model >= 1:
             rho_gas /= (1 + p3(r/self.rcut) * (r/self.rcut))
         if self.model == 2:
             rho_gas += self.rho0_cc / (1 + p2(r/rc_cc)) / (1 + p3(r/rcut) * (r/rcut))
@@ -551,6 +557,8 @@ class AnalyticalCluster(object):
 
         if self.model == 2:  # cut-off double beta-model
             raise Exception("Error: analytical double beta model not implemented")
+        if self.model == 4:  # cut-off free beta-model
+            raise Exception("Error: analytical cut-off free beta model not implemented")
 
         return M_gas_below_r.as_quantity_in(units.MSun)
 

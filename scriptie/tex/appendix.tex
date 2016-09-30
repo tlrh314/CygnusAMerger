@@ -1,0 +1,104 @@
+% File: tex/appendix.tex
+% Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
+% Version: 0.01 (Initial)
+% Date created: Sat Oct 24, 2015 12:28 am
+% Last modified: Mon Sep 05, 2016 07:30 PM
+%
+% Description: Masterthesis, Appendix
+
+
+\documentclass[MScProj_TLRH_ClusterEnergy.tex]{subfiles}
+\begin{document}
+
+\pdfbookmark[1]{\listfigurename}{lof}
+\listoffigures
+
+\pdfbookmark[1]{\listtablename}{lot}
+\listoftables
+
+% \pdfbookmark[1]{\lstlistlistingname}{lol}
+% \lstlistoflistings 
+
+\pdfbookmark[1]{Acronyms}{acronyms}
+\chapter*{Acronyms}
+\begin{acronym}[ANOVA]
+    \setlength{\parskip}{0ex}
+    \setlength{\itemsep}{1ex}
+    \acro{AGN}{Active Galactic Nucleus}
+    \acro{AMR}{Adaptive Mesh Refinement}
+    \acro{BCG}{Brightest Cluster Galaxy}
+    \acro{cD}{Classification of optical galaxy, giant elliptical galaxy in cluster center}
+    \acro{CMBR}{Cosmic Microwave Background Radiation}
+    \acro{CygA}{Cygnus~A, specifically the cluster and associated emission}
+    \acro{CygB}{Cygnus~B, the sub cluster to the North-West of CygA}
+    \acro{DM}{Dark Matter}
+    \acro{FR-II}{Faranoff-Riley type II classification of radio-active galaxies}
+    \acro{ICM}{Intra Cluster Medium}
+    \acro{JVLA}{Jansky Very Large Array}
+    \acro{LAB}{Leiden/Argentine/Bonn -- survey of galactic HI}
+    \acro{LCDM}[$\Lambda$ CDM]{Lambda Cold Dark Matter -- cosmological paradigm}
+    \acro{LTE}{Local Thermaldynamic Equilibrium}
+    \acro{MEKAL}{Mewe-Kaastra-Liedahl -- thermal bremsstrahlung plus iron line emission model for the ICM}
+    \acro{NFW}{Navarro Frenk White -- Dark Matter profile}
+    \acro{SDSS}{Sloan Digital Sky Survey}
+    \acro{SPH}{Smoothed Particle Hydrodynamcis}
+    \acro{SMBH}{Super Massive Black Hole}
+    \acro{WMAP}{Wilkinson Microwave Anisotropy Probe}
+    \acro{WVT}{Weighted Voronoi Tesselations}
+    \acro{2dFGRS}{Two-degree Field Galaxy Redshift Survey}
+    \acro{3C}{Third Cambridge Catalog of Radio Sources}
+\end{acronym} 
+
+\appendix
+
+
+\chapter{Hypergeometrical Transformations}
+\label{sec:hypertrafo}
+The volume integral of the gas density for arbitrary values of $\beta$ yields a Gaussian hypergeometrical function. We solve this equation numerically using the implementation in the \code{SciPy} special functions library, which works for any value we throw at it. This implementation makes use of the \code{Cephes} math library implemented in c. If we want to implement this in \code{Toycluster} (written in OpenMP parallel c99) we can make use of the implementation of hypergeometrical functions in the \code{GNU Scientific Library (GSL)}, which is a code dependency anyway. However, we ran into trouble as the independent variable $x$ is equal to $-r_c^2/r^2$. For typical values of the coolcore $r_c$ around $30$ kpc ($200$ for disturbed clusters) and a radius spanning $r \in \{1, 1000\}$ we get a domain of $|x| << -1$. The hypergeometrical function is only implemented for $-1 < |x| < 1$, both in \code{GSL} and in \code{Cephes}. As it turns out, \citet{2015arXiv150205624S} show why the implementation does work in \code{SciPy}. Hypergeometrical functions can be expressed in terms of hypergeometrical functions and gamma functions by using a rotation of coordinates. We happily adopt the following transformations.
+
+TODO: For $-\infty < z < 1$, Forrey J. Comput. Phys. 137, 79 (1997) proposes to use \citep[eq. 15.3.8]{1972hmfw.book.....A}
+\begin{align}
+    {_2F_1}(a, b, c; z) &= (1-z)^{-a} \frac{\Gamma(c)\Gamma(b-a)}{\Gamma(b)(\Gamma(c-a)}
+    {_2F_1}(a, c-b, a-b+1; (1-z)^{-1}) \nonumber \\
+    &+ (1-z)^{-b} \frac{\Gamma(c)\Gamma(a-b)}{\Gamma(a)\Gamma(c-b)}
+    {_2F_1}(b, c-a, b-a+1; (1-z)^{-1})
+\end{align}
+while for $-\infty < z < -2$ the \code{SciPy} implementation uses \citep[eq. 15.3.7]{1972hmfw.book.....A}
+\begin{align}
+    {_2F_1}(a, b, c; z) &= (-z)^{-a} \frac{\Gamma(c)\Gamma(b-a)}{\Gamma(b)\Gamma(c-a)}
+    {_2F_1}(a, 1-c+a, 1-b+a; 1/z) \nonumber \\
+    &+ (-z)^{-b} \frac{\Gamma(c)\Gamma(a-b)}{\Gamma(a)\Gamma(c-b)}
+    {_2F_1}(b, 1-c+b, 1-a+b; 1/z)
+\end{align}
+TODO: add some caveats on specific functions of $a$, $b$, $c$ which break these equations.
+
+
+\chapter{Code Makefiles and Runtime Parameters}
+
+\section*{\code{Toycluster}}
+\label{sec:appendix-toycluster}
+\lstinputlisting[caption={\code{Toycluster} Makefile}]{./appendix/Makefile_Toycluster}
+\lstinputlisting[caption={\code{Toycluster} parameterfile}]{./appendix/ic_both_free.par}
+
+
+\section*{\code{Gadget-2}}
+\label{sec:appendix-gadget}
+\lstinputlisting[caption={\code{Gadget-2} Makefile}]{./appendix/Makefile_Gadget2}
+\lstinputlisting[caption={\code{Gadget-2} parameterfile}]{./appendix/gadget2.par}
+
+
+\section*{\code{P-Smac2}}
+\label{sec:appendix-psmac}
+\lstinputlisting[caption={\code{P-Smac2} Makefile}]{./appendix/Makefile_PSmac2}
+\lstinputlisting[caption={\code{P-Smac2} Configfile}]{./appendix/Config_PSmac2}
+\lstinputlisting[caption={\code{P-Smac2} parameterfile}]{./appendix/smac2.par}
+
+
+
+
+% We use a cubehelix colourmap \citep{2011BASI...39..289G}.
+
+
+
+\SubfileBibliography
+\end{document}

@@ -1,0 +1,118 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% University of Amsterdam master thesis title page
+% LaTeX Template
+%
+% Version 1.2 (14/02/14) (fixed cursive mode under titlepage)
+%
+% This template was made for the UvA by Ludo Nieuwenhuizen
+%
+%
+% Instructions for using this template:
+%
+% I've done my best to make this template self-explanatory. The only thing (apart from
+% finishing your thesis) is that wherever you see the percentage sign after some LaTeX
+% commands, you have to insert some text (except for this
+% introductory part, of course)l this is also explicitly stated.
+%
+% This title page can be compiled as is. This is not useful for
+% including it in another document. To do this, you have two options:
+%
+% 1) Copy/paste everything between \begin{document} and \end{document}
+% starting at \begin{titlepage} and paste this into another LaTeX file where you
+% want your title page.
+% OR
+% 2) Remove everything outside the \begin{titlepage} and \end{titlepage} and
+% move this file to the same directory as the LaTeX file you wish to add it to.
+% Then add \input{./titlepage_master_thesis.tex} to your LaTeX file where you want your
+% title page.
+%
+% The layout is quite vulnerable for changes. If you for instance remove the logo at the
+% bottom, the last line 'Department Research institute...' will get higher up the page. In this
+% case it is safer to insert a blank image or fix it in a different way.
+%
+% Any questions can be sent to me (L.G.Nieuwenhuizen@gmail.com)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \documentclass[12pt]{article}
+% NB: render from folder containing MScProj_TLRH_ClusterEnergy.tex
+\documentclass[MScProj_TLRH_ClusterEnergy.tex]{subfiles}
+\begin{document}
+
+% \usepackage{graphicx}
+% \usepackage{fullpage}
+
+\begin{titlepage}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.8mm}}
+\center
+
+% ------
+% Heading
+% ------
+\raisebox{-0.2cm}[0pt][0pt]{\includegraphics[width=1.5cm]{./img/titlepage/UvA_logo.jpg}}
+\raisebox{0.3cm}[0pt][0pt]{\textsc{\Huge University of Amsterdam}}\\[0 cm]
+
+\Large{\textbf{MSc Astronomy \& Astrophysics}}\\  % Study discipline
+\Large{Track Astronomy \& Astrophysics}\\[0.7cm]  % Master track name
+\textsc{\Large \textbf{Master Thesis}}\\[0.2cm]
+
+% -----
+% Title
+% -----
+
+\HRule \\[0.3cm]
+
+{\LARGE \bfseries Numerical Simulations of the Merging Cluster of Galaxies Cygnus~A}\\[0.8cm]  % title of thesis
+% {\large \bfseries TODO: come up with subtitle, if required} % subtitle of thesis
+
+\HRule \\[0.7cm]
+
+% -----
+% Details
+% -----
+
+{\large \emph by}\\[0.6cm]
+{\large \bfseries T. L. R. Halbesma, BSc\\  % student name
+6126561}\\[0.4cm] %student ID
+{\large  \emph{August 2016}}\\ % month + year in which the thesis was concluded
+{\large  \emph{54 ECTS}}\\ % 'this many' ects that are rewarded for the thesis
+{\large  \emph{Research conducted between September 2015 and August 2016}}\\[1.8cm] % period in which the research was carried out
+
+% -----
+% Supervisor, etc.
+% -----
+
+\begin{minipage}{0.4\textwidth}
+\begin{flushleft} \large
+{\large \emph{Supervisors:}}\\
+
+\large{Dr.~Michael~W.~Wise}\\  % Supervisor's Name
+\large{Dr.~Julius~M.~F.~Donnert}  % Supervisor's Name
+\end{flushleft}
+\end{minipage}
+~
+\begin{minipage}{0.4\textwidth}
+\begin{flushright} \large
+\emph{Examiner:} \\
+\large{Dr.~Anna~L.~Watts}  % Examiner's Name
+\end{flushright}
+\end{minipage}\\
+
+
+% -----
+% Logo and Department
+% -----
+
+% \raisebox{-78pt}[0pt][0pt]{\includegraphics[width=15cm]{./img/title/API_Logo_Text.pdf}}\\
+% \raisebox{-78pt}[0pt][0pt]{\large{Anton Pannekoek Institute for Astronomy}} %name of the department or institute or company
+\raisebox{-78pt}[0pt][0pt]{\textsc{\Huge Anton Pannekoek Institute}}\\[2.3 cm]
+
+
+% -----
+% That was easy, right?
+% -----
+
+\vfill
+
+\end{titlepage}
+\end{document}

@@ -1,0 +1,32 @@
+% File: tex/99_summary_Springel2005.tex
+% Author: Timo L. R. Halbesma <timo.halbesma@student.uva.nl>
+% Version: 0.01 (Initial)
+% Date created: Mon Jan 04, 2016 01:25 PM
+% Last modified: Thu Jan 21, 2016 10:40 am
+%
+% Description: Literature Summary
+
+\documentclass[MScProj_TLRH_ClusterEnergy.tex]{subfiles}
+% Allow to compile this document on itself using the preamble of ../MScProj_TLRH_ClusterEnergy.tex
+
+\begin{document}
+\section*{The cosmological simulation code GADGET-2}
+\label{sec:Springel2005}
+Summary of \citet{2005MNRAS.364.1105S}.
+\\
+\textbf{Abstract}
+GADGET-2 is a parallel TreeSPH code, which allows to track the (collisionless) fluid using an N-body code while Smoothed Particle Hydrodynamics (SPH) traces the (ideal) gas particles. This specific implementation of both methods is optimised for energy and entropy conservation in regions without dissipation while simultaneously allowing fully adaptive smoothing lengths. Computation of the gravitational force is done using a tree method for short-range forces combined with a Fourier scheme for long-range forces. The time steps of the algorithm are quasi-symplectic and may vary for the short- and the long range for calculations. Moreover, GADGET-2 is MPI-enabled, thus, can be deployed on clusters of computers as well as on a single machine. As the domain decomposition is based on a space-filling curve, the errors resulting from the tree force calculations do not depend on how the domains are split up.
+\\
+\textbf{Bla}
+
+\section{Introduction}
+The $\Lambda$ cold dark matter model could arguably have gained momentum as a result of the increasing importance of numerical simulations in theoretical research. In general, the highly non-linear regime of gravity and hydrodynamics can frequently only be studied trough numerical simulations. Examples of seminal work achieved trough simulations are given (e.g.\ the density profiles of dark matter haloes (Navarro, Frenk \& White 1996 is cited)), and it is expected that the ever-increasing computing power will further our knowledge trough simulations. In addition to the availability of more powerful computers, the availability of algorithms and simulation codes is of equal importance. This paper discusses in-depth the importance of the latter by comparing GADGET-2 to the novel version GADGET-1.
+
+GADGET-2 is a TreeSPH code (see Hernquist \& Katz 1989) meaning that gravity is calculated using hierarchical multipole expansion\footnote{according to Wikipedia multipole expansion is a mathematical technique that can for instance be used in numerical simulations such as the Fast Multipole Method of Greengard and Rokhlin, which is ``a general technique for efficient computation of energies and forces in systems of interacting particles''.} % TODO: read Hernquist \& Katz 1989 ?
+and the fluid dynamics is implemented with smoothed particle hydrodynamics (SPH).
+
+
+
+
+\SubfileBibliography
+\end{document}
