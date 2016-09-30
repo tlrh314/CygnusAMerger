@@ -260,8 +260,8 @@ def plot_fit_results(observed, analytical, numerical=None,
             marker='o', ms=5 if poster_style else 3,
             elinewidth=3 if poster_style else 1,
             ls="", c=data_colour[0] if observed.name=="cygA" else data_colour[2],
-            label="800" if observed.oldICs else "900"+\
-                  " ks Chandra\n(Wise+ 2016, in prep)",)
+            label="800" if observed.oldICs else "982"+\
+                  " ks Chandra\n(Wise et al. in prep)",)
 
     label = "model: "+analytical.modelname+"\n\t"
     label +=  r"$n_{{e,0}} \,$ = {0:.2e} cm$^{{-3}}$".format(analytical.ne0.number) if not mass_density else r"$\rho_{{0}} \,$ = {0:.2e} g cm$^{{-3}}$".format(analytical.rho0.number)
@@ -276,10 +276,10 @@ def plot_fit_results(observed, analytical, numerical=None,
 
     label = r"\begin{tabular}{lll}"
     if analytical.free_beta:
-        label += " Model & = & free beta \\\\"
+        label += " model & = & free beta \\\\"
     else:
-        label += " Model & = & fixed beta \\\\"
-    label += " rho0 & = & {0:.2e} g/cm$**$3 \\\\".format(analytical.rho0.number)
+        label += " model & = & fixed beta \\\\"
+    label += r" rho0 & = & {0:.2e} g$\cdot$cm$^{{-3}}$ \\".format(analytical.rho0.number)
     label += " rc & = & {0:.2f} kpc \\\\".format(analytical.rc.number)
     if analytical.free_beta:
         label += " beta & = & {0:.3f} kpc \\\\".format(analytical.beta)
@@ -342,6 +342,11 @@ def plot_fit_results(observed, analytical, numerical=None,
     ax.get_yaxis().set_label_coords(-0.15, 0.5)
     ax_r.get_yaxis().set_label_coords(-0.15, 0.5)
 
+    pyplot.sca(ax)
+    ylim = pyplot.gca().get_ylim()
+    pyplot.text(1.05*analytical.rc.value_in(units.kpc), 0.95*ylim[1], r"$r_c$",
+                ha="left", va="top", color="k", fontsize=38)
+
     if save and not analytical.free_beta:
         pyplot.savefig("out/density_betamodel_fit_{0}{1}{2}.png"\
             .format(observed.name, "_800ksec" if observed.oldICs else "_900ksec",
@@ -350,7 +355,7 @@ def plot_fit_results(observed, analytical, numerical=None,
         pyplot.savefig("out/density_free_betamodel_fit_{0}{1}{2}.png"\
             .format(observed.name, "_800ksec" if observed.oldICs else "_900ksec",
                 "_dark" if poster_style else ""), dpi=300)
-    else:
+    if not save:
         pyplot.show()
 
 
@@ -523,10 +528,10 @@ if __name__ == "__main__":
     fit = True
     discard_firstbins = True
     discard_lastbins = False
-    plot_fit = False
-    poster_style = True
+    plot_fit = True
+    poster_style = False
     mass_density = True
-    save = False
+    save = True
     fit_toycluster = False
 
 

@@ -654,6 +654,14 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.yticks(fontsize=28)
         pyplot.xlim(5, 3000)
         pyplot.ylim(numpy.min(ratio_plus)-0.3, numpy.max(ratio_min)+0.3)
+
+        ylim = pyplot.gca().get_ylim()
+        pyplot.text(500/1.527*1.091-5, 0.98*ylim[1], r"500 kpc $(H_0=50) $",
+                    ha="right", va="top", color="k", fontsize=22)
+        pyplot.text(cygA["r200"]*cm2kpc+50, 0.98*ylim[1], r"$r_{200, A}$",
+                    ha="left", va="top", color=style.cygA, fontsize=28)
+        pyplot.text(cygB["r200"]*cm2kpc-50, 0.98*ylim[1], r"$r_{200, B}$",
+                    ha="right", va="top", color=style.cygB, fontsize=28)
         pyplot.savefig("out/cygA_cygB_massRatio{0}{1}{2}.pdf"\
             .format("_freebeta" if free_beta else "",
                     "_800ksec" if oldICs else "_900ksec",
@@ -762,7 +770,17 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.xlabel(r"Radius [kpc]", fontsize=28)
         pyplot.legend(loc=2, fontsize=28)
 
+
+        ylim = pyplot.gca().get_ylim()
+        pyplot.text(500/1.527*1.091-5, 1.05*ylim[0], r"500 kpc $(H_0=50) $",
+                    ha="right", va="bottom", color="k", fontsize=22)
+        pyplot.text(cygA["r200"]*cm2kpc+50, 1.05*ylim[0], r"$r_{200, A}$",
+                    ha="left", va="bottom", color=style.cygA, fontsize=28)
+        pyplot.text(cygB["r200"]*cm2kpc-50, 1.05*ylim[0], r"$r_{200, B}$",
+                    ha="right", va="bottom", color=style.cygB, fontsize=28)
         pyplot.ylabel(r"Cummulative Mass [MSun]", fontsize=28)
+        # pyplot.show()
+        # exit(0)
         pyplot.savefig("out/cygA_cygB_mass_sameplot{0}{1}{2}.pdf"\
             .format("_freebeta" if free_beta else "",
                     "_800ksec" if oldICs else "_900ksec",
@@ -923,7 +941,12 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
                       ["$10^{0}$", "$10^{1}$", "$10^{2}$", "$10^{3}$",
                        "$10^{4}$", "$10^{5}$", "$10^{6}$"], fontsize=28)
 
+        ylim = pyplot.gca().get_ylim()
+        pyplot.text(1.05*rs_over_r200, ylim[1]/2.5, r"$r_s$", ha="left", va="bottom",
+                    color=accent_colour, fontsize=28)
+
         pyplot.legend(loc=3, fontsize=28)
+
         pyplot.savefig("out/NFW_consistency_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
                     "_800ksec" if oldICs else "_900ksec",
@@ -951,6 +974,10 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.yticks([1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15],
                       ["$10^{9}$", "$10^{10}$", "$10^{11}$", "$10^{12}$",
                        "$10^{13}$", "$10^{14}$", "$10^{15}$"], fontsize=28)
+
+        ylim = pyplot.gca().get_ylim()
+        pyplot.text(0.95*parms["r200"]*cm2kpc, ylim[1]/3, r"$r_{200}$",
+                    ha="right", va="bottom", color=accent_colour, fontsize=28)
 
         pyplot.savefig("out/NFW_consistency_mass_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
