@@ -1,3 +1,4 @@
+import glob
 import numpy
 import pandas
 import matplotlib
@@ -32,12 +33,13 @@ class ObservedCluster(object):
         self.name = name
         self.oldICs = oldICs
 
+        githubdir = "/usr/local/mscproj/CygnusAMerger/"
         if self.oldICs:
-            density_file = "data/{0}_1T_fixnH_pressureprofile_800ksec.dat".format(name)
-            radius_file = "data/{0}_sn100_sbprofile_800ksec.dat".format(name)
+            density_file = githubdir+"data/{0}_1T_fixnH_pressureprofile_800ksec.dat".format(name)
+            radius_file = githubdit+"data/{0}_sn100_sbprofile_800ksec.dat".format(name)
         else:
-            density_file = "data/{0}_1T_pressureprofile_900ksec.dat".format(name)
-            radius_file = "data/{0}_sb_sn100_900ksec.dat".format(name)
+            density_file = githubdir+"data/{0}_1T_pressureprofile_900ksec.dat".format(name)
+            radius_file = githubdir+"data/{0}_sb_sn100_900ksec.dat".format(name)
 
         if self.name == "cygA":
             z = 0.0562
@@ -144,6 +146,10 @@ class NumericalCluster(object):
         if icfile is None:
             icfile="IC_single_0"
         self.verbose = verbose
+
+        profiles = glob.glob(icdir+"/profiles_*.txt")
+        print profiles
+        import sys; sys.exit(0)
 
         # Read runtime output of Toycluster 2.0. Parse runtime output
         self.toyclusterlog = Toycluster2RuntimeOutputParser(filename=icdir+logfile)
