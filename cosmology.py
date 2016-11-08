@@ -1,13 +1,13 @@
 """
 File: cosmology.py
 
-Author: James Schombert's Python implementation of Ned Wright's cosmology calculator
+Author: James Schombert's Python implementation of Wright's cosmology calculator
 Obtained from http://www.astro.ucla.edu/~wright/CC.python at May 10, 2016
 Copyright for the original (online) calculator 1999-2016 Edward L. Wright.
 If you use this calculator while preparing a paper, please cite Wright (2006, PASP, 118, 1711).
 
 Some additions/alterations were made by TLRH
-Last modified: Sat Jun 18, 2016 10:51 pm
+Last modified: Tue Nov 08, 2016 03:11 PM
 
 """
 #!/usr/bin/env python
