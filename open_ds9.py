@@ -69,7 +69,7 @@ def main(args):
     # List of commands: http://ds9.si.edu/doc/ref/command.html
 
     if args.chandra:
-        rundir = "/Volumes/SURFlisa/runs/"
+        rundir = "/media/SURFlisa/runs/"
         mosaic = "ChandraObservation/StruisMosaics/mosaic/cygnus_tot_flux.fits"
         args.filename = rundir+mosaic
 
