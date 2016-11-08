@@ -4,6 +4,7 @@ import pandas
 import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot
+from astropy.io import ascii
 
 from amuse.units import units
 from amuse.units import constants
@@ -25,21 +26,13 @@ class ObservedCluster(object):
         """ Generate cluster instance with volume, pressure, density,
             Compton Y for bins with given inner and outer radii.
 
-            Data obtained by M. N. de Vries from 900 ksec Chandra data
+            Data obtained by M. N. de Vries from 1028 ksec Chandra data
 
-            @param oldICs: True -> old (800 ksec) data, else latest (900 ksec)
+            @param oldICs: True -> old (982 ksec) data, else latest (1028 ksec)
         """
 
         self.name = name
         self.oldICs = oldICs
-
-        githubdir = "/usr/local/mscproj/CygnusAMerger/"
-        if self.oldICs:
-            density_file = githubdir+"data/{0}_1T_fixnH_pressureprofile_800ksec.dat".format(name)
-            radius_file = githubdit+"data/{0}_sn100_sbprofile_800ksec.dat".format(name)
-        else:
-            density_file = githubdir+"data/{0}_1T_pressureprofile_900ksec.dat".format(name)
-            radius_file = githubdir+"data/{0}_sb_sn100_900ksec.dat".format(name)
 
         if self.name == "cygA":
             z = 0.0562
@@ -47,11 +40,19 @@ class ObservedCluster(object):
             z = 0.0562
         self.cc = CosmologyCalculator(z)
 
-        self.parse_data(density_file, radius_file)
+        githubdir = "/usr/local/mscproj/CygnusAMerger/"
+        if self.oldICs:
+            density_file = githubdir+"data/{0}_1T_pressureprofile_900ksec.dat".format(name)
+            radius_file = githubdir+"data/{0}_sb_sn100_900ksec.dat".format(name)
+            self.parse_data(density_file, radius_file)
+        else:
+            sb_file = githubdir+"data/20161108/{0}_sb_sn100.dat".format(name)
+            ne_file = githubdir+"data/20161108/{0}_sn100_therm_profile.dat".format(name)
+            self.parse_data_new(sb_file, ne_file)
 
         arcsec2kpc = self.cc.kpc_DA # | units.kpc
 
-        self.radius = (self.inner_radius+self.outer_radius)/2 * arcsec2kpc
+        self.radius = (self.inner_radius + self.outer_radius)/2 * arcsec2kpc
         self.binsize = (self.outer_radius - self.inner_radius) * arcsec2kpc
 
     def __str__(self):
@@ -77,14 +78,50 @@ class ObservedCluster(object):
 
         return tmp
 
+    def parse_data_new(self, sb_file, ne_file):
+        """ Datafiles copied at 20161108 """
+        # /scratch/martyndv/cygnus/combined/spectral/maps/radial/sn100/cygA_plots
+        # Last edit: Oct 18 09:27 (CygA), and Oct 18 11:37 (CygNW).
+        # Edit by TLRH after copy:
+            # header of datafile: i) removed spaces, ii) renamed Error to avoid double
+        # 252 bins (CygA). Radius1, Radius2, SB, SBError, BGRD, BGRDError, AREA
+        # 36 bins (CygNW)
+        sbresults = ascii.read(sb_file)
+
+        # /scratch/martyndv/cygnus/combined/spectral/maps/radial/pressure_sn100
+        # Last edit: Nov  2 14:16 (CygA), and Nov  2 14:21 (CygNW).
+        # 252 bins (CygA). Volume, Temperature, number density, Pressure, Compton-Y
+        # Edit by TLRH after copy: removed | af beginning and end of each line
+        # Header has units and spaces, so rename and override
+        header = ["Bin", "V", "kT", "fkT", "n", "fn", "P", "fP", "Yparm"]
+        neresults = ascii.read(ne_file, names=header, data_start=1)
+
+        self.bin_number = range(len(neresults))  # ugly hack
+        self.bin_volume = neresults["V"]
+        self.number_density = neresults["n"]
+        self.number_density_std = neresults["fn"]
+        self.density = convert.ne_to_rho(self.number_density, self.cc.z)
+        self.density_std = convert.ne_to_rho(self.number_density_std, self.cc.z)
+        self.pressure = neresults["P"]
+        self.pressure_std = neresults["fP"]
+        self.compton_y = neresults["Yparm"]
+
+        self.inner_radius = sbresults["Radius1"]
+        self.outer_radius = sbresults["Radius2"]
+        self.source_sb = sbresults["SB"]
+        self.source_sb_std = sbresults["SBError"]
+        self.background_sb = sbresults["BGRD"]
+        self.background_sb_std = sbresults["BGRDError"]
+        self.bin_number_sn100 = range(len(sbresults))  # ugly hack
+
     def parse_data(self, density_file, radius_file):
+        """ Legacy for 800 and 900 ksec """
         # Read Martijn Data
         raw = pandas.read_csv(density_file, delimiter="|")
 
         # print raw.keys()
 
         self.bin_number = raw[" Bin number "].as_matrix()
-        # TODO: old datafile also has column Analytical bin volume. What this?
         self.bin_volume = raw[" Bin volume (cm^3) "].as_matrix()
         self.number_density = raw["   Density (cm^-3) "].as_matrix()
         self.number_density_std = raw["     Sigma density "].as_matrix()
@@ -94,44 +131,16 @@ class ObservedCluster(object):
         self.pressure_std = raw["    Sigma Pressure "].as_matrix()
         self.compton_y = raw[" Compton Y parameter "].as_matrix()
 
-        raw_sn100 = pandas.read_csv(radius_file,
-            delimiter="|" if self.oldICs else None,
-            delim_whitespace=None if self.oldICs else True,
-            header=0 if self.oldICs else 18)
+        raw_sn100 = pandas.read_csv(radius_file, delimiter=None,
+                                    delim_whitespace=True, header=18)
 
-        if self.oldICs:
-            self.inner_radius = \
-                raw_sn100[" Inner radius (arcsec) "].as_matrix()
-            self.outer_radius = \
-                raw_sn100[" Outer radius (arcsec) "].as_matrix()
-
-            if " Source SB (counts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygA
-                self.source_sb = raw_sn100[" Source SB (counts/cm^2/arcsec^2/s) "].as_matrix()
-            elif " SB (cnts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygB
-                self.source_sb = raw_sn100[" SB (cnts/cm^2/arcsec^2/s) "].as_matrix()
-
-            self.source_sb_std = raw_sn100["   Sigma source SB "].as_matrix()
-
-            if " Background SB(counts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygA
-                self.background_sb = raw_sn100[" Background SB(counts/cm^2/arcsec^2/s) "].as_matrix()
-            elif " Bkg SB(cnts/cm^2/arcsec^2/s) " in raw_sn100.keys():  # CygB
-                self.background_sb = raw_sn100[" Bkg SB(cnts/cm^2/arcsec^2/s) "].as_matrix()
-
-            if " Sigma Background SB " in raw_sn100.keys():
-                self.background_sb_std = raw_sn100[" Sigma Background SB "].as_matrix()
-            elif "      Sigma Bkg SB " in raw_sn100.keys():
-                self.background_sb_std = raw_sn100["      Sigma Bkg SB "].as_matrix()
-
-            self.bin_number_sn100 = raw_sn100[" Bin number "].as_matrix()
-
-        else:
-            self.inner_radius = raw_sn100["Radius1"].as_matrix()
-            self.outer_radius = raw_sn100["Radius2"].as_matrix()
-            self.source_sb = raw_sn100["SB"].as_matrix()
-            self.source_sb_std = raw_sn100["SBError"].as_matrix()
-            self.background_sb = raw_sn100["BGRD"].as_matrix()
-            self.background_sb_std = raw_sn100["BGError"].as_matrix()
-            self.bin_number_sn100 = range(len(raw_sn100))
+        self.inner_radius = raw_sn100[u"Radius1"].as_matrix()
+        self.outer_radius = raw_sn100[u"Radius2"].as_matrix()
+        self.source_sb = raw_sn100[u"SB"].as_matrix()
+        self.source_sb_std = raw_sn100[u"SBError"].as_matrix()
+        self.background_sb = raw_sn100[u"BGRD"].as_matrix()
+        self.background_sb_std = raw_sn100[u"BGError"].as_matrix()
+        self.bin_number_sn100 = range(len(raw_sn100))
 
         if not numpy.array_equal(self.bin_number, self.bin_number_sn100):
 # Yeah, I know way too generic to raise, but w/e dont wanna define ReadingTwoDataFilesIsProneToMakeMistakesExeption *_*

@@ -414,7 +414,7 @@ def obtain_M200_bisection(rc, rho0, beta=None, verbose=False,
             pyplot.savefig("out/findmass_{0}{1}{2}{3}{4:03d}.png"\
                 .format(observed.name,
                         "_freebeta" if free_beta else "",
-                        "_800ksec" if oldICs else "_900ksec",
+                        "_900ksec" if oldICs else "_1000ksec",
                         "_dark" if poster_style else "", n), dpi=300)
 
             pyplot.close()
@@ -660,11 +660,11 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
                     ha="right", va="top", color="k", fontsize=22)
         pyplot.text(cygA["r200"]*cm2kpc+50, 0.98*ylim[1], r"$r_{200, A}$",
                     ha="left", va="top", color=style.cygA, fontsize=28)
-        pyplot.text(cygB["r200"]*cm2kpc-50, 0.98*ylim[1], r"$r_{200, B}$",
+        pyplot.text(cygB["r200"]*cm2kpc-50, 0.98*ylim[1], r"$r_{200, NW}$",
                     ha="right", va="top", color=style.cygB, fontsize=28)
         pyplot.savefig("out/cygA_cygB_massRatio{0}{1}{2}.pdf"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""), dpi=300)
 
     if mode == "rhomassboth":
@@ -697,11 +697,11 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.tight_layout()
         pyplot.savefig("out/cygA_cygB_massAndDensity{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""), dpi=300)
 
     if mode == "massboth":
-        print "Generating two-panel mass plot. CygA left, CygB right."
+        print "Generating two-panel mass plot. CygA left, CygNW right."
         fig, (ax0, ax1) = pyplot.subplots(1, 2, sharex=True, sharey=True, figsize=(16, 8))
 
         pyplot.sca(ax0)
@@ -733,11 +733,11 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.tight_layout()
         pyplot.savefig("out/cygA_cygB_mass{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""), dpi=300)
 
     if mode == "masssameplot":
-        print "Generating single plot with both CygA and CygB masses."
+        print "Generating single plot with both CygA and CygNW masses."
         fig = pyplot.figure(figsize=(12, 9))
 
         pyplot.loglog(r, cygA_gas_mass+cygA_dm_mass, label="CygA total",
@@ -749,11 +749,11 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.axvline(cygA["r200"]*cm2kpc, c=style.cygA,
                        lw=3 if poster_style else 1, ls="solid")
 
-        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygB total",
+        pyplot.loglog(r, cygB_gas_mass+cygB_dm_mass, label="CygNW total",
                       c=style.cygB, lw=3 if poster_style else 1)
         # pyplot.loglog(r, cygB_dm_mass, label="dm", c=fit_colour,
         #               lw=3 if poster_style else 1, ls="dotted")
-        pyplot.loglog(r, cygB_gas_mass, label="CygB gas", c=style.cygB,
+        pyplot.loglog(r, cygB_gas_mass, label="CygNW gas", c=style.cygB,
                       lw=3 if poster_style else 1, ls="dashed")
         pyplot.axvline(cygB["r200"]*cm2kpc, c=style.cygB,
                        lw=3 if poster_style else 1, ls="solid")
@@ -776,18 +776,18 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
                     ha="right", va="bottom", color="k", fontsize=22)
         pyplot.text(cygA["r200"]*cm2kpc+50, 1.05*ylim[0], r"$r_{200, A}$",
                     ha="left", va="bottom", color=style.cygA, fontsize=28)
-        pyplot.text(cygB["r200"]*cm2kpc-50, 1.05*ylim[0], r"$r_{200, B}$",
+        pyplot.text(cygB["r200"]*cm2kpc-50, 1.05*ylim[0], r"$r_{200, NW}$",
                     ha="right", va="bottom", color=style.cygB, fontsize=28)
         pyplot.ylabel(r"Cummulative Mass [MSun]", fontsize=28)
         # pyplot.show()
         # exit(0)
         pyplot.savefig("out/cygA_cygB_mass_sameplot{0}{1}{2}.pdf"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""), dpi=300)
 
     if mode == "rhoboth":
-        print "Generating two-panel denisty plot. CygA left, CygB right."
+        print "Generating two-panel denisty plot. CygA left, CygNW right."
         fig, (ax0, ax1) = pyplot.subplots(1, 2, sharex=True, sharey=True, figsize=(16, 8))
 
         pyplot.sca(ax0)
@@ -815,7 +815,7 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.tight_layout()
         pyplot.savefig("out/cygA_cygB_density{0}{1}{2}.png"\
             .format("_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""), dpi=300)
 
     if "single" in mode:
@@ -873,7 +873,7 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
 
         pyplot.savefig("out/density_profile_with_dm_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""))
 
     if mode == "bfsingle":
@@ -911,7 +911,7 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
         pyplot.legend(loc=2, fontsize=12)
         pyplot.savefig("out/baryon_fraction_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""))
 
     if mode == "nfwsingle":
@@ -949,7 +949,7 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
 
         pyplot.savefig("out/NFW_consistency_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""))
 
         pyplot.figure(figsize=(12, 9))
@@ -981,7 +981,7 @@ def make_plot(cygA, cygB, cygA_observed=None, cygB_observed=None,
 
         pyplot.savefig("out/NFW_consistency_mass_{0}{1}{2}{3}.png"\
             .format(observed.name, "_freebeta" if free_beta else "",
-                    "_800ksec" if oldICs else "_900ksec",
+                    "_900ksec" if oldICs else "_1000ksec",
                     "_dark" if poster_style else ""))
 
     print
@@ -1080,7 +1080,7 @@ def new_argument_parser():
         help="Visualise bisection method. Default is False.")
     parser.add_argument("-o", "--oldICs", dest="oldICs",
         action="store_true", default=False,
-        help="Use old (800 ksec) Chandra observation with smaller merger-region cut-out and different normalisation. Default is False. (Thus the latest 900 ksec observation is used).")
+        help="Use old (900 ksec) Chandra observation with smaller merger-region cut-out and different normalisation. Default is False. (Thus the latest 1000 ksec observation is used).")
     parser.add_argument("-l", "--lastbins", dest="discard_lastbins",
         action="store_true", default=False,
         help="Discard last CygA bins to see for which r beta=2/3 would still be useable (NB it is not!). Default is False.")
@@ -1124,7 +1124,7 @@ if __name__ == "__main__":
     print "Reading Chandra observed density profiles..."
     print 80*"-"
     if oldICs:
-        print "\nWARNING: Using old density profiles (799.5 ksec)."
+        print "\nWARNING: Using old density profiles (982.5 ksec)."
         raw_input("Are you sure you want to continue?\n")
     cygA_observed = ObservedCluster("cygA", oldICs=oldICs)
     cygB_observed = ObservedCluster("cygB", oldICs=oldICs)
@@ -1200,7 +1200,7 @@ if __name__ == "__main__":
     print_inferred_values(cygA, fix_cygA=fix_cygA,
         observed=cygA_observed, delta=delta)
 
-    print "CygB"
+    print "CygNW"
 
     cygB_ne0 = cygB_ml_vals[0]
     cygB_rho0 = ne_to_rho(cygB_ne0)  # g/cm**3
@@ -1228,8 +1228,8 @@ if __name__ == "__main__":
     print "cygA_M200            = {0:1.4e} MSun".format(cygA["M200"] * g2msun)
     print "cygB_M200            = {0:1.4e} MSun".format(cygB["M200"] * g2msun)
     print
-    print "M_CygA/M_CygB        = {0:1.4f}".format(cygA["M200"]/cygB["M200"])
-    print "M_CygB/M_CygA        = {0:1.4f}".format(cygB["M200"]/cygA["M200"])
+    print "M_CygA/M_CygNW       = {0:1.4f}".format(cygA["M200"]/cygB["M200"])
+    print "M_CygNW/M_CygA       = {0:1.4f}".format(cygB["M200"]/cygA["M200"])
     print "Mtotal               = {0:1.4e} MSun".format((cygA["M200"] + cygB["M200"]) * g2msun)
     print
 
